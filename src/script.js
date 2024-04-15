@@ -9,6 +9,7 @@ import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 import { generateLoadingManager } from "./utils/loader.js";
 import { basicCustomShader } from "./utils/basicCustomShader.js";
 import { InputManager } from "./utils/input.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -23,12 +24,19 @@ const camera = generateCamera(scene, cameraConfig);
 const windowManager = new WindowManager(camera);
 const renderer = customRenderer(windowManager);
 
+// https://colorhunt.co/palette/f9ed69f08a5db83b5e6a2c70
+const yellow = new THREE.Color(0xf9ed69);
+const orange = new THREE.Color(0xf08a5d);
+const red = new THREE.Color(0xb83b5e);
+const purple = new THREE.Color(0x6a2c70);
+
+const controls = new OrbitControls(camera, renderer.domElement);
 class Game {
   constructor(scene) {
     this.scene = scene;
     const box = new THREE.Mesh(
       new THREE.BoxGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ color: 0x5bbcff })
+      new THREE.MeshBasicMaterial({ color: yellow })
     );
     box.position.set(0, 1, 0);
     box.castShadow = true;
@@ -37,7 +45,7 @@ class Game {
 
     const sphere = new THREE.Mesh(
       new THREE.SphereGeometry(1),
-      new THREE.MeshBasicMaterial({ color: 0x5bbcff })
+      new THREE.MeshBasicMaterial({ color: orange })
     );
     sphere.position.set(2, 2, 2);
     sphere.castShadow = true;
@@ -46,7 +54,7 @@ class Game {
 
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(100, 100),
-      new THREE.MeshBasicMaterial({ color: 0xffffff })
+      new THREE.MeshBasicMaterial({ color: purple })
     );
     plane.castShadow = true;
     plane.receiveShadow = true;
@@ -245,9 +253,13 @@ varying vec2 vUv;
 
 const crossHatchFrag = `
 uniform sampler2D tShadow;
+uniform sampler2D tWorldPos;
 
 uniform float textureWidth;
 uniform float textureHeight;
+
+uniform float noiseScale;
+uniform float noiseFrequency;
 
 uniform float thickness;
 uniform float scale;
@@ -255,39 +267,117 @@ uniform float frequency;
 
 varying vec2 vUv;
 
+//	Simplex 3D Noise 
+//	by Ian McEwan, Ashima Arts
+//
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+
+float snoise(vec3 v) { 
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+// First corner
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+// Other corners
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+
+  //  x0 = x0 - 0. + 0.0 * C 
+  vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+  vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+  vec3 x3 = x0 - 1. + 3.0 * C.xxx;
+
+// Permutations
+  i = mod(i, 289.0 ); 
+  vec4 p = permute( permute( permute( 
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+// Gradients
+// ( N*N points uniformly over a square, mapped onto an octahedron.)
+  float n_ = 1.0/7.0; // N=7
+  vec3  ns = n_ * D.wyz - D.xzx;
+
+  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)
+
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+
+//Normalise gradients
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+// Mix final noise value
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                dot(p2,x2), dot(p3,x3) ) );
+}
+
+
 float htex(in vec2 p, in float lum ) { 
     float e = thickness * length(vec2(dFdx(p.x), dFdy(p.y))); 
    
+    float noise = noiseScale*snoise(noiseFrequency * texture2D(tWorldPos, vUv).xyz);
+
   if (lum < 0.5) {
-    float v = abs(mod(p.x + p.y, 10.0));
+    float v = abs(mod(p.x + p.y + noise, 10.0));
     if (v < e) {
       return 0.;
     }
   }
   
   if (lum < 0.4) {
-    float v = abs(mod(p.x - p.y, 10.0));
+    float v = abs(mod(p.x - p.y + noise, 10.0));
     if (v < e) {
       return 0.;
     }
   }
   
   if (lum < 0.3) {
-    float v = abs(mod(p.x + p.y - 5.0, 10.0));
+    float v = abs(mod(p.x + p.y - 5.0 + noise, 10.0));
     if (v < e) {
       return 0.;
     }
   }
   
   if (lum < 0.2) {
-    float v = abs(mod(p.x - p.y - 5.0, 10.0));
+    float v = abs(mod(p.x - p.y - 5.0 + noise, 10.0));
     if (v < e) {
       return 0.;
     }
   }
 
   if (lum < 0.1) {
-    float v = abs(mod(p.x + p.y - 7.5, 10.0));
+    float v = abs(mod(p.x + p.y - 7.5 + noise, 10.0));
     if (v < e) {
       return 0.;
     }
@@ -338,6 +428,53 @@ varying vec2 vUv;
     gl_FragColor = texture2D(vUv, tInput);
  }
 `;
+
+const gammaFragShader = `
+#include <packing>
+precision mediump  float;
+precision mediump  sampler2D;
+uniform sampler2D tInput;
+
+varying vec2 vUv;
+
+ void main()
+ {  
+    vec4 inp = vec4(texture2D(tInput, vUv));
+    gl_FragColor = inp;
+	#include <tonemapping_fragment>
+	#include <colorspace_fragment>
+ }
+`;
+
+const worldPosMaterial = new THREE.ShaderMaterial({
+  uniforms: [],
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    
+    void main() {
+    
+        vec4 objectPos = vec4(position, 1.);
+        // Moves it into world space. Includes object rotations, scale, and translation.
+        vec4 worldPos = modelMatrix * objectPos;
+        // Applies view (moves it relative to camera position/orientation)
+        vec4 viewPos = viewMatrix * worldPos;
+        // Applies projection (orthographic/perspective)
+        vec4 projectionPos = projectionMatrix * viewPos;
+        gl_Position = projectionPos;
+        vWorldPosition = worldPos.xyz;
+    }
+    `,
+
+  fragmentShader: `
+    varying vec3 vWorldPosition;
+    
+    void main()
+    {
+      gl_FragColor = vec4(vWorldPosition, 1.);
+    }
+    `,
+});
+
 class RenderPipeline {
   constructor(renderer) {
     this.renderer = renderer;
@@ -353,17 +490,23 @@ class RenderPipeline {
       window.innerHeight
     );
 
+    this.shadowTarget = new THREE.WebGLRenderTarget(
+      window.innerWidth,
+      window.innerHeight
+    );
+
+    this.worldPositionTarget = new THREE.WebGLRenderTarget(
+      window.innerWidth,
+      window.innerHeight,
+      { format: THREE.RGBAFormat, type: THREE.FloatType }
+    );
+
     this.sobelTexture = new THREE.WebGLRenderTarget(
       window.innerWidth,
       window.innerHeight
     );
 
     this.tempBuffer = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
-    );
-
-    this.shadowTarget = new THREE.WebGLRenderTarget(
       window.innerWidth,
       window.innerHeight
     );
@@ -379,6 +522,7 @@ class RenderPipeline {
     setTextureSize(this.normalTarget);
     setTextureSize(this.diffuseTarget);
     setTextureSize(this.sobelTexture);
+    setTextureSize(this.worldPositionTarget);
     setTextureSize(this.tempBuffer);
     setTextureSize(this.shadowTarget);
   }
@@ -404,7 +548,12 @@ class RenderPipeline {
       new THREE.MeshNormalMaterial(),
       this.normalTarget
     );
-    this.renderOverride(scene, camera, null, this.diffuseTarget);
+    this.renderOverride(
+      scene,
+      camera,
+      worldPosMaterial,
+      this.worldPositionTarget
+    );
     this.renderOverride(
       scene,
       camera,
@@ -415,6 +564,7 @@ class RenderPipeline {
       }),
       this.shadowTarget
     );
+    this.renderOverride(scene, camera, null, this.diffuseTarget);
 
     var v = new THREE.Vector3(0, 0, -1);
     var u = new THREE.Vector3(0, 1, 0);
@@ -482,10 +632,13 @@ class RenderPipeline {
         {
           textureWidth: { value: this.normalTarget.width },
           textureHeight: { value: this.normalTarget.height },
-          thickness: { value: 1 },
+          thickness: { value: 3 },
           scale: { value: 0.2 },
-          frequency: { value: 50 },
+          frequency: { value: 3 },
+          noiseScale: { value: 0.6 },
+          noiseFrequency: { value: 20 },
           tShadow: { value: this.shadowTarget.texture },
+          tWorldPos: { value: this.worldPositionTarget.texture },
         },
         crossHatchFrag
       )
@@ -503,8 +656,19 @@ class RenderPipeline {
         combineFragShader
       )
     );
-    this.renderer.setRenderTarget(null);
+    this.renderer.setRenderTarget(this.normalTarget);
     combinePass.render(this.renderer);
+
+    const gammaPass = new FullScreenQuad(
+      postProcessing(
+        {
+          tInput: { value: this.normalTarget.texture },
+        },
+        gammaFragShader
+      )
+    );
+    this.renderer.setRenderTarget(null);
+    gammaPass.render(this.renderer);
   }
 }
 
