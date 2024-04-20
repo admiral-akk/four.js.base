@@ -18,10 +18,13 @@ class TimeManager {
       this.time.gameTime += deltaTime * this.gameSpeed;
       this.time.userDeltaTime = deltaTime;
       this.time.gameDeltaTime = deltaTime * this.gameSpeed;
-      this.listeners.forEach((v) => {
-        v.updateTime(this.time);
-      });
     };
+  }
+
+  endLoop() {
+    this.listeners.forEach((v) => {
+      v.updateTime(this.time);
+    });
   }
 }
 

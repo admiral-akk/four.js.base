@@ -22,12 +22,12 @@ class InputManager {
     };
     this.sizes = { width: 1, height: 1 };
     this.listeners = [];
-    window.addEventListener("blur", (event) => {
+    window.addEventListener("blur", () => {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
     });
-    window.addEventListener("focusout", (event) => {
+    window.addEventListener("focusout", () => {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
@@ -91,6 +91,10 @@ class InputManager {
       false
     );
     time.listeners.push(this);
+  }
+
+  getKey(k) {
+    return this.keyState.pressedKeys.get(k);
   }
 
   updateSize(sizes) {

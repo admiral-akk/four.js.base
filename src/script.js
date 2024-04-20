@@ -26,6 +26,56 @@ const camera = generateCamera(scene, cameraConfig);
 const windowManager = new WindowManager(camera);
 const renderer = customRenderer(windowManager);
 
+class CameraController {
+  constructor(
+    camera,
+    time,
+    target,
+    config = {
+      phi: (3 * Math.PI) / 2 + 0.1,
+      theta: Math.PI / 4,
+      distance: 10,
+      stepSize: 0.1,
+    }
+  ) {
+    this.camera = camera;
+    this.time = time;
+    this.currentTarget = target.clone();
+    this.target = target.clone();
+    this.config = config;
+
+    this.updatePosition();
+  }
+
+  updatePosition() {
+    const { phi, theta, distance } = this.config;
+    const initialPos = this.currentTarget.clone();
+
+    initialPos.add(
+      new THREE.Vector3(
+        Math.sin(phi) * Math.cos(theta),
+        Math.sin(theta),
+        Math.cos(phi) * Math.cos(theta)
+      ).multiplyScalar(distance)
+    );
+
+    this.camera.position.set(initialPos.x, initialPos.y, initialPos.z);
+    camera.lookAt(this.currentTarget);
+    camera.updateProjectionMatrix();
+  }
+
+  update() {
+    const delta = this.target.clone().sub(this.currentTarget);
+    const { stepSize } = this.config;
+    if (delta.length() < stepSize) {
+      this.currentTarget = this.target.clone();
+    } else {
+      this.currentTarget.add(delta.normalize().multiplyScalar(stepSize));
+    }
+    this.updatePosition();
+  }
+}
+
 // https://colorhunt.co/palette/f9ed69f08a5db83b5e6a2c70
 const yellow = new THREE.Color(0xf9ed69);
 const orange = new THREE.Color(0xf08a5d);
@@ -33,10 +83,11 @@ const red = new THREE.Color(0xb83b5e);
 const purple = new THREE.Color(0x6a2c70);
 const grey = new THREE.Color(0xbbbbbb);
 
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new CameraController(camera, time, new THREE.Vector3());
 class Game {
-  constructor(scene) {
+  constructor(scene, input) {
     this.scene = scene;
+    this.input = input;
     const box = new THREE.Mesh(
       new THREE.BoxGeometry(1, 1),
       new THREE.MeshBasicMaterial({ color: yellow })
@@ -45,6 +96,8 @@ class Game {
     box.castShadow = true;
     box.receiveShadow = true;
     scene.add(box);
+
+    controls.target = box.position;
 
     const sphere = new THREE.Mesh(
       new THREE.SphereGeometry(1),
@@ -94,7 +147,19 @@ class Game {
   }
 
   update(time) {
+    const w = input.getKey("w");
+    const s = input.getKey("s");
+    const a = input.getKey("a");
+    const d = input.getKey("d");
+    const forward =
+      +(w !== undefined && w.heldGameTime == 0.0) -
+      +(s !== undefined && s.heldGameTime == 0.0);
+    const right =
+      +(d !== undefined && d.heldGameTime == 0.0) -
+      +(a !== undefined && a.heldGameTime == 0.0);
+    this.box.position.add(new THREE.Vector3(forward, 0, right));
     this.box.setRotationFromEuler(new THREE.Euler(0, time.time.gameTime, 0));
+    controls.target = this.box.position;
   }
 }
 
@@ -679,12 +744,13 @@ class RenderPipeline {
 }
 
 const pipeline = new RenderPipeline(renderer);
-windowManager.listeners.push(pipeline);
 
 function raf() {
   pipeline.render(scene, camera);
   time.tick();
   game.update(time);
+  controls.update();
+  time.endLoop();
   window.requestAnimationFrame(raf);
 }
 
