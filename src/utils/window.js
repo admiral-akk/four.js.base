@@ -12,6 +12,7 @@ class WindowManager {
     const canvasContainer = document.querySelector("div.relative");
 
     this.update = () => {
+      console.log("UPDATING");
       if (window.innerHeight * camera.aspect > window.innerWidth) {
         this.sizes.width = window.innerWidth;
         this.sizes.height = window.innerWidth / camera.aspect;

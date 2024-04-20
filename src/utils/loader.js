@@ -49,7 +49,7 @@ function generateLoadingManager() {
         const isHdr = path.match(/\.hdr/g);
         reference.value = (
           isHdr ? loadingManager.RGBELoader : loadingManager.textureLoader
-        ).load(path, callback);
+        ).load(path, callback ?? (() => {}));
         break;
 
       case "fonts":

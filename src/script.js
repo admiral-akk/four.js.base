@@ -2,6 +2,7 @@ import "./style.css";
 import * as THREE from "three";
 import { TimeManager } from "./utils/time.js";
 import { WindowManager } from "./utils/window.js";
+import { DebugManager } from "./utils/debug.js";
 import { customRenderer } from "./utils/renderer.js";
 import { generateCamera, cameraConfig } from "./utils/camera.js";
 import Stats from "stats-js";
@@ -11,6 +12,7 @@ import { basicCustomShader } from "./utils/basicCustomShader.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+const gui = new DebugManager();
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.body.appendChild(stats.dom);
@@ -29,6 +31,7 @@ const yellow = new THREE.Color(0xf9ed69);
 const orange = new THREE.Color(0xf08a5d);
 const red = new THREE.Color(0xb83b5e);
 const purple = new THREE.Color(0x6a2c70);
+const grey = new THREE.Color(0xbbbbbb);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 class Game {
@@ -52,12 +55,25 @@ class Game {
     sphere.receiveShadow = true;
     scene.add(sphere);
 
+    const planeG = new THREE.PlaneGeometry(100, 100);
     const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(100, 100),
-      new THREE.MeshBasicMaterial({ color: purple })
+      planeG,
+      new THREE.MeshBasicMaterial({ color: grey })
     );
-    plane.castShadow = true;
-    plane.receiveShadow = true;
+    var uvAttribute = planeG.attributes.uv;
+
+    for (var i = 0; i < uvAttribute.count; i++) {
+      var u = uvAttribute.getX(i);
+      var v = uvAttribute.getY(i);
+
+      // do something with uv
+
+      // write values back to attribute
+
+      uvAttribute.setXY(i, 10 * u, 10 * v);
+    }
+
+    planeG.uvsNeedUpdate = true;
     plane.rotation.x = -Math.PI / 2;
     scene.add(plane);
     const light = new THREE.DirectionalLight(0xffffff, 10);
@@ -121,6 +137,9 @@ uniform sampler2D tNormal;
 
 uniform float fov;
 uniform float aspect;
+
+uniform float normalStrength;
+uniform float depthStrength;
 
 varying vec2 vUv;
 
@@ -221,7 +240,8 @@ float readDepth( sampler2D depthSampler, vec2 coord ) {
     
     float sobelDepth = sobelM(mat_depth);
  
-    float edgeValue = dot(vec3(1.), sobelNormal) / 10. + sobelDepth / stepSize ;
+    float edgeValue = normalStrength * dot(vec3(1.), sobelNormal) 
+                           + depthStrength * sobelDepth / stepSize ;
     float sobel = step( 0.15, edgeValue);
  
     gl_FragColor = vec4(sobel);
@@ -479,52 +499,21 @@ class RenderPipeline {
   constructor(renderer) {
     this.renderer = renderer;
 
-    this.normalTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
-    );
+    this.normalTarget = renderer.newRenderTarget(1, 1);
     this.normalTarget.depthTexture = new THREE.DepthTexture();
 
-    this.diffuseTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
-    );
+    this.diffuseTarget = renderer.newRenderTarget(1, 1);
 
-    this.shadowTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
-    );
+    this.shadowTarget = renderer.newRenderTarget(1, 1);
 
-    this.worldPositionTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight,
-      { format: THREE.RGBAFormat, type: THREE.FloatType }
-    );
+    this.worldPositionTarget = renderer.newRenderTarget(1, 1, {
+      format: THREE.RGBAFormat,
+      type: THREE.FloatType,
+    });
 
-    this.sobelTexture = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
-    );
+    this.sobelTexture = renderer.newRenderTarget(1, 1);
 
-    this.tempBuffer = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
-    );
-  }
-
-  updateSize({ width, height }) {
-    const setTextureSize = (texture) => {
-      texture.setSize(
-        width * this.renderer.getPixelRatio(),
-        height * this.renderer.getPixelRatio()
-      );
-    };
-    setTextureSize(this.normalTarget);
-    setTextureSize(this.diffuseTarget);
-    setTextureSize(this.sobelTexture);
-    setTextureSize(this.worldPositionTarget);
-    setTextureSize(this.tempBuffer);
-    setTextureSize(this.shadowTarget);
+    this.tempBuffer = renderer.newRenderTarget(1, 1);
   }
 
   renderOverride(scene, camera, material, target) {
@@ -542,10 +531,17 @@ class RenderPipeline {
 
   render(scene, camera) {
     // Render normals + depth
+    const normalMap = loader.load(
+      "./texture/rock/Rock051_1K-JPG_NormalDX.jpg"
+    ).value;
+
+    normalMap.wrapS = THREE.RepeatWrapping;
+
+    normalMap.wrapT = THREE.RepeatWrapping;
     this.renderOverride(
       scene,
       camera,
-      new THREE.MeshNormalMaterial(),
+      new THREE.MeshNormalMaterial({ normalMap: normalMap }),
       this.normalTarget
     );
     this.renderOverride(
@@ -582,11 +578,21 @@ class RenderPipeline {
           cameraDir: { value: v },
           cameraUp: { value: u },
           cameraRight: { value: r },
-          pixelWidth: { value: 4 },
+          pixelWidth: gui.add("pixelWidth", 2, {
+            min: 1,
+            max: 10,
+            step: 1,
+          }),
           cameraNear: { value: camera.near },
           cameraFar: { value: camera.far },
           tNormal: { value: this.normalTarget.texture },
           tDepth: { value: this.normalTarget.depthTexture },
+          normalStrength: gui.add("normalStrength", 0.01, {
+            min: 0,
+            max: 0.1,
+            step: 0.001,
+          }),
+          depthStrength: gui.add("depthStrength", 1, { min: 0, max: 10 }),
         },
         sobelFragShader
       )
@@ -633,9 +639,9 @@ class RenderPipeline {
           textureWidth: { value: this.normalTarget.width },
           textureHeight: { value: this.normalTarget.height },
           thickness: { value: 3 },
-          scale: { value: 0.2 },
+          scale: { value: 0.08 },
           frequency: { value: 3 },
-          noiseScale: { value: 0.6 },
+          noiseScale: { value: 0.3 },
           noiseFrequency: { value: 20 },
           tShadow: { value: this.shadowTarget.texture },
           tWorldPos: { value: this.worldPositionTarget.texture },
@@ -651,7 +657,7 @@ class RenderPipeline {
         {
           tDiffuse: { value: this.diffuseTarget.texture },
           tSobel: { value: this.sobelTexture.texture },
-          tHatch: { value: this.tempBuffer.texture },
+          tHatch: { value: null },
         },
         combineFragShader
       )
