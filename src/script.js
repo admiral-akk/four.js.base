@@ -178,7 +178,7 @@ class Level {
     );
 
     this.state = {
-      player: [],
+      player: null,
       walls: [],
       boxes: [],
       buttons: [],
@@ -201,7 +201,7 @@ class Level {
         }
         switch (interactableRows[y][x]) {
           case "P":
-            this.state.player.push(new Player(x, y));
+            this.state.player = new Player(x, y);
             break;
           case "B":
             this.state.boxes.push(new Box(x, y));
@@ -212,6 +212,44 @@ class Level {
         }
       }
     }
+  }
+
+  attemptMove({ deltaX, deltaY }) {
+    const { boxes, player, walls, buttons } = this.state;
+    const nextX = player.x;
+    const nextY = player.y;
+    if (deltaX) {
+      deltaY = 0;
+    }
+
+    // check if space is occupied by wall
+    if (walls.some((w) => w.x === nextX + deltaX && w.y === nextY + deltaY)) {
+      return;
+    }
+
+    const box = boxes.find(
+      (w) => w.x === nextX + deltaX && w.y === nextY + deltaY
+    );
+
+    // check if space is occupied by box
+    if (box) {
+      // check if next space is occupied by box or wall
+      if (
+        boxes
+          .concat(walls)
+          .some((w) => w.x === nextX + 2 * deltaX && w.y === nextY + 2 * deltaY)
+      ) {
+        return;
+      }
+    }
+
+    if (box) {
+      box.x += deltaX;
+      box.y += deltaY;
+    }
+    player.x += deltaX;
+    player.y += deltaY;
+    this.update();
   }
 
   update() {
@@ -269,15 +307,13 @@ class Game {
     const s = input.getKey("s");
     const a = input.getKey("a");
     const d = input.getKey("d");
-    const forward =
+    const deltaY =
       +(w !== undefined && w.heldGameTime == 0.0) -
       +(s !== undefined && s.heldGameTime == 0.0);
-    const right =
+    const deltaX =
       +(d !== undefined && d.heldGameTime == 0.0) -
       +(a !== undefined && a.heldGameTime == 0.0);
-    this.level.state.player[0].y -= forward;
-    this.level.state.player[0].x += right;
-    this.level.update();
+    this.level.attemptMove({ deltaX, deltaY: -deltaY });
   }
 }
 
