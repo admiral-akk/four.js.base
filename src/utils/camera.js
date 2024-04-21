@@ -15,7 +15,7 @@ const cameraConfig = {
   subtypeConfig: perspectiveConfig,
   aspectRatio: 16 / 9,
   near: 0.001,
-  far: 20.0,
+  far: 40.0,
   position: new THREE.Vector3(-5, 7, 5)
     .normalize()
     .multiplyScalar(perspectiveConfig.zoom),

@@ -2,7 +2,7 @@ import GUI from "lil-gui";
 
 class DebugManager {
   constructor() {
-    this.gui = new GUI({ width: 1000 });
+    this.gui = new GUI();
 
     this.data = {};
   }

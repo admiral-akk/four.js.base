@@ -52,7 +52,7 @@ function generateLoadingManager() {
         ).load(path, callback ?? (() => {}));
         break;
 
-      case "fonts":
+      case "font":
         loadingManager.fontLoader.load(path, (font) => {
           reference.value = font;
           if (callback) {
@@ -71,8 +71,9 @@ function generateLoadingManager() {
         break;
 
       case "model":
-        gltfLoader.load(path, (data, callback) => {
+        gltfLoader.load(path, (data) => {
           const model = data.scene;
+          console.log(model);
           model.animations = data.animations;
           reference.value = model;
           if (callback) {
