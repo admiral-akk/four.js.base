@@ -4,8 +4,18 @@ import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 import { FontLoader } from "three/addons/loaders/FontLoader.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
-function generateLoadingManager() {
-  const loadingManager = new THREE.LoadingManager();
+function generateLoadingManager(
+  onLoad = () => {
+    console.log("ON LOAD");
+  },
+  onProgress = (url, itemsLoaded, itemsTotal) => {
+    console.log("ON PROGRESS: ", url, itemsLoaded, itemsTotal);
+  },
+  onError = (url) => {
+    console.log("ON ERROR: ", url);
+  }
+) {
+  const loadingManager = new THREE.LoadingManager(onLoad, onProgress, onError);
 
   const dracoLoader = new DRACOLoader(loadingManager);
   const gltfLoader = new GLTFLoader(loadingManager);
@@ -24,7 +34,11 @@ function generateLoadingManager() {
 
   loadingManager.load = (path, callback = null) => {
     if (loadingManager.loadedStuff.has(path)) {
-      return loadingManager.loadedStuff.get(path);
+      const reference = loadingManager.loadedStuff.get(path);
+      if (callback) {
+        callback(reference.value);
+      }
+      return reference;
     }
 
     const reference = {};

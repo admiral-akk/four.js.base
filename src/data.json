@@ -1,0 +1,9 @@
+{
+  "levels": [
+    {
+      "name": "level1",
+      "map": "EEWWWWWE\nWWWEEEWE\nWTEEEEWE\nWWWEETWE\nWTWWEEWE\nWEWETEWW\nWEETEETW\nWEEETEEW\nWWWWWWWW",
+      "interactable": "EEEEEEEE\nEEEEEEEE\nEEPBEEEE\nEEEEBEEE\nEEEEBEEE\nEEEEEEEE\nEBEBBBEE\nEEEEEEEE\nEEEEEEEE"
+    }
+  ]
+}

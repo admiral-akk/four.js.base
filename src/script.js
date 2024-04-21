@@ -12,6 +12,7 @@ import * as PPS from "./utils/postProcessingShaders.js";
 import { basicCustomShader } from "./utils/basicCustomShader.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import defaultExport from "./data.json";
 
 const gui = new DebugManager();
 var stats = new Stats();
@@ -21,6 +22,10 @@ document.body.appendChild(stats.dom);
 const time = new TimeManager();
 const scene = new THREE.Scene();
 const loader = generateLoadingManager();
+
+loader.load("./texture/rock/Rock051_1K-JPG_NormalDX.jpg");
+loader.load("./model/crate.glb");
+
 const input = new InputManager(time);
 
 const camera = generateCamera(scene, cameraConfig);
@@ -33,7 +38,7 @@ class CameraController {
     time,
     target,
     config = {
-      phi: (3 * Math.PI) / 2 + 0.1,
+      phi: 0.1,
       theta: Math.PI / 4,
       distance: 10,
       stepSize: 0.1,
@@ -85,29 +90,143 @@ const purple = new THREE.Color(0x6a2c70);
 const grey = new THREE.Color(0xbbbbbb);
 
 const controls = new CameraController(camera, time, new THREE.Vector3());
+
+class Wall {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.graphics = {
+      obj: new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: grey })
+      ),
+    };
+    scene.add(this.graphics.obj);
+    this.update();
+  }
+
+  update() {
+    this.graphics.obj.position.set(this.x, 1, this.y);
+  }
+}
+class Box {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.graphics = {
+      obj: new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: purple })
+      ),
+    };
+    scene.add(this.graphics.obj);
+    this.update();
+  }
+
+  update() {
+    this.graphics.obj.position.set(this.x, 1, this.y);
+  }
+}
+class Button {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.graphics = {
+      obj: new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: red })
+      ),
+    };
+    scene.add(this.graphics.obj);
+    this.update();
+  }
+
+  update() {
+    this.graphics.obj.position.set(this.x, 0, this.y);
+  }
+}
+
+class Player {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.graphics = {
+      obj: new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: yellow })
+      ),
+    };
+    scene.add(this.graphics.obj);
+    this.update();
+  }
+
+  update() {
+    this.graphics.obj.position.set(this.x, 1, this.y);
+    controls.target = this.graphics.obj.position;
+  }
+}
+
+class Level {
+  constructor({ map, interactable }) {
+    const mapRows = map.split("\n");
+    const width = mapRows[0].length;
+    const height = mapRows.length;
+    const interactableRows = interactable.split("\n");
+    console.assert(mapRows.length === interactableRows.length);
+    console.assert(
+      mapRows.concat(interactableRows).every((r) => r.length === width)
+    );
+
+    this.state = {
+      player: [],
+      walls: [],
+      boxes: [],
+      buttons: [],
+      map: mapRows.map((r) => r.split("")),
+      interactable: interactableRows.map((r) => r.split("")),
+    };
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        switch (mapRows[y][x]) {
+          case "W":
+            this.state.walls.push(new Wall(x, y));
+            break;
+          case "T":
+            this.state.buttons.push(new Button(x, y));
+            break;
+          case "E":
+          default:
+            break;
+        }
+        switch (interactableRows[y][x]) {
+          case "P":
+            this.state.player.push(new Player(x, y));
+            break;
+          case "B":
+            this.state.boxes.push(new Box(x, y));
+            break;
+          case "E":
+          default:
+            break;
+        }
+      }
+    }
+  }
+
+  update() {
+    const { boxes, player, walls, buttons } = this.state;
+
+    boxes.concat(player, walls, buttons).forEach((v) => v.update());
+  }
+}
+
 class Game {
   constructor(scene, input) {
+    const level0 = defaultExport.levels[0];
+    this.level = new Level(level0);
     this.scene = scene;
     this.input = input;
-    const box = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ color: yellow })
-    );
-    box.position.set(0, 1, 0);
-    box.castShadow = true;
-    box.receiveShadow = true;
-    scene.add(box);
-
-    controls.target = box.position;
-
-    const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(1),
-      new THREE.MeshBasicMaterial({ color: orange })
-    );
-    sphere.position.set(2, 2, 2);
-    sphere.castShadow = true;
-    sphere.receiveShadow = true;
-    scene.add(sphere);
 
     const planeG = new THREE.PlaneGeometry(100, 100);
     const plane = new THREE.Mesh(
@@ -143,8 +262,6 @@ class Game {
     light.shadow.camera.top = 20.0;
     light.shadow.camera.bottom = -20.0;
     scene.add(light);
-
-    this.box = box;
   }
 
   update(time) {
@@ -158,9 +275,9 @@ class Game {
     const right =
       +(d !== undefined && d.heldGameTime == 0.0) -
       +(a !== undefined && a.heldGameTime == 0.0);
-    this.box.position.add(new THREE.Vector3(forward, 0, right));
-    this.box.setRotationFromEuler(new THREE.Euler(0, time.time.gameTime, 0));
-    controls.target = this.box.position;
+    this.level.state.player[0].y -= forward;
+    this.level.state.player[0].x += right;
+    this.level.update();
   }
 }
 
@@ -247,6 +364,7 @@ class RenderPipeline {
   }
 
   render(scene, camera) {
+    camera.updateUniforms();
     // Render normals + depth
     const normalMap = loader.load(
       "./texture/rock/Rock051_1K-JPG_NormalDX.jpg"
@@ -297,7 +415,7 @@ class RenderPipeline {
             step: 0.001,
           }),
           depthStrength: gui.add("depthStrength", 1, { min: 0, max: 10 }),
-          ...camera.generateCameraUniforms(),
+          ...camera.uniforms,
         },
         PPS.sobelFragShader
       )

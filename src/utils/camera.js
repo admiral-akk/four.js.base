@@ -76,7 +76,15 @@ const generateCamera = (
     camera.updateProjectionMatrix();
   };
 
-  camera.generateCameraUniforms = () => {
+  camera.uniforms = {
+    cameraDir: { value: 0 },
+    cameraUp: { value: 0 },
+    cameraRight: { value: 0 },
+    cameraNear: { value: 0 },
+    cameraFar: { value: 0 },
+  };
+
+  camera.updateUniforms = () => {
     var v = new THREE.Vector3(0, 0, -1);
     var u = new THREE.Vector3(0, 1, 0);
     var r = new THREE.Vector3(1, 0, 0);
@@ -85,14 +93,14 @@ const generateCamera = (
     u.applyQuaternion(camera.quaternion);
     r.applyQuaternion(camera.quaternion);
 
-    return {
-      cameraDir: { value: v },
-      cameraUp: { value: u },
-      cameraRight: { value: r },
-      cameraNear: { value: camera.near },
-      cameraFar: { value: camera.far },
-    };
+    camera.uniforms.cameraDir.value = v;
+    camera.uniforms.cameraUp.value = u;
+    camera.uniforms.cameraRight.value = r;
+    camera.uniforms.cameraNear.value = camera.near;
+    camera.uniforms.cameraFar.value = camera.far;
   };
+
+  camera.updateUniforms();
 
   return camera;
 };

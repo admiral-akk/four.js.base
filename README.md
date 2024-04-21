@@ -14,7 +14,9 @@ Credits
 - Skybox texture: https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky
 - Panoramic Texture to Cube Map: https://jaxry.github.io/panorama-to-cubemap/
 - PBR Materials: https://freepbr.com/
+- More PBR Materials: https://ambientcg.com/
 - Music : www.bensound.com
+- Models: https://kenney.nl/assets
 
 Learning Resources
 
