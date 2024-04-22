@@ -307,12 +307,8 @@ class Game {
     const s = input.getKey("s");
     const a = input.getKey("a");
     const d = input.getKey("d");
-    const deltaY =
-      +(w !== undefined && w.heldGameTime == 0.0) -
-      +(s !== undefined && s.heldGameTime == 0.0);
-    const deltaX =
-      +(d !== undefined && d.heldGameTime == 0.0) -
-      +(a !== undefined && a.heldGameTime == 0.0);
+    const deltaY = +(w?.heldGameTime == 0.0) - +(s?.heldGameTime == 0.0);
+    const deltaX = +(d?.heldGameTime == 0.0) - +(a?.heldGameTime == 0.0);
     this.level.attemptMove({ deltaX, deltaY: -deltaY });
   }
 }
