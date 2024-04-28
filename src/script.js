@@ -167,15 +167,10 @@ class Player {
 }
 
 class Level {
-  constructor({ map, interactable }) {
+  constructor({ map }) {
     const mapRows = map.split("\n");
     const width = mapRows[0].length;
     const height = mapRows.length;
-    const interactableRows = interactable.split("\n");
-    console.assert(mapRows.length === interactableRows.length);
-    console.assert(
-      mapRows.concat(interactableRows).every((r) => r.length === width)
-    );
 
     this.state = {
       player: null,
@@ -183,30 +178,31 @@ class Level {
       boxes: [],
       buttons: [],
       map: mapRows.map((r) => r.split("")),
-      interactable: interactableRows.map((r) => r.split("")),
     };
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         switch (mapRows[y][x]) {
-          case "W":
+          case "#":
             this.state.walls.push(new Wall(x, y));
             break;
-          case "T":
+          case "*":
+          case ".":
+          case "+":
             this.state.buttons.push(new Button(x, y));
             break;
-          case "E":
           default:
             break;
         }
-        switch (interactableRows[y][x]) {
-          case "P":
+        switch (mapRows[y][x]) {
+          case "@":
+          case "+":
             this.state.player = new Player(x, y);
             break;
-          case "B":
+          case "$":
+          case "*":
             this.state.boxes.push(new Box(x, y));
             break;
-          case "E":
           default:
             break;
         }
@@ -214,7 +210,7 @@ class Level {
     }
   }
 
-  attemptMove({ deltaX, deltaY }) {
+  attemptMove({ deltaX, deltaY, isPull }) {
     const { boxes, player, walls, buttons } = this.state;
     const nextX = player.x;
     const nextY = player.y;
@@ -307,9 +303,12 @@ class Game {
     const s = input.getKey("s");
     const a = input.getKey("a");
     const d = input.getKey("d");
+
+    const space = input.getKey("space");
     const deltaY = +(w?.heldGameTime == 0.0) - +(s?.heldGameTime == 0.0);
     const deltaX = +(d?.heldGameTime == 0.0) - +(a?.heldGameTime == 0.0);
-    this.level.attemptMove({ deltaX, deltaY: -deltaY });
+    const isPull = space?.heldGameTime >= 0;
+    this.level.attemptMove({ deltaX, deltaY: -deltaY, isPull });
   }
 }
 
