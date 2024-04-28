@@ -289,7 +289,9 @@ class Game {
     loader.load("./text/beginner.txt", (v) => {
       const parser = new SokobanParser(v);
       console.log("TEXT: ", parser);
-      this.level = new Level(parser.levels[0]);
+      const queryParams = new URLSearchParams(window.location.search);
+      console.log(queryParams);
+      this.level = new Level(parser.levels[queryParams.get("level") ?? 0]);
     });
     this.scene = scene;
     this.input = input;
