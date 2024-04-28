@@ -16,6 +16,7 @@ class SokobanParser {
         const line = linesReversed.pop();
         const s = line.split(":");
         if (s.length < 2) {
+          linesReversed.push(line);
           this.state = "LEVELS";
           break;
         }
@@ -63,6 +64,9 @@ class SokobanLevelParser {
       case "METADATA":
         const s = line.split(":");
         if (s.length < 2) {
+          if (line.length > 2) {
+            this.solution = line;
+          }
           return;
         }
         this[s[0]] = s[1];

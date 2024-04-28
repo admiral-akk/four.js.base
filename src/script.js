@@ -186,10 +186,20 @@ class Player {
 }
 
 class Level {
-  constructor({ level }) {
+  constructor({ level, solution }) {
     const mapRows = level;
     const width = mapRows[0].length;
     const height = mapRows.length;
+
+    const counts = new Map();
+
+    for (const ch of solution.toLowerCase()) {
+      const count = counts.get(ch) ?? 0;
+
+      counts.set(ch, count + 1);
+    }
+    const xOffset = (counts.get("r") ?? 0) - (counts.get("l") ?? 0);
+    const yOffset = (counts.get("d") ?? 0) - (counts.get("u") ?? 0);
 
     this.state = {
       player: null,
@@ -209,7 +219,7 @@ class Level {
           case "*":
           case ".":
           case "+":
-            this.state.buttons.push(new Button(x, y));
+            this.state.boxes.push(new Box(x, y));
             break;
           default:
             break;
@@ -217,11 +227,11 @@ class Level {
         switch (mapRows[y][x]) {
           case "@":
           case "+":
-            this.state.player = new Player(x, y);
+            this.state.player = new Player(x + xOffset, y + yOffset);
             break;
           case "$":
           case "*":
-            this.state.boxes.push(new Box(x, y));
+            this.state.buttons.push(new Button(x, y));
             break;
           default:
             break;
@@ -251,8 +261,8 @@ class Level {
   undoMove({ deltaX, deltaY, boxMoved }) {
     const { boxes, player } = this.state;
 
-    const nextX = player.x + deltaX;
-    const nextY = player.y + deltaY;
+    const nextX = player.x - deltaX;
+    const nextY = player.y - deltaY;
     if (boxMoved) {
       const box = boxes.find((w) => w.x === nextX && w.y === nextY);
       box.x -= deltaX;
@@ -264,6 +274,7 @@ class Level {
   }
 
   attemptMove({ deltaX, deltaY, isPull }) {
+    console.log({ deltaX, deltaY, isPull });
     const { boxes, player, walls, buttons, moves } = this.state;
     const nextX = player.x;
     const nextY = player.y;
@@ -271,34 +282,30 @@ class Level {
       deltaY = 0;
     }
 
-    // check if space is occupied by wall
-    if (walls.some((w) => w.x === nextX + deltaX && w.y === nextY + deltaY)) {
+    // check if space is occupied by wall/box
+    if (
+      walls
+        .concat(boxes)
+        .some((w) => w.x === nextX + deltaX && w.y === nextY + deltaY)
+    ) {
       return;
     }
 
+    // check if box is behind player and is pulling
     const box = boxes.find(
-      (w) => w.x === nextX + deltaX && w.y === nextY + deltaY
+      (w) => w.x === nextX - deltaX && w.y === nextY - deltaY
     );
 
-    // check if space is occupied by box
-    if (box) {
-      // check if next space is occupied by box or wall
-      if (
-        boxes
-          .concat(walls)
-          .some((w) => w.x === nextX + 2 * deltaX && w.y === nextY + 2 * deltaY)
-      ) {
-        return;
-      }
-    }
+    const moveBox = isPull && box;
 
-    if (box) {
+    if (moveBox) {
       box.x += deltaX;
       box.y += deltaY;
     }
     player.x += deltaX;
     player.y += deltaY;
-    moves.push({ deltaX, deltaY, boxMoved: !!box });
+
+    moves.push({ deltaX, deltaY, boxMoved: moveBox });
     this.update();
   }
 
@@ -322,7 +329,7 @@ class Game {
   constructor(scene, input) {
     const queryParams = new URLSearchParams(window.location.search);
     this.currentLevel = queryParams.get("level") ?? 0;
-    loader.load("./text/beginner.txt", (v) => {
+    loader.load("./text/beginnerWithSolution.txt", (v) => {
       this.parsedLevels = new SokobanParser(v);
       this.loadLevel();
     });
@@ -386,7 +393,7 @@ class Game {
     const d = input.getKey("d");
     const z = input.getKey("z");
 
-    const space = input.getKey("space");
+    const space = input.getKey(" ");
     const deltaY = +(w?.heldGameTime == 0.0) - +(s?.heldGameTime == 0.0);
     const deltaX = +(d?.heldGameTime == 0.0) - +(a?.heldGameTime == 0.0);
     const undo = z?.heldGameTime == 0.0;

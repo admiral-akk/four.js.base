@@ -17,6 +17,7 @@ Credits
 - More PBR Materials: https://ambientcg.com/
 - Music : www.bensound.com
 - Models: https://kenney.nl/assets
+- Sokoban Puzzles: https://sokoban-jd.blogspot.com/p/all-my-sokoban-collections.html
 
 Learning Resources
 
