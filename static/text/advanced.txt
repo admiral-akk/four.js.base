@@ -4,23 +4,6 @@ Email: jdomenech2020@gmail.com
 Blog: sokoban-jd.blogspot.com
 Copyright: (c) by Jordi Domènech, and the authors of each level
 
-Author's note:
-If you have solved all levels of First steps - Beginner, try to solve this set. Warning: some levels are quite difficult, and in general they are for experienced players. If you can't solve some level, leave it for tomorrow and try to solve the next level.
-
-Some levels are arrangements of levels by other authors: my thanks to them all.
-
-Enjoy!
-
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-These levels are copyright (c) by Jordi Domènech and the authors of each
-level, and may be freely distributed for non-commercial use provided them
-remain unchanged, credited with the author's name, and provided the author
-is notified.
-
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-
 #####
 #   #
 # **###

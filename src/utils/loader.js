@@ -25,6 +25,7 @@ function generateLoadingManager(
   loadingManager.cubeTextureLoader = new THREE.CubeTextureLoader(
     loadingManager
   );
+  loadingManager.textLoader = new THREE.FileLoader();
   loadingManager.textureLoader = new THREE.TextureLoader(loadingManager);
   loadingManager.RGBELoader = new RGBELoader(loadingManager);
   loadingManager.audioLoader = new THREE.AudioLoader(loadingManager);
@@ -46,6 +47,12 @@ function generateLoadingManager(
 
     const loadingType = path.split("/")[1];
     switch (loadingType) {
+      case "text":
+        reference.value = loadingManager.textLoader.load(
+          path,
+          callback ?? (() => {})
+        );
+        break;
       case "cubeTexture":
         reference.value = loadingManager.cubeTextureLoader.load(
           [

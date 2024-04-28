@@ -13,6 +13,7 @@ import { basicCustomShader } from "./utils/basicCustomShader.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import defaultExport from "./data.json";
+import { SokobanParser } from "./sokoban/parser.js";
 
 const gui = new DebugManager();
 var stats = new Stats();
@@ -169,8 +170,8 @@ class Player {
 }
 
 class Level {
-  constructor({ map }) {
-    const mapRows = map.split("\n");
+  constructor({ level }) {
+    const mapRows = level;
     const width = mapRows[0].length;
     const height = mapRows.length;
 
@@ -180,6 +181,7 @@ class Level {
       boxes: [],
       buttons: [],
       map: mapRows.map((r) => r.split("")),
+      moves: [],
     };
 
     for (let y = 0; y < height; y++) {
@@ -212,8 +214,32 @@ class Level {
     }
   }
 
+  undo() {
+    const { moves } = this.state;
+    if (moves.length === 0) {
+      return;
+    }
+
+    this.undoMove(moves.pop());
+  }
+
+  undoMove({ deltaX, deltaY, boxMoved }) {
+    const { boxes, player } = this.state;
+
+    const nextX = player.x + deltaX;
+    const nextY = player.y + deltaY;
+    if (boxMoved) {
+      const box = boxes.find((w) => w.x === nextX && w.y === nextY);
+      box.x -= deltaX;
+      box.y -= deltaY;
+    }
+    player.x -= deltaX;
+    player.y -= deltaY;
+    this.update();
+  }
+
   attemptMove({ deltaX, deltaY, isPull }) {
-    const { boxes, player, walls, buttons } = this.state;
+    const { boxes, player, walls, buttons, moves } = this.state;
     const nextX = player.x;
     const nextY = player.y;
     if (deltaX) {
@@ -247,6 +273,7 @@ class Level {
     }
     player.x += deltaX;
     player.y += deltaY;
+    moves.push({ deltaX, deltaY, boxMoved: !!box });
     this.update();
   }
 
@@ -259,8 +286,11 @@ class Level {
 
 class Game {
   constructor(scene, input) {
-    const level0 = defaultExport.levels[0];
-    this.level = new Level(level0);
+    loader.load("./text/beginner.txt", (v) => {
+      const parser = new SokobanParser(v);
+      console.log("TEXT: ", parser);
+      this.level = new Level(parser.levels[0]);
+    });
     this.scene = scene;
     this.input = input;
 
@@ -301,16 +331,25 @@ class Game {
   }
 
   update(time) {
+    if (!this.level) {
+      return;
+    }
     const w = input.getKey("w");
     const s = input.getKey("s");
     const a = input.getKey("a");
     const d = input.getKey("d");
+    const z = input.getKey("z");
 
     const space = input.getKey("space");
     const deltaY = +(w?.heldGameTime == 0.0) - +(s?.heldGameTime == 0.0);
     const deltaX = +(d?.heldGameTime == 0.0) - +(a?.heldGameTime == 0.0);
+    const undo = z?.heldGameTime == 0.0;
     const isPull = space?.heldGameTime >= 0;
-    this.level.attemptMove({ deltaX, deltaY: -deltaY, isPull });
+    if (undo) {
+      this.level.undo();
+    } else if (deltaX !== 0 || deltaY !== 0) {
+      this.level.attemptMove({ deltaX, deltaY: -deltaY, isPull });
+    }
   }
 }
 

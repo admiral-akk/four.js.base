@@ -4,27 +4,6 @@ Email: jdomenech2020@gmail.com
 Blog: sokoban-jd.blogspot.com
 Copyright: (c) by Jordi Domènech, and the authors of each level
 
-Author's note:
-First steps - Beginner is a selection of small levels from Magic Sokoban and other collections of mine for those who start playing Sokoban. Despite their simple appearance, they are not easy: it is rare to find the solution on the first attempt, and you always have to think to solve them.
-
-A tip to learn Sokoban: the most important thing is not to find the solution, but to "understand it". When you have solved a level, don't leave it: try to solve it again.
-
-Every level shows the limit of moves to solve it optimally. It is ideal for learning to play with limitation of moves.
-
-Some levels are arrangements of levels by other authors: my thanks to them all.
-
-Enjoy!
-
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-These levels are copyright (c) by Jordi Domènech and the authors of each
-level, and may be freely distributed for non-commercial use provided them
-remain unchanged, credited with the author's name, and provided the author
-is notified.
-
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-
   ####
  ##@ #
 ## * #
