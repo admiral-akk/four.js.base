@@ -109,6 +109,7 @@ class Wall {
     this.graphics.obj.position.set(this.x, 1, this.y);
   }
 }
+
 class Box {
   constructor(x, y) {
     this.x = x;
@@ -127,6 +128,7 @@ class Box {
     this.graphics.obj.position.set(this.x, 1, this.y);
   }
 }
+
 class Button {
   constructor(x, y) {
     this.x = x;
