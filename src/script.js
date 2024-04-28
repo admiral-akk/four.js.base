@@ -109,6 +109,10 @@ class Wall {
   update() {
     this.graphics.obj.position.set(this.x, 1, this.y);
   }
+
+  unload() {
+    scene.remove(this.graphics.obj);
+  }
 }
 
 class Box {
@@ -127,6 +131,10 @@ class Box {
 
   update() {
     this.graphics.obj.position.set(this.x, 1, this.y);
+  }
+
+  unload() {
+    scene.remove(this.graphics.obj);
   }
 }
 
@@ -147,6 +155,10 @@ class Button {
   update() {
     this.graphics.obj.position.set(this.x, 0, this.y);
   }
+
+  unload() {
+    scene.remove(this.graphics.obj);
+  }
 }
 
 class Player {
@@ -166,6 +178,10 @@ class Player {
   update() {
     this.graphics.obj.position.set(this.x, 1, this.y);
     controls.target = this.graphics.obj.position;
+  }
+
+  unload() {
+    scene.remove(this.graphics.obj);
   }
 }
 
@@ -212,6 +228,15 @@ class Level {
         }
       }
     }
+  }
+
+  unload() {
+    const { boxes, player, walls, buttons } = this.state;
+    boxes
+      .concat([player])
+      .concat(walls)
+      .concat(buttons)
+      .forEach((v) => v.unload());
   }
 
   undo() {
@@ -282,16 +307,24 @@ class Level {
 
     boxes.concat(player, walls, buttons).forEach((v) => v.update());
   }
+
+  completed() {
+    const { boxes, buttons } = this.state;
+
+    return buttons.every(
+      (button) =>
+        !!boxes.find((box) => box.x === button.x && box.y === button.y)
+    );
+  }
 }
 
 class Game {
   constructor(scene, input) {
+    const queryParams = new URLSearchParams(window.location.search);
+    this.currentLevel = queryParams.get("level") ?? 0;
     loader.load("./text/beginner.txt", (v) => {
-      const parser = new SokobanParser(v);
-      console.log("TEXT: ", parser);
-      const queryParams = new URLSearchParams(window.location.search);
-      console.log(queryParams);
-      this.level = new Level(parser.levels[queryParams.get("level") ?? 0]);
+      this.parsedLevels = new SokobanParser(v);
+      this.loadLevel();
     });
     this.scene = scene;
     this.input = input;
@@ -332,10 +365,21 @@ class Game {
     scene.add(light);
   }
 
+  loadLevel() {
+    this.level = new Level(this.parsedLevels.levels[this.currentLevel]);
+  }
+
   update(time) {
     if (!this.level) {
       return;
     }
+    if (this.level.completed()) {
+      this.level.unload();
+      this.currentLevel++;
+      this.loadLevel();
+      return;
+    }
+
     const w = input.getKey("w");
     const s = input.getKey("s");
     const a = input.getKey("a");
