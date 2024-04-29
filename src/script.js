@@ -92,6 +92,29 @@ const grey = new THREE.Color(0xbbbbbb);
 
 const controls = new CameraController(camera, time, new THREE.Vector3());
 
+class Floor {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.graphics = {
+      obj: new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: orange })
+      ),
+    };
+    scene.add(this.graphics.obj);
+    this.update();
+  }
+
+  update() {
+    this.graphics.obj.position.set(this.x, 0, this.y);
+  }
+
+  unload() {
+    scene.remove(this.graphics.obj);
+  }
+}
+
 class Wall {
   constructor(x, y) {
     this.x = x;
@@ -107,7 +130,7 @@ class Wall {
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 1, this.y);
+    this.graphics.obj.position.set(this.x, 0.2, this.y);
   }
 
   unload() {
@@ -206,12 +229,20 @@ class Level {
       walls: [],
       boxes: [],
       buttons: [],
+      floors: [],
       map: mapRows.map((r) => r.split("")),
       moves: [],
     };
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
+        switch (mapRows[y][x]) {
+          case "#":
+            break;
+          default:
+            this.state.floors.push(new Floor(x, y));
+            break;
+        }
         switch (mapRows[y][x]) {
           case "#":
             this.state.walls.push(new Wall(x, y));
@@ -241,11 +272,12 @@ class Level {
   }
 
   unload() {
-    const { boxes, player, walls, buttons } = this.state;
+    const { boxes, player, walls, buttons, floors } = this.state;
     boxes
       .concat([player])
       .concat(walls)
       .concat(buttons)
+      .concat(floors)
       .forEach((v) => v.unload());
   }
 
@@ -335,28 +367,6 @@ class Game {
     });
     this.scene = scene;
     this.input = input;
-
-    const planeG = new THREE.PlaneGeometry(100, 100);
-    const plane = new THREE.Mesh(
-      planeG,
-      new THREE.MeshBasicMaterial({ color: grey })
-    );
-    var uvAttribute = planeG.attributes.uv;
-
-    for (var i = 0; i < uvAttribute.count; i++) {
-      var u = uvAttribute.getX(i);
-      var v = uvAttribute.getY(i);
-
-      // do something with uv
-
-      // write values back to attribute
-
-      uvAttribute.setXY(i, 10 * u, 10 * v);
-    }
-
-    planeG.uvsNeedUpdate = true;
-    plane.rotation.x = -Math.PI / 2;
-    scene.add(plane);
     const light = new THREE.DirectionalLight(0xffffff, 10);
     light.position.set(100, 100, 100);
     light.target.position.set(0, 0, 0);
@@ -392,12 +402,19 @@ class Game {
     const a = input.getKey("a");
     const d = input.getKey("d");
     const z = input.getKey("z");
-
     const space = input.getKey(" ");
-    const deltaY = +(w?.heldGameTime == 0.0) - +(s?.heldGameTime == 0.0);
-    const deltaX = +(d?.heldGameTime == 0.0) - +(a?.heldGameTime == 0.0);
-    const undo = z?.heldGameTime == 0.0;
-    const isPull = space?.heldGameTime >= 0;
+
+    const active = (v, opp = null) => {
+      return +(
+        !opp &&
+        (v?.ticks === 0 || (v?.ticks > 30 && v?.ticks % 10 === 0))
+      );
+    };
+
+    const deltaY = active(w) - active(s);
+    const deltaX = active(d) - active(a);
+    const undo = active(z);
+    const isPull = !!space;
     if (undo) {
       this.level.undo();
     } else if (deltaX !== 0 || deltaY !== 0) {

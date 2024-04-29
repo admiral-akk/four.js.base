@@ -5,6 +5,7 @@ class InputManager {
     this.keyState.pressedKeys.forEach((v) => {
       v.heldUserTime += userDeltaTime;
       v.heldGameTime += gameDeltaTime;
+      v.ticks += 1;
     });
   }
 
@@ -40,7 +41,7 @@ class InputManager {
       event.preventDefault();
       const { pressedKeys } = this.keyState;
       if (!pressedKeys.has(key)) {
-        pressedKeys.set(key, { heldGameTime: 0, heldUserTime: 0 });
+        pressedKeys.set(key, { heldGameTime: 0, heldUserTime: 0, ticks: 0 });
       }
     });
     window.addEventListener("keyup", (event) => {
