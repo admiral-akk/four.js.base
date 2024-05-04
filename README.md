@@ -18,6 +18,7 @@ Credits
 - Music : www.bensound.com
 - Models: https://kenney.nl/assets
 - Sokoban Puzzles: https://sokoban-jd.blogspot.com/p/all-my-sokoban-collections.html
+- Sokoban Solver: https://github.com/KnightofLuna/sokoban-solver
 
 Learning Resources
 

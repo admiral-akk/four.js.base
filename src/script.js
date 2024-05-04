@@ -96,18 +96,17 @@ class Floor {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.graphics = {
-      obj: new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1),
-        new THREE.MeshBasicMaterial({ color: orange })
-      ),
-    };
-    scene.add(this.graphics.obj);
-    this.update();
+    this.graphics = {};
+    loader.load("./model/road/road_end.glb", (model) => {
+      this.graphics.obj = model.clone();
+      scene.add(this.graphics.obj);
+      console.log("CALLBACK", this);
+      this.update();
+    });
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 0, this.y);
+    this.graphics.obj.position.set(this.x, 0, this.y - 0.5);
   }
 
   unload() {
@@ -119,60 +118,26 @@ class Wall {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.graphics = {
-      obj: new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1),
-        new THREE.MeshBasicMaterial({ color: grey })
-      ),
-    };
-    scene.add(this.graphics.obj);
     this.update();
   }
 
-  update() {
-    this.graphics.obj.position.set(this.x, 0.2, this.y);
-  }
+  update() {}
 
-  unload() {
-    scene.remove(this.graphics.obj);
-  }
+  unload() {}
 }
 
 class Box {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.graphics = {
-      obj: new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1),
-        new THREE.MeshBasicMaterial({ color: purple })
-      ),
-    };
-    scene.add(this.graphics.obj);
-    this.update();
-  }
-
-  update() {
-    this.graphics.obj.position.set(this.x, 1, this.y);
-  }
-
-  unload() {
-    scene.remove(this.graphics.obj);
-  }
-}
-
-class Button {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.graphics = {
-      obj: new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1),
-        new THREE.MeshBasicMaterial({ color: red })
-      ),
-    };
-    scene.add(this.graphics.obj);
-    this.update();
+    this.graphics = {};
+    loader.load("./model/sedanSports.glb", (model) => {
+      this.graphics.obj = model.clone();
+      this.graphics.obj.scale.set(0.4, 0.4, 0.4);
+      scene.add(this.graphics.obj);
+      console.log("CALLBACK", this);
+      this.update();
+    });
   }
 
   update() {
@@ -184,22 +149,44 @@ class Button {
   }
 }
 
+class Button {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.graphics = {};
+    loader.load("./model/road/road_intersectionPath.glb", (model) => {
+      this.graphics.obj = model.clone();
+      scene.add(this.graphics.obj);
+      console.log("CALLBACK", this);
+      this.update();
+    });
+  }
+
+  update() {
+    this.graphics.obj.position.set(this.x, 0, this.y - 0.5);
+  }
+
+  unload() {
+    scene.remove(this.graphics.obj);
+  }
+}
+
 class Player {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.graphics = {
-      obj: new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1),
-        new THREE.MeshBasicMaterial({ color: yellow })
-      ),
-    };
-    scene.add(this.graphics.obj);
-    this.update();
+    this.graphics = {};
+    loader.load("./model/truckFlat.glb", (model) => {
+      this.graphics.obj = model.clone();
+      this.graphics.obj.scale.set(0.4, 0.4, 0.4);
+      scene.add(this.graphics.obj);
+      console.log("CALLBACK", this);
+      this.update();
+    });
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 1, this.y);
+    this.graphics.obj.position.set(this.x, 0, this.y);
     controls.target = this.graphics.obj.position;
   }
 
@@ -238,6 +225,8 @@ class Level {
       for (let x = 0; x < width; x++) {
         switch (mapRows[y][x]) {
           case "#":
+          case "$":
+          case "*":
             break;
           default:
             this.state.floors.push(new Floor(x, y));

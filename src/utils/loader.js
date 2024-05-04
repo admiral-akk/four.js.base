@@ -3,6 +3,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 import { FontLoader } from "three/addons/loaders/FontLoader.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+import { mod } from "three/examples/jsm/nodes/Nodes.js";
 
 function generateLoadingManager(
   onLoad = () => {
@@ -33,25 +34,26 @@ function generateLoadingManager(
 
   loadingManager.loadedStuff = new Map();
 
-  loadingManager.load = (path, callback = null) => {
+  loadingManager.load = (path, callback = () => {}) => {
     if (loadingManager.loadedStuff.has(path)) {
       const reference = loadingManager.loadedStuff.get(path);
-      if (callback) {
+      if (reference.value) {
         callback(reference.value);
+      } else {
+        reference.callbacks.push(callback);
       }
       return reference;
     }
 
-    const reference = {};
+    const reference = { callbacks: [callback] };
     loadingManager.loadedStuff.set(path, reference);
 
     const loadingType = path.split("/")[1];
     switch (loadingType) {
       case "text":
-        reference.value = loadingManager.textLoader.load(
-          path,
-          callback ?? (() => {})
-        );
+        reference.value = loadingManager.textLoader.load(path, (t) => {
+          reference.callbacks.forEach((c) => c(t));
+        });
         break;
       case "cubeTexture":
         reference.value = loadingManager.cubeTextureLoader.load(
@@ -70,24 +72,22 @@ function generateLoadingManager(
         const isHdr = path.match(/\.hdr/g);
         reference.value = (
           isHdr ? loadingManager.RGBELoader : loadingManager.textureLoader
-        ).load(path, callback ?? (() => {}));
+        ).load(path, (t) => {
+          reference.callbacks.forEach((c) => c(t));
+        });
         break;
 
       case "font":
         loadingManager.fontLoader.load(path, (font) => {
           reference.value = font;
-          if (callback) {
-            callback(font);
-          }
+          reference.callbacks.forEach((c) => c(font));
         });
         break;
 
       case "audio":
         loadingManager.audioLoader.load(path, (buffer) => {
           reference.value = buffer;
-          if (callback) {
-            callback(buffer);
-          }
+          reference.callbacks.forEach((c) => c(buffer));
         });
         break;
 
@@ -97,9 +97,7 @@ function generateLoadingManager(
           console.log(model);
           model.animations = data.animations;
           reference.value = model;
-          if (callback) {
-            callback(model);
-          }
+          reference.callbacks.forEach((c) => c(model));
         });
         break;
 
