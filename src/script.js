@@ -381,6 +381,7 @@ class UiController {
 
 class Game {
   constructor(scene, input) {
+    this.state = "WAITING";
     const queryParams = new URLSearchParams(window.location.search);
     this.currentLevel = queryParams.get("level") ?? 0;
     loader.load("./text/beginnerWithSolution.txt", (v) => {
@@ -405,11 +406,18 @@ class Game {
     scene.add(light);
   }
 
+  startGame() {
+    this.state = "INGAME";
+  }
+
   loadLevel() {
     this.level = new Level(this.parsedLevels.levels[this.currentLevel]);
   }
 
   update(time) {
+    if (this.state == "WAITING") {
+      return;
+    }
     if (!this.level) {
       return;
     }
@@ -669,6 +677,44 @@ class RenderPipeline {
 }
 
 const pipeline = new RenderPipeline(renderer);
+
+class Menu {
+  constructor() {
+    const ui = document.querySelector("div.ui");
+    var div = document.createElement("div");
+    // https://css-tricks.com/fitting-text-to-a-container/
+    div.style.position = "absolute";
+    div.style.top = "3%";
+    div.style.right = "20%";
+    div.style.bottom = "3%";
+    div.style.left = "20%";
+    div.style.background = "red";
+    div.style.container = "ui";
+    const button = document.createElement("button");
+    button.innerHTML = "START GAME";
+    button.style.position = "relative";
+    button.style.top = "3%";
+    button.style.right = "20%";
+    button.style.bottom = "3%";
+    button.style.pointerEvents = "auto";
+    button.style.left = "20%";
+    button.style.width = "60%";
+    button.style.fontSize = "2cqi";
+    button.style.background = "white";
+    button.style.container = "ui";
+    button.onclick = () => {
+      console.log("CLICKED");
+      game.startGame();
+
+      ui.removeChild(div);
+    };
+    ui.appendChild(div);
+    div.appendChild(button);
+    this.div = div;
+  }
+}
+
+const startMenu = new Menu();
 
 function raf() {
   pipeline.render(scene, camera);
