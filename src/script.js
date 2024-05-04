@@ -92,14 +92,14 @@ const grey = new THREE.Color(0xbbbbbb);
 const controls = new CameraController(camera, time, new THREE.Vector3());
 
 class Floor {
-  constructor(x, y) {
+  constructor(x, y, adjacency) {
     this.x = x;
     this.y = y;
+    this.adjacency = adjacency;
     this.graphics = {};
     loader.load("./model/road/road_crossroad.glb", (model) => {
       this.graphics.obj = model.clone();
       scene.add(this.graphics.obj);
-      console.log("CALLBACK", this);
       this.update();
     });
   }
@@ -134,7 +134,6 @@ class Box {
       this.graphics.obj = model.clone();
       this.graphics.obj.scale.set(0.25, 0.25, 0.25);
       scene.add(this.graphics.obj);
-      console.log("CALLBACK", this);
       this.update();
     });
   }
@@ -156,7 +155,6 @@ class Button {
     loader.load("./model/road/road_crossroadPath.glb", (model) => {
       this.graphics.obj = model.clone();
       scene.add(this.graphics.obj);
-      console.log("CALLBACK", this);
       this.update();
     });
     loader.load("./model/sedanSports.glb", (model) => {
@@ -170,7 +168,6 @@ class Button {
         child.material = material;
       });
       scene.add(this.graphics.car);
-      console.log("CALLBACK", this);
       this.update();
     });
   }
@@ -199,7 +196,6 @@ class Player {
       this.graphics.obj = model.clone();
       this.graphics.obj.scale.set(0.25, 0.25, 0.25);
       scene.add(this.graphics.obj);
-      console.log("CALLBACK", this);
       this.update();
     });
   }
@@ -213,6 +209,64 @@ class Player {
     scene.remove(this.graphics.obj);
   }
 }
+
+class Position {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  equals(other) {
+    return other.x === this.x && other.y === this.y;
+  }
+
+  key() {
+    return this.x + "|" + this.y;
+  }
+
+  adjacent() {
+    return [
+      new Position(this.x + 1, this.y),
+      new Position(this.x - 1, this.y),
+      new Position(this.x, this.y + 1),
+      new Position(this.x, this.y - 1),
+    ];
+  }
+}
+
+class KeyedSet extends Set {
+  add(keyedValue) {
+    const key = keyedValue.key ? keyedValue.key() : keyedValue;
+    return super.add(key);
+  }
+
+  has(keyedValue) {
+    const key = keyedValue.key ? keyedValue.key() : keyedValue;
+    return super.has(key);
+  }
+
+  delete(keyedValue) {
+    const key = keyedValue.key ? keyedValue.key() : keyedValue;
+    return super.delete(key);
+  }
+}
+
+const bfs = (nextPos, validPos) => {
+  const queue = [nextPos];
+  const visited = new KeyedSet();
+  while (queue.length > 0) {
+    const p = queue.pop();
+    if (visited.has(p)) {
+      continue;
+    }
+    visited.add(p);
+    if (!validPos.has(p)) {
+      continue;
+    }
+    queue.push(...p.adjacent());
+  }
+  return visited;
+};
 
 class Level {
   constructor({ level, solution }) {
@@ -230,6 +284,25 @@ class Level {
     const xOffset = (counts.get("r") ?? 0) - (counts.get("l") ?? 0);
     const yOffset = (counts.get("d") ?? 0) - (counts.get("u") ?? 0);
 
+    var playerPos = null;
+
+    const nonWalls = new KeyedSet();
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const value = mapRows[y][x];
+        const pos = new Position(x, y);
+        if (value !== "#") {
+          nonWalls.add(pos);
+        }
+        if (value === "@" || value === "+") {
+          playerPos = pos;
+        }
+      }
+    }
+
+    const accessibleSquares = bfs(playerPos, nonWalls);
+
     this.state = {
       player: null,
       walls: [],
@@ -242,13 +315,16 @@ class Level {
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
+        const pos = new Position(x, y);
         switch (mapRows[y][x]) {
           case "#":
           case "$":
           case "*":
             break;
           default:
-            this.state.floors.push(new Floor(x, y));
+            if (accessibleSquares.has(pos)) {
+              this.state.floors.push(new Floor(x, y));
+            }
             break;
         }
         switch (mapRows[y][x]) {
@@ -314,7 +390,6 @@ class Level {
   }
 
   attemptMove({ deltaX, deltaY, isPull }) {
-    console.log({ deltaX, deltaY, isPull });
     const { boxes, player, walls, buttons, moves } = this.state;
     const nextX = player.x;
     const nextY = player.y;
@@ -726,7 +801,6 @@ class Menu {
     button.style.background = "white";
     button.style.container = "ui";
     button.onclick = () => {
-      console.log("CLICKED");
       game.startGame();
 
       ui.removeChild(div);

@@ -6,15 +6,9 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import { mod } from "three/examples/jsm/nodes/Nodes.js";
 
 function generateLoadingManager(
-  onLoad = () => {
-    console.log("ON LOAD");
-  },
-  onProgress = (url, itemsLoaded, itemsTotal) => {
-    console.log("ON PROGRESS: ", url, itemsLoaded, itemsTotal);
-  },
-  onError = (url) => {
-    console.log("ON ERROR: ", url);
-  }
+  onLoad = () => {},
+  onProgress = (url, itemsLoaded, itemsTotal) => {},
+  onError = (url) => {}
 ) {
   const loadingManager = new THREE.LoadingManager(onLoad, onProgress, onError);
 
@@ -94,7 +88,6 @@ function generateLoadingManager(
       case "model":
         gltfLoader.load(path, (data) => {
           const model = data.scene;
-          console.log(model);
           model.animations = data.animations;
           reference.value = model;
           reference.callbacks.forEach((c) => c(model));
