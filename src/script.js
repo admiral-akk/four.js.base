@@ -159,10 +159,30 @@ class Button {
       console.log("CALLBACK", this);
       this.update();
     });
+    loader.load("./model/sedanSports.glb", (model) => {
+      this.graphics.car = model.clone();
+      this.graphics.car.scale.set(0.25, 0.25, 0.25);
+      const material = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.3,
+      });
+      this.graphics.car.traverse((child) => {
+        child.material = material;
+      });
+      scene.add(this.graphics.car);
+      console.log("CALLBACK", this);
+      this.update();
+    });
   }
 
-  update() {
-    this.graphics.obj.position.set(this.x, 0, this.y - 0.5);
+  update(occupied) {
+    if (this.graphics.obj) {
+      this.graphics.obj.position.set(this.x, 0, this.y - 0.5);
+    }
+    if (this.graphics.car) {
+      this.graphics.car.position.set(this.x, 0, this.y + 0.25);
+      this.graphics.car.visible = !occupied;
+    }
   }
 
   unload() {
@@ -332,7 +352,10 @@ class Level {
   update() {
     const { boxes, player, walls, buttons } = this.state;
 
-    boxes.concat(player, walls, buttons).forEach((v) => v.update());
+    boxes.concat(player, walls).forEach((v) => v.update());
+    buttons.forEach((b) =>
+      b.update(!!boxes.concat(player).find((p) => p.x === b.x && p.y === b.y))
+    );
   }
 
   completed() {
