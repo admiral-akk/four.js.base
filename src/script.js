@@ -12,7 +12,6 @@ import * as PPS from "./utils/postProcessingShaders.js";
 import { basicCustomShader } from "./utils/basicCustomShader.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import defaultExport from "./data.json";
 import { SokobanParser } from "./sokoban/parser.js";
 
 const gui = new DebugManager();
@@ -39,9 +38,9 @@ class CameraController {
     time,
     target,
     config = {
-      phi: 0.1,
+      phi: 0.2,
       theta: Math.PI / 4,
-      distance: 10,
+      distance: 5,
       stepSize: 0.1,
     }
   ) {
@@ -97,7 +96,7 @@ class Floor {
     this.x = x;
     this.y = y;
     this.graphics = {};
-    loader.load("./model/road/road_end.glb", (model) => {
+    loader.load("./model/road/road_crossroad.glb", (model) => {
       this.graphics.obj = model.clone();
       scene.add(this.graphics.obj);
       console.log("CALLBACK", this);
@@ -133,7 +132,7 @@ class Box {
     this.graphics = {};
     loader.load("./model/sedanSports.glb", (model) => {
       this.graphics.obj = model.clone();
-      this.graphics.obj.scale.set(0.4, 0.4, 0.4);
+      this.graphics.obj.scale.set(0.25, 0.25, 0.25);
       scene.add(this.graphics.obj);
       console.log("CALLBACK", this);
       this.update();
@@ -141,7 +140,7 @@ class Box {
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 0, this.y);
+    this.graphics.obj.position.set(this.x, 0, this.y + 0.25);
   }
 
   unload() {
@@ -154,7 +153,7 @@ class Button {
     this.x = x;
     this.y = y;
     this.graphics = {};
-    loader.load("./model/road/road_intersectionPath.glb", (model) => {
+    loader.load("./model/road/road_crossroadPath.glb", (model) => {
       this.graphics.obj = model.clone();
       scene.add(this.graphics.obj);
       console.log("CALLBACK", this);
@@ -178,7 +177,7 @@ class Player {
     this.graphics = {};
     loader.load("./model/truckFlat.glb", (model) => {
       this.graphics.obj = model.clone();
-      this.graphics.obj.scale.set(0.4, 0.4, 0.4);
+      this.graphics.obj.scale.set(0.25, 0.25, 0.25);
       scene.add(this.graphics.obj);
       console.log("CALLBACK", this);
       this.update();
@@ -186,7 +185,7 @@ class Player {
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 0, this.y);
+    this.graphics.obj.position.set(this.x, 0, this.y + 0.25);
     controls.target = this.graphics.obj.position;
   }
 
@@ -622,7 +621,7 @@ class RenderPipeline {
     const gammaPass = new FullScreenQuad(
       postProcessing(
         {
-          tInput: { value: this.normalTarget.texture },
+          tInput: { value: this.diffuseTarget.texture },
         },
         PPS.gammaFragShader
       )
