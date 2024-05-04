@@ -38,8 +38,8 @@ class CameraController {
     time,
     target,
     config = {
-      phi: 0.2,
-      theta: Math.PI / 4,
+      phi: 0.3,
+      theta: Math.PI / 5,
       distance: 3,
       stepSize: 0.1,
     }

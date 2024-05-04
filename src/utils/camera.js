@@ -8,17 +8,17 @@ const perspectiveConfig = {
 
 const orthographicConfig = {
   type: "orthographic",
-  zoom: 6,
+  zoom: 4,
 };
 
 const cameraConfig = {
-  subtypeConfig: perspectiveConfig,
+  subtypeConfig: orthographicConfig,
   aspectRatio: 16 / 9,
   near: 0.001,
   far: 40.0,
   position: new THREE.Vector3(-5, 7, 5)
     .normalize()
-    .multiplyScalar(perspectiveConfig.zoom),
+    .multiplyScalar(orthographicConfig.zoom),
 };
 
 const generateCamera = (
