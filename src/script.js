@@ -32,6 +32,26 @@ const camera = generateCamera(scene, cameraConfig);
 const windowManager = new WindowManager(camera);
 const renderer = customRenderer(windowManager);
 
+class UiController {
+  constructor() {
+    const ui = document.querySelector("div.ui");
+    var div = document.createElement("div");
+    // https://css-tricks.com/fitting-text-to-a-container/
+    div.style.position = "absolute";
+    div.className = "card";
+    div.style.top = "3%";
+    div.style.right = "3%";
+    div.style.height = "10%";
+    div.style.width = "10%";
+    div.style.background = "red";
+    div.style.container = "ui";
+    div.innerHTML = "Hello world";
+    ui.appendChild(div);
+  }
+}
+
+const ui = new UiController();
+
 class CameraController {
   constructor(
     camera,
@@ -40,7 +60,7 @@ class CameraController {
     config = {
       phi: 0.2,
       theta: Math.PI / 4,
-      distance: 5,
+      distance: 3,
       stepSize: 0.1,
     }
   ) {

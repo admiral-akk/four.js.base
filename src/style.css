@@ -18,6 +18,14 @@
 .ui {
   position: absolute /* needs to be important for fullscreen */ !important;
   pointer-events: none;
+  width: 100%;
+  height: 100%;
+  container-type: inline-size;
+  container-name: ui;
+}
+
+.card {
+  font-size: 2cqi;
 }
 
 html,
