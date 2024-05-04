@@ -32,26 +32,6 @@ const camera = generateCamera(scene, cameraConfig);
 const windowManager = new WindowManager(camera);
 const renderer = customRenderer(windowManager);
 
-class UiController {
-  constructor() {
-    const ui = document.querySelector("div.ui");
-    var div = document.createElement("div");
-    // https://css-tricks.com/fitting-text-to-a-container/
-    div.style.position = "absolute";
-    div.className = "card";
-    div.style.top = "3%";
-    div.style.right = "3%";
-    div.style.height = "10%";
-    div.style.width = "10%";
-    div.style.background = "red";
-    div.style.container = "ui";
-    div.innerHTML = "Hello world";
-    ui.appendChild(div);
-  }
-}
-
-const ui = new UiController();
-
 class CameraController {
   constructor(
     camera,
@@ -363,6 +343,40 @@ class Level {
         !!boxes.find((box) => box.x === button.x && box.y === button.y)
     );
   }
+
+  getStats() {
+    const { boxes, buttons } = this.state;
+    return {
+      hitTargets: buttons.filter(
+        (button) =>
+          !!boxes.find((box) => box.x === button.x && box.y === button.y)
+      ).length,
+      totalTargets: buttons.length,
+    };
+  }
+}
+
+class UiController {
+  constructor() {
+    const ui = document.querySelector("div.ui");
+    var div = document.createElement("div");
+    // https://css-tricks.com/fitting-text-to-a-container/
+    div.style.position = "absolute";
+    div.className = "card";
+    div.style.top = "3%";
+    div.style.right = "3%";
+    div.style.height = "10%";
+    div.style.width = "10%";
+    div.style.background = "red";
+    div.style.container = "ui";
+    div.innerHTML = "Hello world";
+    this.div = div;
+    ui.appendChild(div);
+  }
+
+  updateStats({ hitTargets, totalTargets }) {
+    this.div.innerHTML = `${hitTargets} / ${totalTargets}`;
+  }
 }
 
 class Game {
@@ -373,6 +387,7 @@ class Game {
       this.parsedLevels = new SokobanParser(v);
       this.loadLevel();
     });
+    this.ui = new UiController();
     this.scene = scene;
     this.input = input;
     const light = new THREE.DirectionalLight(0xffffff, 10);
@@ -398,6 +413,8 @@ class Game {
     if (!this.level) {
       return;
     }
+    const stats = this.level.getStats();
+    this.ui.updateStats(stats);
     if (this.level.completed()) {
       this.level.unload();
       this.currentLevel++;
