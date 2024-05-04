@@ -162,7 +162,8 @@ class Button {
       this.graphics.car.scale.set(0.25, 0.25, 0.25);
       const material = new THREE.MeshBasicMaterial({
         transparent: true,
-        opacity: 0.3,
+        color: yellow,
+        opacity: 0.25,
       });
       this.graphics.car.traverse((child) => {
         child.material = material;
@@ -198,6 +199,11 @@ class Player {
       scene.add(this.graphics.obj);
       this.update();
     });
+    this.connected = null;
+  }
+
+  connect(box) {
+    this.connected = this.connected === box ? null : box;
   }
 
   update() {
@@ -389,38 +395,42 @@ class Level {
     this.update();
   }
 
-  attemptMove({ deltaX, deltaY, isPull }) {
-    const { boxes, player, walls, buttons, moves } = this.state;
-    const nextX = player.x;
-    const nextY = player.y;
+  attemptMove({ deltaX, deltaY }) {
+    const { boxes, player, walls } = this.state;
     if (deltaX) {
       deltaY = 0;
     }
 
+    const targetX = player.x + deltaX;
+    const targetY = player.y + deltaY;
+
+    const connectBox = boxes.find((b) => b.x === targetX && b.y === targetY);
+
+    if (connectBox) {
+      player.connect(connectBox);
+    }
+
     // check if space is occupied by wall/box
-    if (
-      walls
-        .concat(boxes)
-        .some((w) => w.x === nextX + deltaX && w.y === nextY + deltaY)
-    ) {
+    if (walls.concat(boxes).some((w) => w.x === targetX && w.y === targetY)) {
       return;
     }
 
-    // check if box is behind player and is pulling
-    const box = boxes.find(
-      (w) => w.x === nextX - deltaX && w.y === nextY - deltaY
-    );
+    if (player.connected) {
+      // check if they're moving in the direction where
 
-    const moveBox = isPull && box;
-
-    if (moveBox) {
-      box.x += deltaX;
-      box.y += deltaY;
+      if (
+        player.x - targetX === player.connected.x - player.x &&
+        player.y - targetY === player.connected.y - player.y
+      ) {
+        player.connected.x = player.x;
+        player.connected.y = player.y;
+      } else {
+        player.connect(null);
+      }
     }
-    player.x += deltaX;
-    player.y += deltaY;
 
-    moves.push({ deltaX, deltaY, boxMoved: moveBox });
+    player.x = targetX;
+    player.y = targetY;
     this.update();
   }
 
@@ -460,7 +470,7 @@ class UiController {
     var div = document.createElement("div");
     // https://css-tricks.com/fitting-text-to-a-container/
     div.style.position = "absolute";
-    div.className = "card";
+    div.style.fontSize = "2cqi";
     div.style.top = "3%";
     div.style.right = "3%";
     div.style.height = "10%";
@@ -468,7 +478,23 @@ class UiController {
     div.style.background = "red";
     div.style.container = "ui";
     div.innerHTML = "Hello world";
+    const tutorial = document.createElement("div");
+    tutorial.style.position = "absolute";
+    tutorial.style.top = "90%";
+    tutorial.style.bottom = "3%";
+    tutorial.style.right = "20%";
+    tutorial.style.left = "20%";
+    tutorial.style.background = "red";
+    tutorial.style.alignContent = "center";
+    const tutorialText = document.createElement("div");
+    tutorialText.innerHTML = "Tutorial message";
+    tutorialText.style.textAlign = "center";
+    tutorialText.style.fontSize = "2cqi";
+    tutorialText.style.container = "ui";
     this.div = div;
+    this.tutorial = tutorial;
+    ui.appendChild(tutorial);
+    tutorial.appendChild(tutorialText);
     ui.appendChild(div);
   }
 
@@ -782,10 +808,10 @@ class Menu {
     var div = document.createElement("div");
     // https://css-tricks.com/fitting-text-to-a-container/
     div.style.position = "absolute";
-    div.style.top = "3%";
-    div.style.right = "20%";
-    div.style.bottom = "3%";
-    div.style.left = "20%";
+    div.style.top = "20%";
+    div.style.right = "30%";
+    div.style.bottom = "20%";
+    div.style.left = "30%";
     div.style.background = "red";
     div.style.container = "ui";
     const button = document.createElement("button");
