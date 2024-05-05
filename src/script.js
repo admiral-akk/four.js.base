@@ -199,6 +199,22 @@ class Player {
 
   connect(box) {
     this.connected = this.connected === box ? null : box;
+    if (this.connectedLine) {
+      this.graphics.remove(this.connectedLine);
+      this.connectedLine = null;
+    }
+    if (this.connected) {
+      // add line graphics
+      const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
+      const delta = this.pos.minusClone(this.connected.pos);
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0.1, 0.25),
+        new THREE.Vector3(-delta.x, 0.1, -delta.y + 0.25),
+      ]);
+      const line = new THREE.Line(geometry, material);
+      this.connectedLine = line;
+      this.graphics.add(this.connectedLine);
+    }
   }
 
   update() {
@@ -227,6 +243,10 @@ class Position {
 
   key() {
     return this.x + "|" + this.y;
+  }
+
+  minusClone(other) {
+    return new Position(this.x - other.x, this.y - other.y);
   }
 
   offsetClone(delta) {
