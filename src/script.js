@@ -570,11 +570,39 @@ class UiController {
   }
 
   updateStats({ hitTargets, totalTargets }) {
-    this.div.innerHTML = `${hitTargets} / ${totalTargets}`;
+    this.div.innerHTML = `${hitTargets} / $d{totalTargets}`;
   }
 }
 class Tutorial {
-  static getMessage(level) {
+  constructor(level) {
+    const targetBase = new THREE.Group();
+    targetBase.pos = new Position(0, 0);
+    targetBase.pos.setPosition(targetBase);
+
+    const targetTex = loader.load("./texture/crosshair026.png");
+    const material = new THREE.MeshBasicMaterial({
+      alphaMap: targetTex.value,
+      color: red,
+    });
+    material.transparent = true;
+    const target = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+    targetBase.add(target);
+    target.position.set(0, 0.05, 0.25);
+    target.transparent = true;
+    target.rotateX(-Math.PI / 2);
+    scene.add(targetBase);
+    this.target = targetBase;
+    this.target.visible = false;
+    this.level = level;
+  }
+
+  unload() {
+    scene.remove(this.target);
+  }
+
+  getMessage() {
+    const { level, target } = this;
+    target.visible = false;
     switch (level.name) {
       case 0: {
         const { moves, player } = level.state;
@@ -583,15 +611,21 @@ class Tutorial {
         if (!connected) {
           if (moves.length > 6) {
             if (boxPos.minusClone(pos).equals(Position.RIGHT)) {
-              return "Press (d / →) to grab the box";
+              return "(d / →) to grab";
             } else {
-              return "Move next to the box";
+              target.visible = true;
+              target.pos = boxPos.minusClone(Position.RIGHT);
+              target.pos.setPosition(target);
+              return "Move to the target";
             }
           } else {
-            return "Use (←↑↓→ / wasd) to move";
+            return "(←↑↓→ / wasd) to move";
           }
         } else {
-          return "Press (a / ←) to drag the box";
+          target.visible = true;
+          target.pos = new Position(3, 2);
+          target.pos.setPosition(target);
+          return "(a / ←) to drag";
         }
       }
       case 1: {
@@ -603,6 +637,9 @@ class Tutorial {
             if (pos.equals(new Position(1, 2))) {
               return "Press (w / ↑) to grab the box";
             } else {
+              target.visible = true;
+              target.pos = new Position(1, 2);
+              target.pos.setPosition(target);
               return "Move next to the box";
             }
           }
@@ -610,20 +647,32 @@ class Tutorial {
           if (delta.equals(Position.RIGHT)) {
             return "Press (a / ←) to grab the box";
           } else {
+            target.visible = true;
+            target.pos = new Position(2, 2);
+            target.pos.setPosition(target);
             return "Move to the right of the box";
           }
         } else {
           if (boxPos.equals(new Position(1, 1))) {
             if (pos.equals(new Position(1, 2))) {
-              return "Press (s / ↓) to drag the box";
+              target.visible = true;
+              target.pos = new Position(1, 3);
+              target.pos.setPosition(target);
+              return "(s / ↓) to drag";
             } else {
               return "Press (d / →) to drag the box";
             }
           } else {
             if (pos.equals(new Position(1, 3))) {
+              target.visible = true;
+              target.pos = new Position(2, 2);
+              target.pos.setPosition(target);
               return "Move to the right of the box";
             } else {
-              return "Press (d / →) to drag the box";
+              target.visible = true;
+              target.pos = new Position(4, 2);
+              target.pos.setPosition(target);
+              return "Drag box to target";
             }
           }
         }
@@ -634,36 +683,51 @@ class Tutorial {
         const boxPos = level.state.boxes[0].pos;
         const delta = pos.minusClone(boxPos);
         if (boxPos.y === 4) {
-          return "Press 'z' to undo";
+          return "'z' to undo";
         }
         if (!connected) {
           if (boxPos.equals(new Position(1, 2))) {
             if (pos.equals(new Position(1, 3))) {
-              return "Press (w / ↑) to grab the box";
+              return "(w / ↑) to grab the box";
             } else {
+              target.visible = true;
+              target.pos = new Position(1, 4);
+              target.pos.setPosition(target);
               return "Move under the box";
             }
           }
+          target.visible = true;
+          target.pos = boxPos.addClone(Position.RIGHT);
+          target.pos.setPosition(target);
           return "Move to the right of the box";
         } else {
           if (boxPos.y === 3) {
             if (delta.y === 1) {
-              return "Press (w / ↑) to release";
+              return "(w / ↑) to release";
             } else if (delta.y === -1) {
-              return "Press (s / ↓) to release";
+              return "(s / ↓) to release";
             } else if (delta.x === -1) {
-              return "Press (d / →) to release";
+              return "(d / →) to release";
             } else {
-              return "Press (d / →) to drag";
+              target.visible = true;
+              target.pos = new Position(3, 3);
+              target.pos.setPosition(target);
+              return "(d / →) to drag";
             }
           } else if (boxPos.y === 2) {
             if (delta.y === 1) {
-              return "Press (s / ↓) to drag";
+              target.visible = true;
+              target.pos = new Position(1, 3);
+              target.pos.setPosition(target);
+              return "(s / ↓) to drag";
             } else {
+              target.visible = true;
+              target.pos = new Position(1, 3);
+              target.pos.setPosition(target);
               return "Move under the box";
             }
           }
-          return "Move to the right of the box";
+          return "Move to target";
         }
       }
       default:
@@ -678,6 +742,7 @@ class Game {
     this.state = "WAITING";
     const queryParams = new URLSearchParams(window.location.search);
     this.currentLevel = parseInt(queryParams.get("level") ?? "0", 10);
+
     loader.load("./text/beginnerWithSolution.txt", (v) => {
       this.parsedLevels = new SokobanParser(v);
       this.loadLevel();
@@ -709,6 +774,7 @@ class Game {
       name: this.currentLevel,
       ...this.parsedLevels.levels[this.currentLevel],
     });
+    this.tutorial = new Tutorial(this.level);
   }
 
   update(time) {
@@ -718,13 +784,20 @@ class Game {
     if (!this.level) {
       return;
     }
-    const message = Tutorial.getMessage(this.level);
-    console.log(message);
-    this.ui.setTutorialMessage(message);
+    if (this.tutorial) {
+      const message = this.tutorial.getMessage(this.level);
+      console.log(message);
+      this.ui.setTutorialMessage(message);
+    } else {
+      this.ui.setTutorialMessage(null);
+    }
     const stats = this.level.getStats();
     this.ui.updateStats(stats);
     if (this.level.completed()) {
       this.level.unload();
+      if (this.tutorial) {
+        this.tutorial.unload();
+      }
       this.currentLevel++;
       this.loadLevel();
       return;
