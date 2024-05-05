@@ -199,27 +199,29 @@ class Player {
 
   connect(box) {
     this.connected = this.connected === box ? null : box;
-    if (this.connectedLine) {
-      this.graphics.remove(this.connectedLine);
-      this.connectedLine = null;
-    }
-    if (this.connected) {
-      // add line graphics
-      const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
-      const delta = this.pos.minusClone(this.connected.pos);
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0.1, 0.25),
-        new THREE.Vector3(-delta.x, 0.1, -delta.y + 0.25),
-      ]);
-      const line = new THREE.Line(geometry, material);
-      this.connectedLine = line;
-      this.graphics.add(this.connectedLine);
-    }
+    this.update();
   }
 
   update() {
     this.pos.setPosition(this.graphics);
     controls.target = this.graphics.position;
+
+    if (this.connected) {
+      if (!this.connectedLine) {
+        const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
+        const delta = this.pos.minusClone(this.connected.pos);
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0.1, 0.25),
+          new THREE.Vector3(-delta.x, 0.1, -delta.y + 0.25),
+        ]);
+        const line = new THREE.Line(geometry, material);
+        this.connectedLine = line;
+        this.graphics.add(this.connectedLine);
+      }
+    } else if (this.connectedLine) {
+      this.graphics.remove(this.connectedLine);
+      this.connectedLine = null;
+    }
   }
 
   unload() {
@@ -228,6 +230,11 @@ class Player {
 }
 
 class Position {
+  static ZERO = new Position(0, 0);
+  static UP = new Position(0, 1);
+  static RIGHT = new Position(1, 0);
+  static ONE = new Position(1, 1);
+
   constructor(x, y) {
     this.x = x;
     this.y = y;
@@ -243,6 +250,14 @@ class Position {
 
   key() {
     return this.x + "|" + this.y;
+  }
+
+  clone() {
+    return new Position(this.x, this.y);
+  }
+
+  addClone(other) {
+    return new Position(this.x + other.x, this.y + other.y);
   }
 
   minusClone(other) {
@@ -298,7 +313,8 @@ const bfs = (nextPos, validPos) => {
 };
 
 class Level {
-  constructor({ level, solution }) {
+  constructor({ name, level, solution }) {
+    this.name = name;
     const mapRows = level;
     const width = mapRows[0].length;
     const height = mapRows.length;
@@ -404,23 +420,22 @@ class Level {
     this.undoMove(moves.pop());
   }
 
-  undoMove({ deltaX, deltaY, boxMoved }) {
-    const { boxes, player } = this.state;
+  undoMove({ pos, connected }) {
+    const { player } = this.state;
 
-    const nextX = player.x - deltaX;
-    const nextY = player.y - deltaY;
-    if (boxMoved) {
-      const box = boxes.find((w) => w.x === nextX && w.y === nextY);
-      box.x -= deltaX;
-      box.y -= deltaY;
+    const currentPos = player.pos;
+    player.pos = pos;
+
+    const diff = pos.minusClone(currentPos);
+    if (player.connected) {
+      player.connected.pos = player.connected.pos.addClone(diff);
     }
-    player.x -= deltaX;
-    player.y -= deltaY;
+    player.connected = connected;
     this.update();
   }
 
   attemptMove({ deltaX, deltaY }) {
-    const { boxes, player, walls } = this.state;
+    const { boxes, player, walls, moves } = this.state;
     if (deltaX) {
       deltaY = 0;
     }
@@ -430,7 +445,9 @@ class Level {
     const connectBox = boxes.find((b) => b.pos.equals(target));
 
     if (connectBox) {
+      moves.push({ pos: player.pos.clone(), connected: player.connected });
       player.connect(connectBox);
+      return;
     }
 
     // check if space is occupied by wall/box
@@ -440,6 +457,7 @@ class Level {
 
     const behind = player.pos.offsetClone({ x: -deltaX, y: -deltaY });
     const current = player.pos;
+    const currentConnected = player.connected;
     player.pos = target;
     if (player.connected) {
       // check if they're moving in the direction where
@@ -449,6 +467,8 @@ class Level {
         player.connect(null);
       }
     }
+
+    moves.push({ pos: current, connected: currentConnected });
 
     this.update();
   }
@@ -510,13 +530,39 @@ class UiController {
     tutorialText.style.container = "ui";
     this.div = div;
     this.tutorial = tutorial;
-    ui.appendChild(tutorial);
+    this.tutorialText = tutorialText;
     tutorial.appendChild(tutorialText);
     ui.appendChild(div);
+    this.ui = ui;
+  }
+
+  setTutorialMessage(message) {
+    const { ui, tutorial, tutorialText } = this;
+    if (!message && tutorial.parentElement === ui) {
+      ui.removeChild(tutorial);
+    } else {
+      ui.appendChild(tutorial);
+      tutorialText.innerHTML = message;
+    }
   }
 
   updateStats({ hitTargets, totalTargets }) {
     this.div.innerHTML = `${hitTargets} / ${totalTargets}`;
+  }
+}
+
+class Tutorial {
+  constructor() {}
+
+  getMessage(level) {
+    switch (level.name) {
+      case 0:
+        break;
+
+      default:
+        break;
+    }
+    return null;
   }
 }
 
@@ -549,10 +595,14 @@ class Game {
 
   startGame() {
     this.state = "INGAME";
+    this.ui.setTutorialMessage("Press (d / →) to move");
   }
 
   loadLevel() {
-    this.level = new Level(this.parsedLevels.levels[this.currentLevel]);
+    this.level = new Level({
+      name: this.currentLevel,
+      ...this.parsedLevels.levels[this.currentLevel],
+    });
   }
 
   update(time) {
@@ -571,10 +621,10 @@ class Game {
       return;
     }
 
-    const w = input.getKey("w");
-    const s = input.getKey("s");
-    const a = input.getKey("a");
-    const d = input.getKey("d");
+    const w = input.getKey("w") ?? input.getKey("arrowup");
+    const s = input.getKey("s") ?? input.getKey("arrowdown");
+    const a = input.getKey("a") ?? input.getKey("arrowleft");
+    const d = input.getKey("d") ?? input.getKey("arrowright");
     const z = input.getKey("z");
     const space = input.getKey(" ");
 

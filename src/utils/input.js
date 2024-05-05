@@ -35,6 +35,7 @@ class InputManager {
     });
     window.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
+      console.log(key);
       if (key === "f12") {
         return;
       }
