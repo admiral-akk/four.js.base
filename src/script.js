@@ -559,8 +559,10 @@ class UiController {
 
   setTutorialMessage(message) {
     const { ui, tutorial, tutorialText } = this;
-    if (!message && tutorial.parentElement === ui) {
-      ui.removeChild(tutorial);
+    if (!message) {
+      if (tutorial.parentElement === ui) {
+        ui.removeChild(tutorial);
+      }
     } else {
       ui.appendChild(tutorial);
       tutorialText.innerHTML = message;
@@ -733,7 +735,6 @@ class Game {
     const a = input.getKey("a") ?? input.getKey("arrowleft");
     const d = input.getKey("d") ?? input.getKey("arrowright");
     const z = input.getKey("z");
-    const space = input.getKey(" ");
 
     const active = (v, opp = null) => {
       return +(
@@ -745,11 +746,10 @@ class Game {
     const deltaY = active(w) - active(s);
     const deltaX = active(d) - active(a);
     const undo = active(z);
-    const isPull = !!space;
     if (undo) {
       this.level.undo();
     } else if (deltaX !== 0 || deltaY !== 0) {
-      this.level.attemptMove({ deltaX, deltaY: -deltaY, isPull });
+      this.level.attemptMove({ deltaX, deltaY: -deltaY });
     }
   }
 }
