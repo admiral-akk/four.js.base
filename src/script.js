@@ -417,7 +417,6 @@ class Level {
 
     if (player.connected) {
       // check if they're moving in the direction where
-
       if (
         player.x - targetX === player.connected.x - player.x &&
         player.y - targetY === player.connected.y - player.y
