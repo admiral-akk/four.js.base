@@ -92,32 +92,30 @@ const grey = new THREE.Color(0xbbbbbb);
 const controls = new CameraController(camera, time, new THREE.Vector3());
 
 class Floor {
-  constructor(x, y, adjacency) {
-    this.x = x;
-    this.y = y;
-    this.adjacency = adjacency;
-    this.graphics = {};
+  constructor(pos) {
+    this.pos = pos;
+    this.graphics = new THREE.Group();
+    scene.add(this.graphics);
     loader.load("./model/road/road_crossroad.glb", (model) => {
-      this.graphics.obj = model.clone();
-      scene.add(this.graphics.obj);
-      this.update();
+      const m = model.clone();
+      m.position.set(0, 0, -0.5);
+      this.graphics.add(m);
     });
+    this.update();
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 0, this.y - 0.5);
+    this.pos.setPosition(this.graphics);
   }
 
   unload() {
-    scene.remove(this.graphics.obj);
+    scene.remove(this.graphics);
   }
 }
 
 class Wall {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.update();
+  constructor(pos) {
+    this.pos = pos;
   }
 
   update() {}
@@ -126,80 +124,77 @@ class Wall {
 }
 
 class Box {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.graphics = {};
+  constructor(pos) {
+    this.pos = pos;
+    this.graphics = new THREE.Group();
+    scene.add(this.graphics);
     loader.load("./model/sedanSports.glb", (model) => {
-      this.graphics.obj = model.clone();
-      this.graphics.obj.scale.set(0.25, 0.25, 0.25);
-      scene.add(this.graphics.obj);
-      this.update();
+      const m = model.clone();
+      this.graphics.add(m);
+      m.scale.set(0.25, 0.25, 0.25);
+      m.position.set(0, 0, 0.25);
     });
+    this.update();
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 0, this.y + 0.25);
+    this.pos.setPosition(this.graphics);
   }
 
   unload() {
-    scene.remove(this.graphics.obj);
+    scene.remove(this.graphics);
   }
 }
 
 class Button {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.graphics = {};
+  constructor(pos) {
+    this.pos = pos;
+    this.graphics = new THREE.Group();
+    scene.add(this.graphics);
     loader.load("./model/road/road_crossroadPath.glb", (model) => {
-      this.graphics.obj = model.clone();
-      scene.add(this.graphics.obj);
-      this.update();
+      const m = model.clone();
+      this.graphics.add(m);
+      m.position.set(0, 0, -0.5);
     });
     loader.load("./model/sedanSports.glb", (model) => {
-      this.graphics.car = model.clone();
-      this.graphics.car.scale.set(0.25, 0.25, 0.25);
+      const m = model.clone();
+      m.scale.set(0.25, 0.25, 0.25);
       const material = new THREE.MeshBasicMaterial({
         transparent: true,
         color: yellow,
         opacity: 0.25,
       });
-      this.graphics.car.traverse((child) => {
+      m.traverse((child) => {
         child.material = material;
       });
-      scene.add(this.graphics.car);
-      this.update();
+      m.position.set(0, 0, 0.25);
+      this.graphics.add(m);
     });
+    this.update();
   }
 
   update(occupied) {
-    if (this.graphics.obj) {
-      this.graphics.obj.position.set(this.x, 0, this.y - 0.5);
-    }
-    if (this.graphics.car) {
-      this.graphics.car.position.set(this.x, 0, this.y + 0.25);
-      this.graphics.car.visible = !occupied;
-    }
+    this.pos.setPosition(this.graphics);
   }
 
   unload() {
-    scene.remove(this.graphics.obj);
+    scene.remove(this.graphics);
   }
 }
 
 class Player {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.graphics = {};
+  constructor(pos) {
+    this.pos = pos;
+    this.graphics = new THREE.Group();
+    scene.add(this.graphics);
     loader.load("./model/truckFlat.glb", (model) => {
-      this.graphics.obj = model.clone();
-      this.graphics.obj.scale.set(0.25, 0.25, 0.25);
-      scene.add(this.graphics.obj);
-      this.update();
+      const m = model.clone();
+      this.graphics.add(m);
+      m.scale.set(0.25, 0.25, 0.25);
+      m.position.set(0, 0, 0.25);
     });
     this.connected = null;
+    this.update();
   }
 
   connect(box) {
@@ -207,12 +202,12 @@ class Player {
   }
 
   update() {
-    this.graphics.obj.position.set(this.x, 0, this.y + 0.25);
-    controls.target = this.graphics.obj.position;
+    this.pos.setPosition(this.graphics);
+    controls.target = this.graphics.position;
   }
 
   unload() {
-    scene.remove(this.graphics.obj);
+    scene.remove(this.graphics);
   }
 }
 
@@ -222,12 +217,20 @@ class Position {
     this.y = y;
   }
 
+  setPosition(threeObj) {
+    threeObj.position.set(this.x, 0, this.y);
+  }
+
   equals(other) {
     return other.x === this.x && other.y === this.y;
   }
 
   key() {
     return this.x + "|" + this.y;
+  }
+
+  offsetClone(delta) {
+    return new Position(this.x + delta.x, this.y + delta.y);
   }
 
   adjacent() {
@@ -329,18 +332,18 @@ class Level {
             break;
           default:
             if (accessibleSquares.has(pos)) {
-              this.state.floors.push(new Floor(x, y));
+              this.state.floors.push(new Floor(pos));
             }
             break;
         }
         switch (mapRows[y][x]) {
           case "#":
-            this.state.walls.push(new Wall(x, y));
+            this.state.walls.push(new Wall(pos));
             break;
           case "*":
           case ".":
           case "+":
-            this.state.boxes.push(new Box(x, y));
+            this.state.boxes.push(new Box(pos));
             break;
           default:
             break;
@@ -348,11 +351,12 @@ class Level {
         switch (mapRows[y][x]) {
           case "@":
           case "+":
-            this.state.player = new Player(x + xOffset, y + yOffset);
+            const playerPos = new Position(x + xOffset, y + yOffset);
+            this.state.player = new Player(playerPos);
             break;
           case "$":
           case "*":
-            this.state.buttons.push(new Button(x, y));
+            this.state.buttons.push(new Button(pos));
             break;
           default:
             break;
@@ -401,35 +405,31 @@ class Level {
       deltaY = 0;
     }
 
-    const targetX = player.x + deltaX;
-    const targetY = player.y + deltaY;
+    const target = player.pos.offsetClone({ x: deltaX, y: deltaY });
 
-    const connectBox = boxes.find((b) => b.x === targetX && b.y === targetY);
+    const connectBox = boxes.find((b) => b.pos.equals(target));
 
     if (connectBox) {
       player.connect(connectBox);
     }
 
     // check if space is occupied by wall/box
-    if (walls.concat(boxes).some((w) => w.x === targetX && w.y === targetY)) {
+    if (walls.concat(boxes).some((w) => w.pos.equals(target))) {
       return;
     }
 
+    const behind = player.pos.offsetClone({ x: -deltaX, y: -deltaY });
+    const current = player.pos;
+    player.pos = target;
     if (player.connected) {
       // check if they're moving in the direction where
-      if (
-        player.x - targetX === player.connected.x - player.x &&
-        player.y - targetY === player.connected.y - player.y
-      ) {
-        player.connected.x = player.x;
-        player.connected.y = player.y;
+      if (player.connected.pos.equals(behind)) {
+        player.connected.pos = current;
       } else {
         player.connect(null);
       }
     }
 
-    player.x = targetX;
-    player.y = targetY;
     this.update();
   }
 
@@ -438,7 +438,7 @@ class Level {
 
     boxes.concat(player, walls).forEach((v) => v.update());
     buttons.forEach((b) =>
-      b.update(!!boxes.concat(player).find((p) => p.x === b.x && p.y === b.y))
+      b.update(!!boxes.concat(player).find((p) => p.pos.equals(b.pos)))
     );
   }
 
@@ -446,8 +446,7 @@ class Level {
     const { boxes, buttons } = this.state;
 
     return buttons.every(
-      (button) =>
-        !!boxes.find((box) => box.x === button.x && box.y === button.y)
+      (button) => !!boxes.find((box) => box.pos.equals(button.pos))
     );
   }
 
@@ -455,8 +454,7 @@ class Level {
     const { boxes, buttons } = this.state;
     return {
       hitTargets: buttons.filter(
-        (button) =>
-          !!boxes.find((box) => box.x === button.x && box.y === button.y)
+        (button) => !!boxes.find((box) => box.pos.equals(button.pos))
       ).length,
       totalTargets: buttons.length,
     };
