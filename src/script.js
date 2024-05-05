@@ -197,6 +197,10 @@ class Player {
     this.update();
   }
 
+  key() {
+    return this.pos.key() + "," + (this.connected ? 0 : 1);
+  }
+
   connect(box) {
     this.connected = this.connected === box ? null : box;
     this.update();
@@ -231,7 +235,7 @@ class Player {
 
 class Position {
   static ZERO = new Position(0, 0);
-  static UP = new Position(0, 1);
+  static UP = new Position(0, -1);
   static RIGHT = new Position(1, 0);
   static ONE = new Position(1, 1);
 
@@ -275,6 +279,23 @@ class Position {
       new Position(this.x, this.y + 1),
       new Position(this.x, this.y - 1),
     ];
+  }
+}
+
+class KeyedMap extends Map {
+  set(keyedValue, value) {
+    const key = keyedValue.key ? keyedValue.key() : keyedValue;
+    return super.add(key, value);
+  }
+
+  get(keyedValue) {
+    const key = keyedValue.key ? keyedValue.key() : keyedValue;
+    return super.get(key);
+  }
+
+  delete(keyedValue) {
+    const key = keyedValue.key ? keyedValue.key() : keyedValue;
+    return super.delete(key);
   }
 }
 
@@ -467,8 +488,8 @@ class Level {
         player.connect(null);
       }
     }
-
     moves.push({ pos: current, connected: currentConnected });
+    console.log(player.pos);
 
     this.update();
   }
@@ -550,15 +571,99 @@ class UiController {
     this.div.innerHTML = `${hitTargets} / ${totalTargets}`;
   }
 }
-
 class Tutorial {
-  constructor() {}
-
-  getMessage(level) {
+  static getMessage(level) {
     switch (level.name) {
-      case 0:
-        break;
-
+      case 0: {
+        const { moves, player } = level.state;
+        const { pos, connected } = player;
+        const boxPos = level.state.boxes[0].pos;
+        if (!connected) {
+          if (moves.length > 6) {
+            if (boxPos.minusClone(pos).equals(Position.RIGHT)) {
+              return "Press (d / →) to grab the box";
+            } else {
+              return "Move next to the box";
+            }
+          } else {
+            return "Use (←↑↓→ / wasd) to move";
+          }
+        } else {
+          return "Press (a / ←) to drag the box";
+        }
+      }
+      case 1: {
+        const { player } = level.state;
+        const { pos, connected } = player;
+        const boxPos = level.state.boxes[0].pos;
+        if (!connected) {
+          if (boxPos.equals(new Position(1, 1))) {
+            if (pos.equals(new Position(1, 2))) {
+              return "Press (w / ↑) to grab the box";
+            } else {
+              return "Move next to the box";
+            }
+          }
+          const delta = pos.minusClone(boxPos);
+          if (delta.equals(Position.RIGHT)) {
+            return "Press (a / ←) to grab the box";
+          } else {
+            return "Move to the right of the box";
+          }
+        } else {
+          if (boxPos.equals(new Position(1, 1))) {
+            if (pos.equals(new Position(1, 2))) {
+              return "Press (s / ↓) to drag the box";
+            } else {
+              return "Press (d / →) to drag the box";
+            }
+          } else {
+            if (pos.equals(new Position(1, 3))) {
+              return "Move to the right of the box";
+            } else {
+              return "Press (d / →) to drag the box";
+            }
+          }
+        }
+      }
+      case 2: {
+        const { player } = level.state;
+        const { pos, connected } = player;
+        const boxPos = level.state.boxes[0].pos;
+        const delta = pos.minusClone(boxPos);
+        if (boxPos.y === 4) {
+          return "Press 'z' to undo";
+        }
+        if (!connected) {
+          if (boxPos.equals(new Position(1, 2))) {
+            if (pos.equals(new Position(1, 3))) {
+              return "Press (w / ↑) to grab the box";
+            } else {
+              return "Move under the box";
+            }
+          }
+          return "Move to the right of the box";
+        } else {
+          if (boxPos.y === 3) {
+            if (delta.y === 1) {
+              return "Press (w / ↑) to release";
+            } else if (delta.y === -1) {
+              return "Press (s / ↓) to release";
+            } else if (delta.x === -1) {
+              return "Press (d / →) to release";
+            } else {
+              return "Press (d / →) to drag";
+            }
+          } else if (boxPos.y === 2) {
+            if (delta.y === 1) {
+              return "Press (s / ↓) to drag";
+            } else {
+              return "Move under the box";
+            }
+          }
+          return "Move to the right of the box";
+        }
+      }
       default:
         break;
     }
@@ -570,7 +675,7 @@ class Game {
   constructor(scene, input) {
     this.state = "WAITING";
     const queryParams = new URLSearchParams(window.location.search);
-    this.currentLevel = queryParams.get("level") ?? 0;
+    this.currentLevel = parseInt(queryParams.get("level") ?? "0", 10);
     loader.load("./text/beginnerWithSolution.txt", (v) => {
       this.parsedLevels = new SokobanParser(v);
       this.loadLevel();
@@ -595,7 +700,6 @@ class Game {
 
   startGame() {
     this.state = "INGAME";
-    this.ui.setTutorialMessage("Press (d / →) to move");
   }
 
   loadLevel() {
@@ -612,6 +716,9 @@ class Game {
     if (!this.level) {
       return;
     }
+    const message = Tutorial.getMessage(this.level);
+    console.log(message);
+    this.ui.setTutorialMessage(message);
     const stats = this.level.getStats();
     this.ui.updateStats(stats);
     if (this.level.completed()) {
