@@ -330,6 +330,64 @@ export const renderTextureFrag = `
    }
   `;
 
+export const labToLinearFragShader = `
+#include <packing>
+precision highp  float;
+precision highp  sampler2D;
+
+uniform sampler2D tInput;
+struct Lab {float L; float a; float b;};
+struct RGB {float r; float g; float b;};
+
+RGB oklab_to_linear_srgb(Lab c) 
+{
+    float l_ = c.L + 0.3963377774f * c.a + 0.2158037573f * c.b;
+    float m_ = c.L - 0.1055613458f * c.a - 0.0638541728f * c.b;
+    float s_ = c.L - 0.0894841775f * c.a - 1.2914855480f * c.b;
+
+    float l = l_*l_*l_;
+    float m = m_*m_*m_;
+    float s = s_*s_*s_;
+
+    return RGB(
+		+4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s,
+		-1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s,
+		-0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s
+  );
+}
+
+varying vec2 vUv;
+
+ void main()
+ {  
+    vec4 inp = vec4(texture2D(tInput, vUv));
+    Lab color = Lab(inp.x,inp.y,inp.z);
+
+    RGB linearColor = oklab_to_linear_srgb(color);
+     inp = vec4(linearColor.r,linearColor.g,linearColor.b, inp.w);
+    gl_FragColor = inp;
+ }
+`;
+
+export const gradientFragShader = `
+#include <packing>
+precision highp  float;
+precision highp  sampler2D;
+
+uniform sampler2D tInput;
+uniform vec3 uStartColor;
+uniform vec3 uEndColor;
+
+varying vec2 vUv;
+
+ void main()
+ {  
+    vec3 color = mix(uStartColor, uEndColor, vUv.x);
+    vec4 inp = vec4(color, 1.);
+    gl_FragColor = inp;
+ }
+`;
+
 export const gammaFragShader = `
   #include <packing>
   precision mediump  float;
@@ -341,8 +399,7 @@ export const gammaFragShader = `
    void main()
    {  
       vec4 inp = vec4(texture2D(tInput, vUv));
-      gl_FragColor = inp;
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
+      vec3 color = pow(inp.xyz, vec3(1./2.2));
+      gl_FragColor = vec4(color, inp.w);
    }
   `;

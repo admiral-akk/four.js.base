@@ -7,14 +7,14 @@ import { customRenderer } from "./utils/renderer.js";
 import { generateCamera, cameraConfig } from "./utils/camera.js";
 import Stats from "stats-js";
 import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
+import { OkLabColor } from "./utils/labColour.js";
 import { generateLoadingManager } from "./utils/loader.js";
 import * as PPS from "./utils/postProcessingShaders.js";
-import { basicCustomShader } from "./utils/basicCustomShader.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { SokobanParser } from "./sokoban/parser.js";
 
 const gui = new DebugManager();
+gui.add("isLinear", false);
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.body.appendChild(stats.dom);
@@ -82,445 +82,7 @@ class CameraController {
   }
 }
 
-// https://colorhunt.co/palette/f9ed69f08a5db83b5e6a2c70
-const yellow = new THREE.Color(0xf9ed69);
-const orange = new THREE.Color(0xf08a5d);
-const red = new THREE.Color(0xb83b5e);
-const purple = new THREE.Color(0x6a2c70);
-const grey = new THREE.Color(0xbbbbbb);
-
 const controls = new CameraController(camera, time, new THREE.Vector3());
-
-class Floor {
-  constructor(pos) {
-    this.pos = pos;
-    this.graphics = new THREE.Group();
-    scene.add(this.graphics);
-    loader.load("./model/road/road_crossroad.glb", (model) => {
-      const m = model.clone();
-      m.position.set(0, 0, -0.5);
-      this.graphics.add(m);
-    });
-    this.update();
-  }
-
-  update() {
-    this.pos.setPosition(this.graphics);
-  }
-
-  unload() {
-    scene.remove(this.graphics);
-  }
-}
-
-class Wall {
-  constructor(pos) {
-    this.pos = pos;
-  }
-
-  update() {}
-
-  unload() {}
-}
-
-class Box {
-  constructor(pos) {
-    this.pos = pos;
-    this.graphics = new THREE.Group();
-    scene.add(this.graphics);
-    loader.load("./model/sedanSports.glb", (model) => {
-      const m = model.clone();
-      this.graphics.add(m);
-      m.scale.set(0.25, 0.25, 0.25);
-      m.position.set(0, 0, 0.25);
-    });
-    this.update();
-  }
-
-  update() {
-    this.pos.setPosition(this.graphics);
-  }
-
-  unload() {
-    scene.remove(this.graphics);
-  }
-}
-
-class Button {
-  constructor(pos) {
-    this.pos = pos;
-    this.graphics = new THREE.Group();
-    scene.add(this.graphics);
-    loader.load("./model/road/road_crossroadPath.glb", (model) => {
-      const m = model.clone();
-      this.graphics.add(m);
-      m.position.set(0, 0, -0.5);
-    });
-    loader.load("./model/sedanSports.glb", (model) => {
-      const m = model.clone();
-      m.scale.set(0.25, 0.25, 0.25);
-      const material = new THREE.MeshBasicMaterial({
-        transparent: true,
-        color: yellow,
-        opacity: 0.25,
-      });
-      m.traverse((child) => {
-        child.material = material;
-      });
-      m.position.set(0, 0, 0.25);
-      this.graphics.add(m);
-    });
-    this.update();
-  }
-
-  update(occupied) {
-    this.pos.setPosition(this.graphics);
-  }
-
-  unload() {
-    scene.remove(this.graphics);
-  }
-}
-
-class Player {
-  constructor(pos) {
-    this.pos = pos;
-    this.graphics = new THREE.Group();
-    scene.add(this.graphics);
-    loader.load("./model/truckFlat.glb", (model) => {
-      const m = model.clone();
-      this.graphics.add(m);
-      m.scale.set(0.25, 0.25, 0.25);
-      m.position.set(0, 0, 0.25);
-    });
-    this.connected = null;
-    this.update();
-  }
-
-  key() {
-    return this.pos.key() + "," + (this.connected ? 0 : 1);
-  }
-
-  connect(box) {
-    this.connected = this.connected === box ? null : box;
-    this.update();
-  }
-
-  update() {
-    this.pos.setPosition(this.graphics);
-    controls.target = this.graphics.position;
-
-    if (this.connected) {
-      if (!this.connectedLine) {
-        const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
-        const delta = this.pos.minusClone(this.connected.pos);
-        const geometry = new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(0, 0.1, 0.25),
-          new THREE.Vector3(-delta.x, 0.1, -delta.y + 0.25),
-        ]);
-        const line = new THREE.Line(geometry, material);
-        this.connectedLine = line;
-        this.graphics.add(this.connectedLine);
-      }
-    } else if (this.connectedLine) {
-      this.graphics.remove(this.connectedLine);
-      this.connectedLine = null;
-    }
-  }
-
-  unload() {
-    scene.remove(this.graphics);
-  }
-}
-
-class Position {
-  static ZERO = new Position(0, 0);
-  static UP = new Position(0, -1);
-  static RIGHT = new Position(1, 0);
-  static ONE = new Position(1, 1);
-
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  setPosition(threeObj) {
-    threeObj.position.set(this.x, 0, this.y);
-  }
-
-  equals(other) {
-    return other.x === this.x && other.y === this.y;
-  }
-
-  key() {
-    return this.x + "|" + this.y;
-  }
-
-  clone() {
-    return new Position(this.x, this.y);
-  }
-
-  addClone(other) {
-    return new Position(this.x + other.x, this.y + other.y);
-  }
-
-  minusClone(other) {
-    return new Position(this.x - other.x, this.y - other.y);
-  }
-
-  offsetClone(delta) {
-    return new Position(this.x + delta.x, this.y + delta.y);
-  }
-
-  adjacent() {
-    return [
-      new Position(this.x + 1, this.y),
-      new Position(this.x - 1, this.y),
-      new Position(this.x, this.y + 1),
-      new Position(this.x, this.y - 1),
-    ];
-  }
-}
-
-class KeyedMap extends Map {
-  set(keyedValue, value) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.add(key, value);
-  }
-
-  get(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.get(key);
-  }
-
-  delete(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.delete(key);
-  }
-}
-
-class KeyedSet extends Set {
-  add(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.add(key);
-  }
-
-  has(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.has(key);
-  }
-
-  delete(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.delete(key);
-  }
-}
-
-const bfs = (nextPos, validPos) => {
-  const queue = [nextPos];
-  const visited = new KeyedSet();
-  while (queue.length > 0) {
-    const p = queue.pop();
-    if (visited.has(p)) {
-      continue;
-    }
-    visited.add(p);
-    if (!validPos.has(p)) {
-      continue;
-    }
-    queue.push(...p.adjacent());
-  }
-  return visited;
-};
-
-class Level {
-  constructor({ name, level, solution }) {
-    this.name = name;
-    const mapRows = level;
-    const width = mapRows[0].length;
-    const height = mapRows.length;
-
-    const counts = new Map();
-
-    for (const ch of solution.toLowerCase()) {
-      const count = counts.get(ch) ?? 0;
-
-      counts.set(ch, count + 1);
-    }
-    const xOffset = (counts.get("r") ?? 0) - (counts.get("l") ?? 0);
-    const yOffset = (counts.get("d") ?? 0) - (counts.get("u") ?? 0);
-
-    var playerPos = null;
-
-    const nonWalls = new KeyedSet();
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const value = mapRows[y][x];
-        const pos = new Position(x, y);
-        if (value !== "#") {
-          nonWalls.add(pos);
-        }
-        if (value === "@" || value === "+") {
-          playerPos = pos;
-        }
-      }
-    }
-
-    const accessibleSquares = bfs(playerPos, nonWalls);
-
-    this.state = {
-      player: null,
-      walls: [],
-      boxes: [],
-      buttons: [],
-      floors: [],
-      map: mapRows.map((r) => r.split("")),
-      moves: [],
-    };
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const pos = new Position(x, y);
-        switch (mapRows[y][x]) {
-          case "#":
-          case "$":
-          case "*":
-            break;
-          default:
-            if (accessibleSquares.has(pos)) {
-              this.state.floors.push(new Floor(pos));
-            }
-            break;
-        }
-        switch (mapRows[y][x]) {
-          case "#":
-            this.state.walls.push(new Wall(pos));
-            break;
-          case "*":
-          case ".":
-          case "+":
-            this.state.boxes.push(new Box(pos));
-            break;
-          default:
-            break;
-        }
-        switch (mapRows[y][x]) {
-          case "@":
-          case "+":
-            const playerPos = new Position(x + xOffset, y + yOffset);
-            this.state.player = new Player(playerPos);
-            break;
-          case "$":
-          case "*":
-            this.state.buttons.push(new Button(pos));
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
-
-  unload() {
-    const { boxes, player, walls, buttons, floors } = this.state;
-    boxes
-      .concat([player])
-      .concat(walls)
-      .concat(buttons)
-      .concat(floors)
-      .forEach((v) => v.unload());
-  }
-
-  undo() {
-    const { moves } = this.state;
-    if (moves.length === 0) {
-      return;
-    }
-
-    this.undoMove(moves.pop());
-  }
-
-  undoMove({ pos, connected }) {
-    const { player } = this.state;
-
-    const currentPos = player.pos;
-    player.pos = pos;
-
-    const diff = pos.minusClone(currentPos);
-    if (player.connected) {
-      player.connected.pos = player.connected.pos.addClone(diff);
-    }
-    player.connected = connected;
-    this.update();
-  }
-
-  attemptMove({ deltaX, deltaY }) {
-    const { boxes, player, walls, moves } = this.state;
-    if (deltaX) {
-      deltaY = 0;
-    }
-
-    const target = player.pos.offsetClone({ x: deltaX, y: deltaY });
-
-    const connectBox = boxes.find((b) => b.pos.equals(target));
-
-    if (connectBox) {
-      moves.push({ pos: player.pos.clone(), connected: player.connected });
-      player.connect(connectBox);
-      return;
-    }
-
-    // check if space is occupied by wall/box
-    if (walls.concat(boxes).some((w) => w.pos.equals(target))) {
-      return;
-    }
-
-    const behind = player.pos.offsetClone({ x: -deltaX, y: -deltaY });
-    const current = player.pos;
-    const currentConnected = player.connected;
-    player.pos = target;
-    if (player.connected) {
-      // check if they're moving in the direction where
-      if (player.connected.pos.equals(behind)) {
-        player.connected.pos = current;
-      } else {
-        player.connect(null);
-      }
-    }
-    moves.push({ pos: current, connected: currentConnected });
-    console.log(player.pos);
-
-    this.update();
-  }
-
-  update() {
-    const { boxes, player, walls, buttons } = this.state;
-
-    boxes.concat(player, walls).forEach((v) => v.update());
-    buttons.forEach((b) =>
-      b.update(!!boxes.concat(player).find((p) => p.pos.equals(b.pos)))
-    );
-  }
-
-  completed() {
-    const { boxes, buttons } = this.state;
-
-    return buttons.every(
-      (button) => !!boxes.find((box) => box.pos.equals(button.pos))
-    );
-  }
-
-  getStats() {
-    const { boxes, buttons } = this.state;
-    return {
-      hitTargets: buttons.filter(
-        (button) => !!boxes.find((box) => box.pos.equals(button.pos))
-      ).length,
-      totalTargets: buttons.length,
-    };
-  }
-}
 
 class UiController {
   constructor() {
@@ -573,181 +135,13 @@ class UiController {
     this.div.innerHTML = `${hitTargets} / $d{totalTargets}`;
   }
 }
-class Tutorial {
-  constructor(level) {
-    const targetBase = new THREE.Group();
-    targetBase.pos = new Position(0, 0);
-    targetBase.pos.setPosition(targetBase);
-
-    const targetTex = loader.load("./texture/crosshair026.png");
-    const material = new THREE.MeshBasicMaterial({
-      alphaMap: targetTex.value,
-      color: red,
-    });
-    material.transparent = true;
-    const target = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
-    targetBase.add(target);
-    target.position.set(0, 0.05, 0.25);
-    target.transparent = true;
-    target.rotateX(-Math.PI / 2);
-    scene.add(targetBase);
-    this.target = targetBase;
-    this.target.visible = false;
-    this.level = level;
-  }
-
-  unload() {
-    scene.remove(this.target);
-  }
-
-  getMessage() {
-    const { level, target } = this;
-    target.visible = false;
-    switch (level.name) {
-      case 0: {
-        const { moves, player } = level.state;
-        const { pos, connected } = player;
-        const boxPos = level.state.boxes[0].pos;
-        if (!connected) {
-          if (moves.length > 6) {
-            if (boxPos.minusClone(pos).equals(Position.RIGHT)) {
-              return "(d / →) to grab";
-            } else {
-              target.visible = true;
-              target.pos = boxPos.minusClone(Position.RIGHT);
-              target.pos.setPosition(target);
-              return "Move to the target";
-            }
-          } else {
-            return "(←↑↓→ / wasd) to move";
-          }
-        } else {
-          target.visible = true;
-          target.pos = new Position(3, 2);
-          target.pos.setPosition(target);
-          return "(a / ←) to drag";
-        }
-      }
-      case 1: {
-        const { player } = level.state;
-        const { pos, connected } = player;
-        const boxPos = level.state.boxes[0].pos;
-        if (!connected) {
-          if (boxPos.equals(new Position(1, 1))) {
-            if (pos.equals(new Position(1, 2))) {
-              return "Press (w / ↑) to grab the box";
-            } else {
-              target.visible = true;
-              target.pos = new Position(1, 2);
-              target.pos.setPosition(target);
-              return "Move next to the box";
-            }
-          }
-          const delta = pos.minusClone(boxPos);
-          if (delta.equals(Position.RIGHT)) {
-            return "Press (a / ←) to grab the box";
-          } else {
-            target.visible = true;
-            target.pos = new Position(2, 2);
-            target.pos.setPosition(target);
-            return "Move to the right of the box";
-          }
-        } else {
-          if (boxPos.equals(new Position(1, 1))) {
-            if (pos.equals(new Position(1, 2))) {
-              target.visible = true;
-              target.pos = new Position(1, 3);
-              target.pos.setPosition(target);
-              return "(s / ↓) to drag";
-            } else {
-              return "Press (d / →) to drag the box";
-            }
-          } else {
-            if (pos.equals(new Position(1, 3))) {
-              target.visible = true;
-              target.pos = new Position(2, 2);
-              target.pos.setPosition(target);
-              return "Move to the right of the box";
-            } else {
-              target.visible = true;
-              target.pos = new Position(4, 2);
-              target.pos.setPosition(target);
-              return "Drag box to target";
-            }
-          }
-        }
-      }
-      case 2: {
-        const { player } = level.state;
-        const { pos, connected } = player;
-        const boxPos = level.state.boxes[0].pos;
-        const delta = pos.minusClone(boxPos);
-        if (boxPos.y === 4) {
-          return "'z' to undo";
-        }
-        if (!connected) {
-          if (boxPos.equals(new Position(1, 2))) {
-            if (pos.equals(new Position(1, 3))) {
-              return "(w / ↑) to grab the box";
-            } else {
-              target.visible = true;
-              target.pos = new Position(1, 4);
-              target.pos.setPosition(target);
-              return "Move under the box";
-            }
-          }
-          target.visible = true;
-          target.pos = boxPos.addClone(Position.RIGHT);
-          target.pos.setPosition(target);
-          return "Move to the right of the box";
-        } else {
-          if (boxPos.y === 3) {
-            if (delta.y === 1) {
-              return "(w / ↑) to release";
-            } else if (delta.y === -1) {
-              return "(s / ↓) to release";
-            } else if (delta.x === -1) {
-              return "(d / →) to release";
-            } else {
-              target.visible = true;
-              target.pos = new Position(3, 3);
-              target.pos.setPosition(target);
-              return "(d / →) to drag";
-            }
-          } else if (boxPos.y === 2) {
-            if (delta.y === 1) {
-              target.visible = true;
-              target.pos = new Position(1, 3);
-              target.pos.setPosition(target);
-              return "(s / ↓) to drag";
-            } else {
-              target.visible = true;
-              target.pos = new Position(1, 3);
-              target.pos.setPosition(target);
-              return "Move under the box";
-            }
-          }
-          return "Move to target";
-        }
-      }
-      default:
-        break;
-    }
-    return null;
-  }
-}
-
 class Game {
   constructor(scene, input) {
     this.state = "WAITING";
     const queryParams = new URLSearchParams(window.location.search);
     this.currentLevel = parseInt(queryParams.get("level") ?? "0", 10);
 
-    loader.load("./text/beginnerWithSolution.txt", (v) => {
-      this.parsedLevels = new SokobanParser(v);
-      this.loadLevel();
-    });
-    this.ui = new UiController();
+    //this.ui = new UiController();
     this.scene = scene;
     this.input = input;
     const light = new THREE.DirectionalLight(0xffffff, 10);
@@ -766,65 +160,12 @@ class Game {
   }
 
   startGame() {
-    this.state = "INGAME";
+    scene.add(
+      new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial())
+    );
   }
 
-  loadLevel() {
-    this.level = new Level({
-      name: this.currentLevel,
-      ...this.parsedLevels.levels[this.currentLevel],
-    });
-    this.tutorial = new Tutorial(this.level);
-  }
-
-  update(time) {
-    if (this.state == "WAITING") {
-      return;
-    }
-    if (!this.level) {
-      return;
-    }
-    if (this.tutorial) {
-      const message = this.tutorial.getMessage(this.level);
-      console.log(message);
-      this.ui.setTutorialMessage(message);
-    } else {
-      this.ui.setTutorialMessage(null);
-    }
-    const stats = this.level.getStats();
-    this.ui.updateStats(stats);
-    if (this.level.completed()) {
-      this.level.unload();
-      if (this.tutorial) {
-        this.tutorial.unload();
-      }
-      this.currentLevel++;
-      this.loadLevel();
-      return;
-    }
-
-    const w = input.getKey("w") ?? input.getKey("arrowup");
-    const s = input.getKey("s") ?? input.getKey("arrowdown");
-    const a = input.getKey("a") ?? input.getKey("arrowleft");
-    const d = input.getKey("d") ?? input.getKey("arrowright");
-    const z = input.getKey("z");
-
-    const active = (v, opp = null) => {
-      return +(
-        !opp &&
-        (v?.ticks === 0 || (v?.ticks > 30 && v?.ticks % 10 === 0))
-      );
-    };
-
-    const deltaY = active(w) - active(s);
-    const deltaX = active(d) - active(a);
-    const undo = active(z);
-    if (undo) {
-      this.level.undo();
-    } else if (deltaX !== 0 || deltaY !== 0) {
-      this.level.attemptMove({ deltaX, deltaY: -deltaY });
-    }
-  }
+  update(time) {}
 }
 
 const game = new Game(scene);
@@ -846,35 +187,6 @@ const postProcessing = (uniforms, fragShader) => {
   });
 };
 
-const worldPosMaterial = new THREE.ShaderMaterial({
-  uniforms: [],
-  vertexShader: `
-    varying vec3 vWorldPosition;
-    
-    void main() {
-    
-        vec4 objectPos = vec4(position, 1.);
-        // Moves it into world space. Includes object rotations, scale, and translation.
-        vec4 worldPos = modelMatrix * objectPos;
-        // Applies view (moves it relative to camera position/orientation)
-        vec4 viewPos = viewMatrix * worldPos;
-        // Applies projection (orthographic/perspective)
-        vec4 projectionPos = projectionMatrix * viewPos;
-        gl_Position = projectionPos;
-        vWorldPosition = worldPos.xyz;
-    }
-    `,
-
-  fragmentShader: `
-    varying vec3 vWorldPosition;
-    
-    void main()
-    {
-      gl_FragColor = vec4(vWorldPosition, 1.);
-    }
-    `,
-});
-
 class RenderPipeline {
   constructor(renderer) {
     this.renderer = renderer;
@@ -884,16 +196,20 @@ class RenderPipeline {
 
     this.diffuseTarget = renderer.newRenderTarget(1, 1);
 
-    this.shadowTarget = renderer.newRenderTarget(1, 1);
-
     this.worldPositionTarget = renderer.newRenderTarget(1, 1, {
       format: THREE.RGBAFormat,
-      type: THREE.FloatType,
+      type: THREE.HalfFloatType,
     });
 
-    this.sobelTexture = renderer.newRenderTarget(1, 1);
+    this.gradientTarget = renderer.newRenderTarget(1, 1, {
+      format: THREE.RGBAFormat,
+      type: THREE.HalfFloatType,
+    });
 
-    this.tempBuffer = renderer.newRenderTarget(1, 1);
+    this.bufferTarget = renderer.newRenderTarget(1, 1, {
+      format: THREE.RGBAFormat,
+      type: THREE.HalfFloatType,
+    });
   }
 
   renderOverride(scene, camera, material, target) {
@@ -911,133 +227,47 @@ class RenderPipeline {
 
   render(scene, camera) {
     camera.updateUniforms();
-    // Render normals + depth
-    const normalMap = loader.load(
-      "./texture/rock/Rock051_1K-JPG_NormalDX.jpg"
-    ).value;
-
-    normalMap.wrapS = THREE.RepeatWrapping;
-
-    normalMap.wrapT = THREE.RepeatWrapping;
-    this.renderOverride(
-      scene,
-      camera,
-      new THREE.MeshNormalMaterial({ normalMap: normalMap }),
-      this.normalTarget
-    );
-    this.renderOverride(
-      scene,
-      camera,
-      worldPosMaterial,
-      this.worldPositionTarget
-    );
-    this.renderOverride(
-      scene,
-      camera,
-      new THREE.ShaderMaterial({
-        ...basicCustomShader,
-        fog: true,
-        lights: true,
-      }),
-      this.shadowTarget
-    );
     this.renderOverride(scene, camera, null, this.diffuseTarget);
 
-    const sobelFilter = new FullScreenQuad(
+    const isLinear = gui.data.isLinear.value;
+    const start = isLinear
+      ? new THREE.Color(1, 1, 1)
+      : OkLabColor.fromLinearRGB(1, 1, 1);
+    const end = isLinear
+      ? new THREE.Color(0, 0, 1)
+      : OkLabColor.fromLinearRGB(0, 0, 1);
+
+    const gradientPass = new FullScreenQuad(
       postProcessing(
         {
-          textureWidth: { value: this.normalTarget.width },
-          textureHeight: { value: this.normalTarget.height },
-          pixelWidth: gui.add("pixelWidth", 2, {
-            min: 1,
-            max: 10,
-            step: 1,
-          }),
-          tNormal: { value: this.normalTarget.texture },
-          tDepth: { value: this.normalTarget.depthTexture },
-          normalStrength: gui.add("normalStrength", 0.01, {
-            min: 0,
-            max: 0.1,
-            step: 0.001,
-          }),
-          depthStrength: gui.add("depthStrength", 1, { min: 0, max: 10 }),
-          ...camera.uniforms,
+          tInput: { value: this.diffuseTarget.texture },
+          uStartColor: { value: start },
+          uEndColor: { value: end },
         },
-        PPS.sobelFragShader
+        PPS.gradientFragShader
       )
     );
-
-    this.renderer.setRenderTarget(this.sobelTexture);
-    sobelFilter.render(this.renderer);
-
-    for (let i = -1; i >= 0; i--) {
-      const xPass = new FullScreenQuad(
+    this.renderer.setRenderTarget(this.gradientTarget);
+    gradientPass.render(this.renderer);
+    if (!isLinear) {
+      const linearConvertionPass = new FullScreenQuad(
         postProcessing(
           {
-            textureWidth: { value: this.normalTarget.width },
-            textureHeight: { value: this.normalTarget.height },
-            xPixelJump: { value: 1 << i },
-            yPixelJump: { value: 0 },
-            tInput: { value: this.sobelTexture.texture },
+            tInput: { value: this.gradientTarget.texture },
           },
-          PPS.fillFragShader
+          PPS.labToLinearFragShader
         )
       );
-      this.renderer.setRenderTarget(this.tempBuffer);
-      xPass.render(this.renderer);
-
-      const yPass = new FullScreenQuad(
-        postProcessing(
-          {
-            textureWidth: { value: this.normalTarget.width },
-            textureHeight: { value: this.normalTarget.height },
-            xPixelJump: { value: 0 },
-            yPixelJump: { value: 1 },
-            tInput: { value: this.tempBuffer.texture },
-          },
-          PPS.fillFragShader
-        )
-      );
-      this.renderer.setRenderTarget(this.sobelTexture);
-      yPass.render(this.renderer);
+      this.renderer.setRenderTarget(this.bufferTarget);
+      linearConvertionPass.render(this.renderer);
     }
-
-    const renderTexturePass = new FullScreenQuad(
-      postProcessing(
-        {
-          textureWidth: { value: this.normalTarget.width },
-          textureHeight: { value: this.normalTarget.height },
-          thickness: { value: 3 },
-          scale: { value: 0.08 },
-          frequency: { value: 3 },
-          noiseScale: { value: 0.3 },
-          noiseFrequency: { value: 20 },
-          tShadow: { value: this.shadowTarget.texture },
-          tWorldPos: { value: this.worldPositionTarget.texture },
-        },
-        PPS.crossHatchFrag
-      )
-    );
-    this.renderer.setRenderTarget(this.tempBuffer);
-    renderTexturePass.render(this.renderer);
-
-    const combinePass = new FullScreenQuad(
-      postProcessing(
-        {
-          tDiffuse: { value: this.diffuseTarget.texture },
-          tSobel: { value: this.sobelTexture.texture },
-          tHatch: { value: null },
-        },
-        PPS.combineFragShader
-      )
-    );
-    this.renderer.setRenderTarget(this.normalTarget);
-    combinePass.render(this.renderer);
 
     const gammaPass = new FullScreenQuad(
       postProcessing(
         {
-          tInput: { value: this.diffuseTarget.texture },
+          tInput: {
+            value: (isLinear ? this.gradientTarget : this.bufferTarget).texture,
+          },
         },
         PPS.gammaFragShader
       )
@@ -1084,14 +314,25 @@ class Menu {
   }
 }
 
-const startMenu = new Menu();
+//const startMenu = new Menu();
+
+const workers = [];
+
+for (let i = 0; i < 9; i++) {
+  const myWorker = new Worker("worker.js");
+  workers.push(myWorker);
+  myWorker.onmessage = (ev) => console.log("Message ", ev);
+  myWorker.postMessage([10, 20]);
+}
 
 function raf() {
+  stats.begin();
   pipeline.render(scene, camera);
   time.tick();
   game.update(time);
   controls.update();
   time.endLoop();
+  stats.end();
   window.requestAnimationFrame(raf);
 }
 
