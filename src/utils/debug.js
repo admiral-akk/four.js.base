@@ -7,7 +7,7 @@ class DebugManager {
     this.data = {};
   }
 
-  add(name, defaultVal, config = {}) {
+  add(name, defaultVal, options = undefined, config = {}) {
     if (this.data[name]) {
       return this.data[name];
     }
@@ -16,7 +16,7 @@ class DebugManager {
     if (defaultVal.isColor) {
       reference = this.gui.addColor(this.data[name], "value").name(name);
     } else {
-      reference = this.gui.add(this.data[name], "value").name(name);
+      reference = this.gui.add(this.data[name], "value", options).name(name);
     }
     for (const [key, value] of Object.entries(config)) {
       if (reference[key] instanceof Function) {

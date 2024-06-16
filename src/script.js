@@ -12,9 +12,22 @@ import { generateLoadingManager } from "./utils/loader.js";
 import * as PPS from "./utils/postProcessingShaders.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import {
+  CCDIKSolver,
+  CCDIKHelper,
+} from "three/addons/animation/CCDIKSolver.js";
 
 const gui = new DebugManager();
-gui.add("isLinear", false);
+gui.add("renderMode", "StandardDiffuse", [
+  "LabOkGradient",
+  "LinearGradient",
+  "StandardDiffuse",
+]);
+gui.add("autoUpdate", true);
+gui.add("x", 0, -10);
+gui.add("y", 0);
+gui.add("z", 10);
+
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.body.appendChild(stats.dom);
@@ -82,7 +95,7 @@ class CameraController {
   }
 }
 
-const controls = new CameraController(camera, time, new THREE.Vector3());
+//const controls = new CameraController(camera, time, new THREE.Vector3());
 
 class UiController {
   constructor() {
@@ -135,6 +148,9 @@ class UiController {
     this.div.innerHTML = `${hitTargets} / $d{totalTargets}`;
   }
 }
+
+let ikSolver = undefined;
+let targetBone = undefined;
 class Game {
   constructor(scene, input) {
     this.state = "WAITING";
@@ -157,6 +173,135 @@ class Game {
     light.shadow.camera.top = 20.0;
     light.shadow.camera.bottom = -20.0;
     scene.add(light);
+
+    const segmentHeight = 8;
+    const segmentCount = 3;
+    const height = segmentHeight * segmentCount;
+    const halfHeight = height * 0.5;
+
+    const sizing = {
+      segmentHeight,
+      segmentCount,
+      height,
+      halfHeight,
+    };
+
+    const bones = [];
+
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x156289,
+      emissive: 0x072534,
+      side: THREE.DoubleSide,
+      wireframe: true,
+      flatShading: true,
+    });
+
+    const material2 = new THREE.MeshPhongMaterial({
+      color: 0x156289,
+      emissive: 0x072534,
+      flatShading: true,
+    });
+
+    const makeMesh = () => {
+      const geo = new THREE.BoxGeometry(1, 7, 1);
+      geo.translate(0, 3, 0);
+      return new THREE.Mesh(geo, material2);
+    };
+
+    // "root bone"
+    const rootBone = new THREE.Bone();
+    rootBone.name = "root";
+    rootBone.position.y = -sizing.halfHeight;
+    bones.push(rootBone);
+
+    //
+    // "bone0", "bone1", "bone2", "bone3"
+    //
+
+    // "bone0"
+    let prevBone = new THREE.Bone();
+    prevBone.position.y = 0;
+    rootBone.add(prevBone);
+    bones.push(prevBone);
+    // "bone1", "bone2", "bone3"
+    for (let i = 1; i <= sizing.segmentCount; i++) {
+      const bone = new THREE.Bone();
+      bone.position.y = sizing.segmentHeight;
+      bones.push(bone);
+      bone.name = `bone${i}`;
+      prevBone.add(makeMesh());
+      prevBone.add(bone);
+      prevBone = bone;
+    }
+
+    // "target"
+    targetBone = new THREE.Bone();
+    targetBone.name = "target";
+    targetBone.position.y = sizing.height + sizing.segmentHeight; // relative to parent: rootBone
+    rootBone.add(targetBone);
+    bones.push(targetBone);
+
+    const geometry = new THREE.CylinderGeometry(
+      5, // radiusTop
+      5, // radiusBottom
+      sizing.height, // height
+      8, // radiusSegments
+      sizing.segmentCount * 1, // heightSegments
+      true // openEnded
+    );
+
+    const position = geometry.attributes.position;
+
+    const vertex = new THREE.Vector3();
+
+    const skinIndices = [];
+    const skinWeights = [];
+
+    for (let i = 0; i < position.count; i++) {
+      vertex.fromBufferAttribute(position, i);
+
+      const y = vertex.y + sizing.halfHeight;
+
+      const skinIndex = Math.floor(y / sizing.segmentHeight);
+      const skinWeight = (y % sizing.segmentHeight) / sizing.segmentHeight;
+
+      skinIndices.push(skinIndex, skinIndex + 1, 0, 0);
+      skinWeights.push(1 - skinWeight, skinWeight, 0, 0);
+    }
+
+    geometry.setAttribute(
+      "skinIndex",
+      new THREE.Uint16BufferAttribute(skinIndices, 4)
+    );
+    geometry.setAttribute(
+      "skinWeight",
+      new THREE.Float32BufferAttribute(skinWeights, 4)
+    );
+    const mesh = new THREE.SkinnedMesh(geometry, material);
+    const skeleton = new THREE.Skeleton(bones);
+
+    mesh.add(bones[0]);
+
+    mesh.bind(skeleton);
+    scene.add(mesh);
+
+    const skeletonHelper = new THREE.SkeletonHelper(mesh);
+    skeletonHelper.material.linewidth = 2;
+    scene.add(skeletonHelper);
+
+    //
+    // ikSolver
+    //
+
+    const iks = [
+      {
+        target: 5,
+        effector: 4,
+        links: [{ index: 3 }, { index: 2 }, { index: 1 }],
+      },
+    ];
+    ikSolver = new CCDIKSolver(mesh, iks);
+    scene.add(new CCDIKHelper(mesh, iks));
   }
 
   startGame() {
@@ -210,6 +355,11 @@ class RenderPipeline {
       format: THREE.RGBAFormat,
       type: THREE.HalfFloatType,
     });
+
+    this.bufferTarget2 = renderer.newRenderTarget(1, 1, {
+      format: THREE.RGBAFormat,
+      type: THREE.HalfFloatType,
+    });
   }
 
   renderOverride(scene, camera, material, target) {
@@ -227,46 +377,71 @@ class RenderPipeline {
 
   render(scene, camera) {
     camera.updateUniforms();
-    this.renderOverride(scene, camera, null, this.diffuseTarget);
 
-    const isLinear = gui.data.isLinear.value;
-    const start = isLinear
-      ? new THREE.Color(1, 1, 1)
-      : OkLabColor.fromLinearRGB(1, 1, 1);
-    const end = isLinear
-      ? new THREE.Color(0, 0, 1)
-      : OkLabColor.fromLinearRGB(0, 0, 1);
+    let start, end;
+    let buffer1 = this.bufferTarget;
+    let buffer2 = this.bufferTarget2;
+    switch (gui.data.renderMode.value) {
+      case "LabOkGradient":
+        start = OkLabColor.fromLinearRGB(1, 1, 1);
+        end = OkLabColor.fromLinearRGB(0, 0, 1);
+        break;
+      case "LinearGradient":
+      default:
+        start = new THREE.Color(1, 1, 1);
+        end = new THREE.Color(0, 0, 1);
+        break;
+    }
 
-    const gradientPass = new FullScreenQuad(
-      postProcessing(
-        {
-          tInput: { value: this.diffuseTarget.texture },
-          uStartColor: { value: start },
-          uEndColor: { value: end },
-        },
-        PPS.gradientFragShader
-      )
-    );
-    this.renderer.setRenderTarget(this.gradientTarget);
-    gradientPass.render(this.renderer);
-    if (!isLinear) {
-      const linearConvertionPass = new FullScreenQuad(
-        postProcessing(
-          {
-            tInput: { value: this.gradientTarget.texture },
-          },
-          PPS.labToLinearFragShader
-        )
-      );
-      this.renderer.setRenderTarget(this.bufferTarget);
-      linearConvertionPass.render(this.renderer);
+    switch (gui.data.renderMode.value) {
+      case "LabOkGradient":
+      case "LinearGradient":
+        const gradientPass = new FullScreenQuad(
+          postProcessing(
+            {
+              tInput: { value: buffer2.texture },
+              uStartColor: { value: start },
+              uEndColor: { value: end },
+            },
+            PPS.gradientFragShader
+          )
+        );
+        this.renderer.setRenderTarget(buffer1);
+        gradientPass.render(this.renderer);
+        const temp = buffer1;
+        buffer1 = buffer2;
+        buffer2 = temp;
+        break;
+      default:
+        this.renderOverride(scene, camera, null, buffer2);
+        break;
+    }
+
+    switch (gui.data.renderMode.value) {
+      case "LabOkGradient":
+        const linearConvertionPass = new FullScreenQuad(
+          postProcessing(
+            {
+              tInput: { value: buffer2.texture },
+            },
+            PPS.labToLinearFragShader
+          )
+        );
+        this.renderer.setRenderTarget(buffer1);
+        linearConvertionPass.render(this.renderer);
+        const temp = buffer1;
+        buffer1 = buffer2;
+        buffer2 = temp;
+        break;
+      default:
+        break;
     }
 
     const gammaPass = new FullScreenQuad(
       postProcessing(
         {
           tInput: {
-            value: (isLinear ? this.gradientTarget : this.bufferTarget).texture,
+            value: buffer2.texture,
           },
         },
         PPS.gammaFragShader
@@ -277,6 +452,7 @@ class RenderPipeline {
   }
 }
 
+const controls2 = new OrbitControls(camera, renderer.domElement);
 const pipeline = new RenderPipeline(renderer);
 
 class Menu {
@@ -330,7 +506,16 @@ function raf() {
   pipeline.render(scene, camera);
   time.tick();
   game.update(time);
-  controls.update();
+  if (targetBone) {
+    targetBone.position.x = gui.data.x.value;
+    targetBone.position.y = gui.data.y.value;
+    targetBone.position.z = gui.data.z.value;
+  }
+  if (gui.data.autoUpdate.value) {
+    ikSolver?.update();
+  }
+
+  //controls.update();
   time.endLoop();
   stats.end();
   window.requestAnimationFrame(raf);

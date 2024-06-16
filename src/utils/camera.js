@@ -3,7 +3,7 @@ import * as THREE from "three";
 const perspectiveConfig = {
   type: "perspective",
   fov: 75,
-  zoom: 6,
+  zoom: 40,
 };
 
 const orthographicConfig = {
@@ -12,13 +12,13 @@ const orthographicConfig = {
 };
 
 const cameraConfig = {
-  subtypeConfig: orthographicConfig,
+  subtypeConfig: perspectiveConfig,
   aspectRatio: 16 / 9,
   near: 0.001,
   far: 40.0,
   position: new THREE.Vector3(-5, 7, 5)
     .normalize()
-    .multiplyScalar(orthographicConfig.zoom),
+    .multiplyScalar(perspectiveConfig.zoom),
 };
 
 const generateCamera = (
