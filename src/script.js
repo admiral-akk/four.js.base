@@ -12,10 +12,10 @@ import { generateLoadingManager } from "./utils/loader.js";
 import * as PPS from "./utils/postProcessingShaders.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import {
-  CCDIKSolver,
-  CCDIKHelper,
-} from "three/addons/animation/CCDIKSolver.js";
+import { CCDIKHelper } from "three/addons/animation/CCDIKSolver.js";
+import { CCDIKSolver } from "three/addons/animation/CCDIKSolver.js";
+import { Vector3 } from "three";
+import { Euler } from "three";
 
 const gui = new DebugManager();
 gui.add("renderMode", "StandardDiffuse", [
@@ -23,10 +23,11 @@ gui.add("renderMode", "StandardDiffuse", [
   "LinearGradient",
   "StandardDiffuse",
 ]);
-gui.add("autoUpdate", true);
-gui.add("x", 0, -10);
-gui.add("y", 0);
-gui.add("z", 10);
+gui.add("autoUpdate", false);
+gui.add("theta", -90, 90, 1).value = 0;
+gui.add("phi", 0, 360, 1).value = 0;
+gui.add("distance", 1, 40, 1).value = 10;
+gui.add("constraint", -360, 360, 1).value = 0;
 
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -149,6 +150,8 @@ class UiController {
   }
 }
 
+const bones = [];
+const angleConstraint = new THREE.Vector3(0, 0, 0);
 let ikSolver = undefined;
 let targetBone = undefined;
 class Game {
@@ -186,8 +189,6 @@ class Game {
       halfHeight,
     };
 
-    const bones = [];
-
     const material = new THREE.MeshPhongMaterial({
       color: 0x156289,
       emissive: 0x072534,
@@ -220,16 +221,33 @@ class Game {
 
     // "bone0"
     let prevBone = new THREE.Bone();
+    prevBone.position.x = 0;
     prevBone.position.y = 0;
+    prevBone.lookAt(new Vector3(1, 0, 0));
     rootBone.add(prevBone);
     bones.push(prevBone);
     // "bone1", "bone2", "bone3"
     for (let i = 1; i <= sizing.segmentCount; i++) {
       const bone = new THREE.Bone();
-      bone.position.y = sizing.segmentHeight;
+      const axesHelper = new THREE.AxesHelper(5);
+      const m = makeMesh();
+      switch (i) {
+        case 1:
+          m.rotation.setFromVector3(new Vector3(0, 0, -Math.PI / 2));
+          bone.position.x = segmentHeight;
+          break;
+        case 2:
+          bone.position.y = segmentHeight;
+          break;
+        case 3:
+        default:
+          bone.position.y = segmentHeight;
+          break;
+      }
       bones.push(bone);
       bone.name = `bone${i}`;
-      prevBone.add(makeMesh());
+      prevBone.add(m);
+      prevBone.add(axesHelper);
       prevBone.add(bone);
       prevBone = bone;
     }
@@ -237,6 +255,7 @@ class Game {
     // "target"
     targetBone = new THREE.Bone();
     targetBone.name = "target";
+    targetBone.position.x = segmentHeight;
     targetBone.position.y = sizing.height + sizing.segmentHeight; // relative to parent: rootBone
     rootBone.add(targetBone);
     bones.push(targetBone);
@@ -285,19 +304,32 @@ class Game {
     mesh.bind(skeleton);
     scene.add(mesh);
 
-    const skeletonHelper = new THREE.SkeletonHelper(mesh);
-    skeletonHelper.material.linewidth = 2;
-    scene.add(skeletonHelper);
-
     //
     // ikSolver
     //
-
     const iks = [
       {
         target: 5,
         effector: 4,
-        links: [{ index: 3 }, { index: 2 }, { index: 1 }],
+        maxAngle: 0.1,
+        links: [
+          {
+            index: 3,
+            limitation: new THREE.Vector3(0, 0, -1),
+            rotationMax: new THREE.Vector3(0, 0, -0.1),
+            rotationMin: new THREE.Vector3(0, 0, -Math.PI + 0.1),
+          },
+          {
+            index: 2,
+            limitation: new THREE.Vector3(0, 0, -1),
+            rotationMax: new THREE.Vector3(0, 0, -0.1),
+            rotationMin: new THREE.Vector3(0, 0, -2.5),
+          },
+          {
+            index: 1,
+            limitation: new THREE.Vector3(0, -1, 0),
+          },
+        ],
       },
     ];
     ikSolver = new CCDIKSolver(mesh, iks);
@@ -507,13 +539,22 @@ function raf() {
   time.tick();
   game.update(time);
   if (targetBone) {
-    targetBone.position.x = gui.data.x.value;
-    targetBone.position.y = gui.data.y.value;
-    targetBone.position.z = gui.data.z.value;
+    const dist = gui.data.distance.value;
+    const theta = (Math.PI * gui.data.theta.value) / 180;
+    const phi = (Math.PI * gui.data.phi.value) / 180;
+    angleConstraint.z = (Math.PI * gui.data.constraint.value) / 180;
+    const pos = new THREE.Vector3(
+      Math.cos(phi) * Math.cos(theta),
+      Math.sin(theta),
+      Math.sin(phi) * Math.cos(theta)
+    ).multiplyScalar(dist);
+    targetBone.position.set(pos.x, pos.y, pos.z);
   }
   if (gui.data.autoUpdate.value) {
     ikSolver?.update();
   }
+
+  console.log(bones[3].rotation);
 
   //controls.update();
   time.endLoop();

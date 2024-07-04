@@ -1,27 +1,22 @@
 import GUI from "lil-gui";
 
-class DebugManager {
+class DebugManager extends GUI {
   constructor() {
-    this.gui = new GUI();
+    super();
 
     this.data = {};
   }
 
-  add(name, defaultVal, options = undefined, config = {}) {
+  add(name, $1 = undefined, max = undefined, step = undefined) {
     if (this.data[name]) {
       return this.data[name];
     }
-    this.data[name] = { value: defaultVal };
+    this.data[name] = { value: $1 };
     let reference;
-    if (defaultVal.isColor) {
-      reference = this.gui.addColor(this.data[name], "value").name(name);
+    if ($1.isColor) {
+      reference = super.addColor(this.data[name], "value").name(name);
     } else {
-      reference = this.gui.add(this.data[name], "value", options).name(name);
-    }
-    for (const [key, value] of Object.entries(config)) {
-      if (reference[key] instanceof Function) {
-        reference[key](value);
-      }
+      reference = super.add(this.data[name], "value", $1, max, step).name(name);
     }
     return this.data[name];
   }
