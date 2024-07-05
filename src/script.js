@@ -13,7 +13,7 @@ import * as PPS from "./utils/postProcessingShaders.js";
 import { InputManager } from "./utils/input.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CCDIKHelper } from "three/addons/animation/CCDIKSolver.js";
-import { CCDIKSolver } from "three/addons/animation/CCDIKSolver.js";
+import { CCDIKSolver } from "./utils/duplicate/CCDIKSolver.js";
 import { Vector3 } from "three";
 import { Euler } from "three";
 
@@ -27,7 +27,6 @@ gui.add("autoUpdate", false);
 gui.add("theta", -90, 90, 1).value = 0;
 gui.add("phi", 0, 360, 1).value = 0;
 gui.add("distance", 1, 40, 1).value = 10;
-gui.add("constraint", -360, 360, 1).value = 0;
 
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -150,33 +149,27 @@ class UiController {
   }
 }
 
-const bones = [];
-const angleConstraint = new THREE.Vector3(0, 0, 0);
-let ikSolver = undefined;
-let targetBone = undefined;
-class Game {
-  constructor(scene, input) {
-    this.state = "WAITING";
-    const queryParams = new URLSearchParams(window.location.search);
-    this.currentLevel = parseInt(queryParams.get("level") ?? "0", 10);
+class Leg {
+  update(input, bodyPos) {
+    const delta = this.targetBone.position
+      .clone()
+      .sub(bodyPos)
+      .sub(this.targetBone.idealDistance);
+    delta.y = 0;
 
-    //this.ui = new UiController();
-    this.scene = scene;
-    this.input = input;
-    const light = new THREE.DirectionalLight(0xffffff, 10);
-    light.position.set(100, 100, 100);
-    light.target.position.set(0, 0, 0);
-    light.castShadow = true;
-    light.shadow.mapSize.width = 2048;
-    light.shadow.mapSize.height = 2048;
-    light.shadow.camera.near = 1.0;
-    light.shadow.camera.far = 200.0;
-    light.shadow.camera.left = -20.0;
-    light.shadow.camera.right = 20.0;
-    light.shadow.camera.top = 20.0;
-    light.shadow.camera.bottom = -20.0;
-    scene.add(light);
+    if (delta.length() > 15) {
+      const ideal = bodyPos.clone().add(this.targetBone.idealDistance);
+      this.targetBone.position.set(
+        ideal.x,
+        this.targetBone.position.y,
+        ideal.z
+      );
+    }
 
+    this.ikSolver.update();
+  }
+  constructor(parent, scene) {
+    const bones = [];
     const segmentHeight = 8;
     const segmentCount = 3;
     const height = segmentHeight * segmentCount;
@@ -193,7 +186,6 @@ class Game {
       color: 0x156289,
       emissive: 0x072534,
       side: THREE.DoubleSide,
-      wireframe: true,
       flatShading: true,
     });
 
@@ -203,9 +195,9 @@ class Game {
       flatShading: true,
     });
 
-    const makeMesh = () => {
-      const geo = new THREE.BoxGeometry(1, 7, 1);
-      geo.translate(0, 3, 0);
+    const makeMesh = (length) => {
+      const geo = new THREE.BoxGeometry(1, length, 1);
+      geo.translate(0, length / 2, 0);
       return new THREE.Mesh(geo, material2);
     };
 
@@ -230,7 +222,8 @@ class Game {
     for (let i = 1; i <= sizing.segmentCount; i++) {
       const bone = new THREE.Bone();
       const axesHelper = new THREE.AxesHelper(5);
-      const m = makeMesh();
+      const length = i === 3 ? 14 : 7;
+      const m = makeMesh(length);
       switch (i) {
         case 1:
           m.rotation.setFromVector3(new Vector3(0, 0, -Math.PI / 2));
@@ -241,7 +234,7 @@ class Game {
           break;
         case 3:
         default:
-          bone.position.y = segmentHeight;
+          bone.position.y = 2 * segmentHeight;
           break;
       }
       bones.push(bone);
@@ -253,21 +246,13 @@ class Game {
     }
 
     // "target"
-    targetBone = new THREE.Bone();
+    const targetBone = new THREE.Bone();
     targetBone.name = "target";
-    targetBone.position.x = segmentHeight;
-    targetBone.position.y = sizing.height + sizing.segmentHeight; // relative to parent: rootBone
-    rootBone.add(targetBone);
+    scene.add(targetBone);
     bones.push(targetBone);
+    this.targetBone = targetBone;
 
-    const geometry = new THREE.CylinderGeometry(
-      5, // radiusTop
-      5, // radiusBottom
-      sizing.height, // height
-      8, // radiusSegments
-      sizing.segmentCount * 1, // heightSegments
-      true // openEnded
-    );
+    const geometry = new THREE.BoxGeometry();
 
     const position = geometry.attributes.position;
 
@@ -278,14 +263,8 @@ class Game {
 
     for (let i = 0; i < position.count; i++) {
       vertex.fromBufferAttribute(position, i);
-
-      const y = vertex.y + sizing.halfHeight;
-
-      const skinIndex = Math.floor(y / sizing.segmentHeight);
-      const skinWeight = (y % sizing.segmentHeight) / sizing.segmentHeight;
-
-      skinIndices.push(skinIndex, skinIndex + 1, 0, 0);
-      skinWeights.push(1 - skinWeight, skinWeight, 0, 0);
+      skinIndices.push(0, 0, 0, 0);
+      skinWeights.push(0, 0, 0, 0);
     }
 
     geometry.setAttribute(
@@ -302,7 +281,9 @@ class Game {
     mesh.add(bones[0]);
 
     mesh.bind(skeleton);
-    scene.add(mesh);
+    parent.add(mesh);
+    mesh.position.y = 12;
+    this.mesh = mesh;
 
     //
     // ikSolver
@@ -311,7 +292,7 @@ class Game {
       {
         target: 5,
         effector: 4,
-        maxAngle: 0.1,
+        maxAngle: 0.04,
         links: [
           {
             index: 3,
@@ -323,7 +304,7 @@ class Game {
             index: 2,
             limitation: new THREE.Vector3(0, 0, -1),
             rotationMax: new THREE.Vector3(0, 0, -0.1),
-            rotationMin: new THREE.Vector3(0, 0, -2.5),
+            rotationMin: new THREE.Vector3(0, 0, -1.5),
           },
           {
             index: 1,
@@ -332,8 +313,101 @@ class Game {
         ],
       },
     ];
-    ikSolver = new CCDIKSolver(mesh, iks);
+    this.ikSolver = new CCDIKSolver(mesh, iks);
     scene.add(new CCDIKHelper(mesh, iks));
+  }
+}
+const _vector = new THREE.Vector3();
+
+class Spider {
+  constructor(scene) {
+    const dist = 13;
+    this.body = new THREE.Mesh(
+      new THREE.BoxGeometry(),
+      new THREE.MeshBasicMaterial()
+    );
+    this.fl = new Leg(this.body, scene);
+    this.fl.mesh.rotation.setFromVector3(
+      _vector.setFromEuler(new Euler(0, 2 * Math.PI, 0))
+    );
+    this.fl.targetBone.position.x = dist;
+    this.fl.targetBone.position.z = dist;
+    this.fl.targetBone.idealDistance = this.fl.targetBone.position
+      .clone()
+      .sub(this.body.position);
+    this.fr = new Leg(this.body, scene);
+    this.fr.mesh.rotation.setFromVector3(
+      _vector.setFromEuler(new Euler(0, 1.5 * Math.PI, 0))
+    );
+    this.fr.targetBone.position.x = -dist;
+    this.fr.targetBone.position.z = dist;
+    this.fr.targetBone.idealDistance = this.fr.targetBone.position
+      .clone()
+      .sub(this.body.position);
+    this.fr.targetBone.position.x = -dist + 9;
+    this.bl = new Leg(this.body, scene);
+    this.bl.mesh.rotation.setFromVector3(
+      _vector.setFromEuler(new Euler(0, 0.5 * Math.PI, 0))
+    );
+    this.bl.targetBone.position.x = dist;
+    this.bl.targetBone.position.z = -dist;
+    this.bl.targetBone.idealDistance = this.bl.targetBone.position
+      .clone()
+      .sub(this.body.position);
+    this.bl.targetBone.position.x = -dist + 6;
+    this.br = new Leg(this.body, scene);
+    this.br.mesh.rotation.setFromVector3(
+      _vector.setFromEuler(new Euler(0, Math.PI, 0))
+    );
+    this.br.targetBone.position.x = -dist;
+    this.br.targetBone.position.z = -dist;
+    this.br.targetBone.idealDistance = this.br.targetBone.position
+      .clone()
+      .sub(this.body.position);
+    this.br.targetBone.position.x = -dist + 3;
+    scene.add(this.body);
+  }
+
+  update(input) {
+    this.body.position.x += input.getKey("w") ? 0.3 : 0;
+    this.body.position.x -= input.getKey("s") ? 0.3 : 0;
+    this.body.position.z += input.getKey("d") ? 0.3 : 0;
+    this.body.position.z -= input.getKey("a") ? 0.3 : 0;
+    this.body.position.y += input.getKey("q") ? 0.3 : 0;
+    this.body.position.y -= input.getKey("e") ? 0.3 : 0;
+
+    this.center_of_mass;
+    this.fl.update(input, this.body.position);
+    this.fr.update(input, this.body.position);
+    this.bl.update(input, this.body.position);
+    this.br.update(input, this.body.position);
+  }
+}
+
+class Game {
+  constructor(scene, input) {
+    this.state = "WAITING";
+    const queryParams = new URLSearchParams(window.location.search);
+    this.currentLevel = parseInt(queryParams.get("level") ?? "0", 10);
+
+    //this.ui = new UiController();
+    this.scene = scene;
+    this.input = input;
+    const light = new THREE.DirectionalLight(0xffffff, 10);
+    light.position.set(100, 100, 100);
+    light.target.position.set(0, 0, 0);
+    light.castShadow = true;
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
+    light.shadow.camera.near = 1.0;
+    light.shadow.camera.far = 200.0;
+    light.shadow.camera.left = -20.0;
+    light.shadow.camera.right = 20.0;
+    light.shadow.camera.top = 20.0;
+    light.shadow.camera.bottom = -20.0;
+    scene.add(light);
+
+    this.leg = new Spider(scene);
   }
 
   startGame() {
@@ -342,7 +416,9 @@ class Game {
     );
   }
 
-  update(time) {}
+  update(time) {
+    this.leg.update(input);
+  }
 }
 
 const game = new Game(scene);
@@ -538,23 +614,6 @@ function raf() {
   pipeline.render(scene, camera);
   time.tick();
   game.update(time);
-  if (targetBone) {
-    const dist = gui.data.distance.value;
-    const theta = (Math.PI * gui.data.theta.value) / 180;
-    const phi = (Math.PI * gui.data.phi.value) / 180;
-    angleConstraint.z = (Math.PI * gui.data.constraint.value) / 180;
-    const pos = new THREE.Vector3(
-      Math.cos(phi) * Math.cos(theta),
-      Math.sin(theta),
-      Math.sin(phi) * Math.cos(theta)
-    ).multiplyScalar(dist);
-    targetBone.position.set(pos.x, pos.y, pos.z);
-  }
-  if (gui.data.autoUpdate.value) {
-    ikSolver?.update();
-  }
-
-  console.log(bones[3].rotation);
 
   //controls.update();
   time.endLoop();
