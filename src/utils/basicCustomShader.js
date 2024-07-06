@@ -1,6 +1,8 @@
 import { mergeUniforms } from "three/src/renderers/shaders/UniformsUtils.js";
 import { UniformsLib } from "three/src/renderers/shaders/UniformsLib.js";
 
+import { default as packing } from "three/src/renderers/shaders/ShaderChunk/packing.glsl.js";
+
 const basicCustomShader = {
   uniforms: mergeUniforms([UniformsLib.lights]),
 
@@ -56,7 +58,7 @@ const basicCustomShader = {
     );
     float NdotL = dot(vNormal, directionalLights[0].direction);
     float val = clamp(NdotL*shadow, 0., 1.);
-    gl_FragColor = vec4(val);
+    gl_FragColor = vec4(val,val,val,1.);
   }
   `,
 };
