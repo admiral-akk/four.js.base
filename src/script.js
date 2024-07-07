@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { TimeManager } from "./utils/time.js";
 import { WindowManager } from "./utils/window.js";
 import { DebugManager } from "./utils/debug.js";
-import { customRenderer } from "./utils/renderer.js";
+import { CustomerRenderer } from "./utils/renderer.js";
 import { generateCamera, cameraConfig } from "./utils/camera.js";
 import Stats from "stats-js";
 import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
@@ -38,12 +38,13 @@ loader.load("./model/crate.glb");
 const input = new InputManager(time);
 const camera = generateCamera(scene, cameraConfig);
 const windowManager = new WindowManager(camera);
-const renderer = customRenderer(windowManager);
+const renderer = new CustomerRenderer(windowManager);
 
 const game = new Game(scene);
 
 class RenderPipeline {
   constructor(renderer) {
+    console.log(renderer);
     this.renderer = renderer;
 
     this.normalTarget = renderer.newRenderTarget(1);
@@ -174,8 +175,8 @@ class RenderPipeline {
 }
 
 const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshBasicMaterial()
+  new THREE.SphereGeometry(10),
+  new THREE.MeshStandardMaterial()
 );
 scene.add(cube);
 
@@ -186,6 +187,7 @@ function raf() {
   stats.begin();
   pipeline.render(scene, camera);
   time.tick();
+  cube.rotateOnAxis(new THREE.Vector3(0, 1, 0), time.time.userDeltaTime);
   game.update(time);
 
   //controls.update();

@@ -1,9 +1,6 @@
 import {
   WebGLRenderTarget,
   Vector2,
-  DepthTexture,
-  DepthStencilFormat,
-  UnsignedInt248Type,
   PCFSoftShadowMap,
   WebGLRenderer,
 } from "three";
@@ -14,13 +11,12 @@ class ScaledRenderTarget extends WebGLRenderTarget {
   constructor(renderer, ratio, options) {
     super(1, 1, options);
     this.ratio = ratio;
-    this.renderer = renderer;
-    this.updateSize();
+    this.updateSize(renderer);
   }
 
-  updateSize() {
-    this.renderer.getSize(_vector2);
-    const pixelRatio = this.renderer.getPixelRatio();
+  updateSize(renderer) {
+    renderer.getSize(_vector2);
+    const pixelRatio = renderer.getPixelRatio();
     this.setSize(
       _vector2.x * this.ratio * pixelRatio,
       _vector2.y * this.ratio * pixelRatio
@@ -28,47 +24,39 @@ class ScaledRenderTarget extends WebGLRenderTarget {
   }
 }
 
-const customRenderer = (windowManager) => {
-  const canvas = document.querySelector("canvas.webgl");
-  const renderer = new WebGLRenderer({
-    canvas,
-    antialias: true,
-    logarithmicDepthBuffer: true,
-  });
-
-  renderer.renderTargets = [];
-  renderer.newRenderTarget = (ratio = 1, config = {}) => {
-    const renderTarget = new ScaledRenderTarget(renderer, ratio, config);
-    renderer.renderTargets.push(renderTarget);
-    return renderTarget;
-  };
-
-  renderer.target = renderer.newRenderTarget(1, 1);
-  const format = DepthStencilFormat;
-  renderer.target.depthTexture = new DepthTexture();
-  renderer.target.stencilBuffer = format === DepthStencilFormat ? true : false;
-  renderer.target.format = format;
-  renderer.target.type = UnsignedInt248Type;
-
-  renderer.setClearColor("#201919");
-  renderer.setClearAlpha(0);
-
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = PCFSoftShadowMap;
-
-  renderer.updateSize = ({ width, height }) => {
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    renderer.renderTargets.forEach((rt) => {
-      rt.updateSize();
+class CustomerRenderer extends WebGLRenderer {
+  constructor(windowManager) {
+    const canvas = document.querySelector("canvas.webgl");
+    super({
+      canvas,
+      antialias: true,
+      logarithmicDepthBuffer: true,
     });
-  };
+    this.renderTargets = [];
 
-  windowManager.listeners.push(renderer);
-  windowManager.update();
+    this.setClearColor("#201919");
+    this.setClearAlpha(0);
 
-  return renderer;
-};
+    this.shadowMap.enabled = true;
+    this.shadowMap.type = PCFSoftShadowMap;
+    windowManager.listeners.push(this);
+    windowManager.update();
+  }
 
-export { customRenderer };
+  newRenderTarget(ratio = 1, config = {}) {
+    const len = this.renderTargets.push(
+      new ScaledRenderTarget(this, ratio, config)
+    );
+    return this.renderTargets[len - 1];
+  }
+
+  updateSize({ width, height }) {
+    this.setSize(width, height);
+    this.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderTargets.forEach((rt) => {
+      rt.updateSize(renderer);
+    });
+  }
+}
+
+export { CustomerRenderer };
