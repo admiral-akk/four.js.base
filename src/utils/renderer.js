@@ -10,17 +10,20 @@ import {
 
 const _vector2 = new Vector2();
 
-class RenderTarget extends WebGLRenderTarget {
-  constructor(width, height, options) {
-    super(width, height, options);
+class ScaledRenderTarget extends WebGLRenderTarget {
+  constructor(renderer, ratio, options) {
+    super(1, 1, options);
+    this.ratio = ratio;
+    this.renderer = renderer;
+    this.updateSize();
   }
 
-  updateSize(renderer, ratio) {
-    renderer.getSize(_vector2);
-    const pixelRatio = renderer.getPixelRatio();
+  updateSize() {
+    this.renderer.getSize(_vector2);
+    const pixelRatio = this.renderer.getPixelRatio();
     this.setSize(
-      _vector2.x * ratio * pixelRatio,
-      _vector2.y * ratio * pixelRatio
+      _vector2.x * this.ratio * pixelRatio,
+      _vector2.y * this.ratio * pixelRatio
     );
   }
 }
@@ -34,9 +37,8 @@ const customRenderer = (windowManager) => {
   });
 
   renderer.renderTargets = [];
-  renderer.newRenderTarget = (widthRatio, heightRatio, config = {}) => {
-    const renderTarget = new RenderTarget(1, 1, config);
-    renderTarget.updateSize(renderer, widthRatio);
+  renderer.newRenderTarget = (ratio = 1, config = {}) => {
+    const renderTarget = new ScaledRenderTarget(renderer, ratio, config);
     renderer.renderTargets.push(renderTarget);
     return renderTarget;
   };
@@ -59,7 +61,7 @@ const customRenderer = (windowManager) => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     renderer.renderTargets.forEach((rt) => {
-      rt.updateSize(renderer, 1);
+      rt.updateSize();
     });
   };
 

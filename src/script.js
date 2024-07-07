@@ -46,27 +46,27 @@ class RenderPipeline {
   constructor(renderer) {
     this.renderer = renderer;
 
-    this.normalTarget = renderer.newRenderTarget(1, 1);
+    this.normalTarget = renderer.newRenderTarget(1);
     this.normalTarget.depthTexture = new THREE.DepthTexture();
 
-    this.diffuseTarget = renderer.newRenderTarget(1, 1);
+    this.diffuseTarget = renderer.newRenderTarget(1);
 
-    this.worldPositionTarget = renderer.newRenderTarget(1, 1, {
+    this.worldPositionTarget = renderer.newRenderTarget(1, {
       format: THREE.RGBAFormat,
       type: THREE.HalfFloatType,
     });
 
-    this.gradientTarget = renderer.newRenderTarget(1, 1, {
+    this.gradientTarget = renderer.newRenderTarget(1, {
       format: THREE.RGBAFormat,
       type: THREE.HalfFloatType,
     });
 
-    this.bufferTarget = renderer.newRenderTarget(1, 1, {
+    this.bufferTarget = renderer.newRenderTarget(1, {
       format: THREE.RGBAFormat,
       type: THREE.HalfFloatType,
     });
 
-    this.bufferTarget2 = renderer.newRenderTarget(1, 1, {
+    this.bufferTarget2 = renderer.newRenderTarget(1, {
       format: THREE.RGBAFormat,
       type: THREE.HalfFloatType,
     });
