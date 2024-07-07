@@ -9,7 +9,7 @@ class InputManager {
     });
   }
 
-  constructor(time) {
+  constructor(windowManager, time) {
     this.mouseState = {
       posDelta: new THREE.Vector2(),
       pos: null,
@@ -92,6 +92,8 @@ class InputManager {
       false
     );
     time.listeners.push(this);
+    windowManager.listeners.push(this);
+    windowManager.update();
   }
 
   getKey(k) {

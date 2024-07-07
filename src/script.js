@@ -35,9 +35,9 @@ const loader = generateLoadingManager();
 loader.load("./texture/rock/Rock051_1K-JPG_NormalDX.jpg");
 loader.load("./model/crate.glb");
 
-const input = new InputManager(time);
 const camera = generateCamera(scene, cameraConfig);
 const windowManager = new WindowManager(camera);
+const input = new InputManager(windowManager, time);
 const renderer = new CustomerRenderer(windowManager);
 
 const game = new Game(scene);
