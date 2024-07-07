@@ -13,6 +13,9 @@ import * as PPS from "./utils/postProcessingShaders.js";
 import { InputManager } from "./utils/input.js";
 import { Game } from "./controller/game.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { uniform } from "three/examples/jsm/nodes/Nodes.js";
+
+import { Text } from "troika-three-text";
 
 const gui = new DebugManager();
 gui.add("renderMode", "StandardDiffuse", [
@@ -169,6 +172,12 @@ class RenderPipeline {
     );
   }
 }
+
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(),
+  new THREE.MeshBasicMaterial()
+);
+scene.add(cube);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 const pipeline = new RenderPipeline(renderer);

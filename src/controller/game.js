@@ -1,4 +1,5 @@
-import * as THREE from "three";
+import { DirectionalLight } from "three";
+
 export class Game {
   constructor(scene, input) {
     this.state = "WAITING";
@@ -8,7 +9,7 @@ export class Game {
     //this.ui = new UiController();
     this.scene = scene;
     this.input = input;
-    const light = new THREE.DirectionalLight(0xffffff, 10);
+    const light = new DirectionalLight(0xffffff, 10);
     light.position.set(100, 100, 100);
     light.target.position.set(0, 0, 0);
     light.castShadow = true;

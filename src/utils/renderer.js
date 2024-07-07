@@ -1,8 +1,33 @@
-import * as THREE from "three";
+import {
+  WebGLRenderTarget,
+  Vector2,
+  DepthTexture,
+  DepthStencilFormat,
+  UnsignedInt248Type,
+  PCFSoftShadowMap,
+  WebGLRenderer,
+} from "three";
+
+const _vector2 = new Vector2();
+
+class RenderTarget extends WebGLRenderTarget {
+  constructor(width, height, options) {
+    super(width, height, options);
+  }
+
+  updateSize(renderer, ratio) {
+    renderer.getSize(_vector2);
+    const pixelRatio = renderer.getPixelRatio();
+    this.setSize(
+      _vector2.x * ratio * pixelRatio,
+      _vector2.y * ratio * pixelRatio
+    );
+  }
+}
 
 const customRenderer = (windowManager) => {
   const canvas = document.querySelector("canvas.webgl");
-  const renderer = new THREE.WebGLRenderer({
+  const renderer = new WebGLRenderer({
     canvas,
     antialias: true,
     logarithmicDepthBuffer: true,
@@ -10,40 +35,31 @@ const customRenderer = (windowManager) => {
 
   renderer.renderTargets = [];
   renderer.newRenderTarget = (widthRatio, heightRatio, config = {}) => {
-    const renderTarget = new THREE.WebGLRenderTarget(1, 1, config);
-    renderTarget.updateSize = () => {
-      const size = new THREE.Vector2();
-      renderer.getSize(size);
-      const pixelRatio = renderer.getPixelRatio();
-      renderTarget.setSize(
-        size.x * widthRatio * pixelRatio,
-        size.y * heightRatio * pixelRatio
-      );
-    };
-    renderTarget.updateSize();
+    const renderTarget = new RenderTarget(1, 1, config);
+    renderTarget.updateSize(renderer, widthRatio);
     renderer.renderTargets.push(renderTarget);
     return renderTarget;
   };
 
   renderer.target = renderer.newRenderTarget(1, 1);
-  const format = THREE.DepthStencilFormat;
-  renderer.target.depthTexture = new THREE.DepthTexture();
-  renderer.target.stencilBuffer =
-    format === THREE.DepthStencilFormat ? true : false;
+  const format = DepthStencilFormat;
+  renderer.target.depthTexture = new DepthTexture();
+  renderer.target.stencilBuffer = format === DepthStencilFormat ? true : false;
   renderer.target.format = format;
-  renderer.target.type = THREE.UnsignedInt248Type;
+  renderer.target.type = UnsignedInt248Type;
 
   renderer.setClearColor("#201919");
+  renderer.setClearAlpha(0);
 
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = PCFSoftShadowMap;
 
   renderer.updateSize = ({ width, height }) => {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     renderer.renderTargets.forEach((rt) => {
-      rt.updateSize();
+      rt.updateSize(renderer, 1);
     });
   };
 
