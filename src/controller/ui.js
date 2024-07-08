@@ -32,20 +32,4 @@ export class UiController {
     ui.appendChild(div);
     this.ui = ui;
   }
-
-  setTutorialMessage(message) {
-    const { ui, tutorial, tutorialText } = this;
-    if (!message) {
-      if (tutorial.parentElement === ui) {
-        ui.removeChild(tutorial);
-      }
-    } else {
-      ui.appendChild(tutorial);
-      tutorialText.innerHTML = message;
-    }
-  }
-
-  updateStats({ hitTargets, totalTargets }) {
-    this.div.innerHTML = `${hitTargets} / $d{totalTargets}`;
-  }
 }

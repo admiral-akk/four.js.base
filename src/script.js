@@ -17,6 +17,137 @@ import { uniform } from "three/examples/jsm/nodes/Nodes.js";
 
 import { Text } from "troika-three-text";
 
+class TicTacToe {
+  constructor() {}
+
+  init() {}
+  cleanup() {}
+
+  pause() {}
+  resume() {}
+
+  update(engine) {}
+  render() {}
+}
+
+class MainMenu {
+  constructor() {}
+
+  init() {
+    const ui = document.querySelector("div.ui");
+
+    this.clicked = false;
+    var div = document.createElement("button");
+    div.onclick = (ev) => {
+      this.clicked = true;
+    };
+    // https://css-tricks.com/fitting-text-to-a-container/
+    div.style.position = "absolute";
+    div.style.fontSize = "2cqi";
+    div.style.top = "3%";
+    div.style.right = "3%";
+    div.style.height = "10%";
+    div.style.width = "10%";
+    div.style.background = "red";
+    div.style.container = "ui";
+    div.innerHTML = "Hello world";
+    div.style.pointerEvents = "auto";
+    const tutorial = document.createElement("div");
+    tutorial.style.position = "absolute";
+    tutorial.style.top = "90%";
+    tutorial.style.bottom = "3%";
+    tutorial.style.right = "20%";
+    tutorial.style.left = "20%";
+    tutorial.style.pointerEvents = "auto";
+    tutorial.style.background = "red";
+    tutorial.style.alignContent = "center";
+    const tutorialText = document.createElement("div");
+    tutorialText.innerHTML = "Tutorial message";
+    tutorialText.style.textAlign = "center";
+    tutorialText.style.fontSize = "2cqi";
+    tutorialText.style.container = "ui";
+    this.div = div;
+    this.tutorial = tutorial;
+    this.tutorialText = tutorialText;
+    tutorial.appendChild(tutorialText);
+    ui.appendChild(div);
+    this.ui = ui;
+    this.div = div;
+  }
+  cleanup() {
+    this.ui.removeChild(this.div);
+  }
+
+  pause() {}
+  resume() {}
+
+  update(engine) {
+    if (this.clicked) {
+      engine.replaceState(new TicTacToe());
+    }
+  }
+  render() {}
+}
+
+// http://gamedevgeek.com/tutorials/managing-game-states-in-c/
+class GameEngine {
+  constructor() {
+    this.states = [];
+  }
+
+  init() {
+    this.pushState(new MainMenu());
+  }
+
+  replaceState(state) {
+    const len = this.states.length;
+    if (len > 0) {
+      this.states.pop().cleanup();
+    }
+    state.init();
+    this.states.push(state);
+  }
+
+  pushState(state) {
+    const len = this.states.length;
+    if (len > 0) {
+      this.states[len - 1].pause();
+    }
+    state.init();
+    this.states.push(state);
+  }
+
+  popState() {
+    const len = this.states.length;
+    if (len > 0) {
+      const state = this.states.pop();
+      state.cleanup();
+    }
+
+    if (len > 1) {
+      const state = this.states[len - 2];
+      state.resume();
+    }
+  }
+
+  update() {
+    const len = this.states.length;
+    if (len > 0) {
+      this.states[len - 1].update(this);
+    }
+  }
+
+  render() {}
+}
+
+const engine = new GameEngine();
+engine.init();
+
+// input
+// intent
+// application state
+// events -> render state
+
 const gui = new DebugManager();
 gui.add("renderMode", "StandardDiffuse", [
   "LabOkGradient",
@@ -189,6 +320,7 @@ function raf() {
   time.tick();
   cube.rotateOnAxis(new THREE.Vector3(0, 1, 0), time.time.userDeltaTime);
   game.update(time);
+  engine.update();
 
   //controls.update();
   time.endLoop();

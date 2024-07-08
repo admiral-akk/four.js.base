@@ -54,7 +54,7 @@ class CustomerRenderer extends WebGLRenderer {
     this.setSize(width, height);
     this.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderTargets.forEach((rt) => {
-      rt.updateSize(renderer);
+      rt.updateSize(this);
     });
   }
 }
