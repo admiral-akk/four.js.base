@@ -1,7 +1,7 @@
 class KeyedMap extends Map {
   set(keyedValue, value) {
     const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.add(key, value);
+    return super.set(key, value);
   }
 
   get(keyedValue) {

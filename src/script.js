@@ -16,19 +16,36 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { uniform } from "three/examples/jsm/nodes/Nodes.js";
 
 import { Text } from "troika-three-text";
+import { MeshBasicMaterial } from "three";
+import { KeyedMap, KeyedSet } from "./utils/helper.js";
 
-class TicTacToe {
-  constructor() {}
+// input
+// intent
+// application state
+// events -> render state
 
-  init() {}
-  cleanup() {}
+const gui = new DebugManager();
+gui.add("renderMode", "StandardDiffuse", [
+  "LabOkGradient",
+  "LinearGradient",
+  "StandardDiffuse",
+]);
 
-  pause() {}
-  resume() {}
+var stats = new Stats();
+stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+document.body.appendChild(stats.dom);
 
-  update(engine) {}
-  render() {}
-}
+const time = new TimeManager();
+const scene = new THREE.Scene();
+const loader = generateLoadingManager();
+
+loader.load("./texture/rock/Rock051_1K-JPG_NormalDX.jpg");
+loader.load("./model/crate.glb");
+
+const camera = generateCamera(scene, cameraConfig);
+const windowManager = new WindowManager(camera);
+const input = new InputManager(windowManager, time);
+const renderer = new CustomerRenderer(windowManager);
 
 class MainMenu {
   constructor() {}
@@ -83,10 +100,10 @@ class MainMenu {
 
   update(engine) {
     if (this.clicked) {
-      engine.replaceState(new TicTacToe());
+      //engine.replaceState(new TicTacToe());
     }
   }
-  render() {}
+  render(renderer) {}
 }
 
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
@@ -99,9 +116,17 @@ class GameEngine {
     this.pushState(new MainMenu());
   }
 
-  replaceState(state) {
+  currentState() {
     const len = this.states.length;
     if (len > 0) {
+      return this.states[len - 1];
+    }
+    return null;
+  }
+
+  replaceState(state) {
+    const current = this.currentState();
+    if (current) {
       this.states.pop().cleanup();
     }
     state.init();
@@ -109,68 +134,32 @@ class GameEngine {
   }
 
   pushState(state) {
-    const len = this.states.length;
-    if (len > 0) {
-      this.states[len - 1].pause();
-    }
+    this.currentState()?.pause();
     state.init();
     this.states.push(state);
   }
 
   popState() {
-    const len = this.states.length;
-    if (len > 0) {
+    const current = this.currentState();
+    if (current) {
       const state = this.states.pop();
       state.cleanup();
     }
 
-    if (len > 1) {
-      const state = this.states[len - 2];
-      state.resume();
-    }
+    this.currentState()?.resume();
   }
 
   update() {
-    const len = this.states.length;
-    if (len > 0) {
-      this.states[len - 1].update(this);
-    }
+    this.currentState()?.update(this);
   }
 
-  render() {}
+  render(renderer) {
+    this.currentState()?.render(renderer);
+  }
 }
 
 const engine = new GameEngine();
 engine.init();
-
-// input
-// intent
-// application state
-// events -> render state
-
-const gui = new DebugManager();
-gui.add("renderMode", "StandardDiffuse", [
-  "LabOkGradient",
-  "LinearGradient",
-  "StandardDiffuse",
-]);
-
-var stats = new Stats();
-stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
-document.body.appendChild(stats.dom);
-
-const time = new TimeManager();
-const scene = new THREE.Scene();
-const loader = generateLoadingManager();
-
-loader.load("./texture/rock/Rock051_1K-JPG_NormalDX.jpg");
-loader.load("./model/crate.glb");
-
-const camera = generateCamera(scene, cameraConfig);
-const windowManager = new WindowManager(camera);
-const input = new InputManager(windowManager, time);
-const renderer = new CustomerRenderer(windowManager);
-
 const game = new Game(scene);
 
 class RenderPipeline {
@@ -321,6 +310,7 @@ function raf() {
   cube.rotateOnAxis(new THREE.Vector3(0, 1, 0), time.time.userDeltaTime);
   game.update(time);
   engine.update();
+  engine.render(renderer);
 
   //controls.update();
   time.endLoop();
