@@ -3,6 +3,45 @@ import { KeyedMap, KeyedSet } from "../utils/helper.js";
 import { MeshBasicMaterial } from "three";
 import { generateCamera } from "../utils/camera.js";
 
+export class MainMenu {
+  constructor() {}
+
+  init() {
+    const ui = document.querySelector("div.ui");
+
+    this.clicked = false;
+    var div = document.createElement("div");
+    // https://css-tricks.com/fitting-text-to-a-container/
+    div.style.position = "absolute";
+    div.style.fontSize = "2cqi";
+    div.style.top = "3%";
+    div.style.right = "3%";
+    div.style.height = "10%";
+    div.style.width = "10%";
+    div.style.background = "red";
+    div.style.container = "ui";
+    div.innerHTML = "Hello world";
+    div.style.pointerEvents = "auto";
+    ui.appendChild(div);
+    this.ui = ui;
+    this.div = div;
+  }
+  cleanup() {
+    this.ui.removeChild(this.div);
+  }
+
+  pause() {}
+  resume() {}
+
+  update(engine) {
+    const { ui } = engine.input.getState();
+    if (ui.clicked.find((v) => v === this.div.inputKey) !== undefined) {
+      engine.replaceState(new TicTacToe());
+    }
+  }
+  render(renderer) {}
+}
+
 class Position {
   constructor(x, y) {
     this.x = x;
@@ -262,7 +301,7 @@ class TicTacToeScene extends THREE.Scene {
   }
 }
 
-export class TicTacToe {
+class TicTacToe {
   constructor() {}
 
   init() {

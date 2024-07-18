@@ -17,7 +17,8 @@ import { uniform } from "three/examples/jsm/nodes/Nodes.js";
 
 import { Text } from "troika-three-text";
 import { MeshBasicMaterial } from "three";
-import { TicTacToe } from "./examples/tictactoe.js";
+import { GameEngine } from "./utils/engine.js";
+import { MainMenu } from "./examples/tictactoe.js";
 import { KeyedMap, KeyedSet } from "./utils/helper.js";
 
 // input
@@ -48,122 +49,8 @@ const windowManager = new WindowManager(camera);
 const input = new InputManager(windowManager, time);
 const renderer = new CustomerRenderer(windowManager);
 
-class MainMenu {
-  constructor() {}
-
-  init() {
-    const ui = document.querySelector("div.ui");
-
-    this.clicked = false;
-    var div = document.createElement("div");
-    div.onclick = (ev) => {
-      this.clicked = true;
-    };
-    // https://css-tricks.com/fitting-text-to-a-container/
-    div.style.position = "absolute";
-    div.style.fontSize = "2cqi";
-    div.style.top = "3%";
-    div.style.right = "3%";
-    div.style.height = "10%";
-    div.style.width = "10%";
-    div.style.background = "red";
-    div.style.container = "ui";
-    div.innerHTML = "Hello world";
-    div.style.pointerEvents = "auto";
-    const tutorial = document.createElement("div");
-    tutorial.style.position = "absolute";
-    tutorial.style.top = "90%";
-    tutorial.style.bottom = "3%";
-    tutorial.style.right = "20%";
-    tutorial.style.left = "20%";
-    tutorial.style.pointerEvents = "auto";
-    tutorial.style.background = "red";
-    tutorial.style.alignContent = "center";
-    const tutorialText = document.createElement("div");
-    tutorialText.innerHTML = "Tutorial message";
-    tutorialText.style.textAlign = "center";
-    tutorialText.style.fontSize = "2cqi";
-    tutorialText.style.container = "ui";
-    this.div = div;
-    this.tutorial = tutorial;
-    this.tutorialText = tutorialText;
-    tutorial.appendChild(tutorialText);
-    ui.appendChild(div);
-    this.ui = ui;
-    this.div = div;
-  }
-  cleanup() {
-    this.ui.removeChild(this.div);
-  }
-
-  pause() {}
-  resume() {}
-
-  update(engine) {
-    const { ui } = engine.input.getState();
-    if (ui.clicked.find((v) => v === this.div.inputKey) !== undefined) {
-      engine.replaceState(new TicTacToe());
-    }
-  }
-  render(renderer) {}
-}
-
-// http://gamedevgeek.com/tutorials/managing-game-states-in-c/
-class GameEngine {
-  constructor(input) {
-    this.states = [];
-    this.input = input;
-  }
-
-  init() {
-    this.pushState(new MainMenu());
-  }
-
-  currentState() {
-    const len = this.states.length;
-    if (len > 0) {
-      return this.states[len - 1];
-    }
-    return null;
-  }
-
-  replaceState(state) {
-    const current = this.currentState();
-    if (current) {
-      this.states.pop().cleanup();
-    }
-    state.init();
-    this.states.push(state);
-  }
-
-  pushState(state) {
-    this.currentState()?.pause();
-    state.init();
-    this.states.push(state);
-  }
-
-  popState() {
-    const current = this.currentState();
-    if (current) {
-      const state = this.states.pop();
-      state.cleanup();
-    }
-
-    this.currentState()?.resume();
-  }
-
-  update() {
-    this.currentState()?.update(this);
-    this.input.endLoop();
-  }
-
-  render(renderer) {
-    this.currentState()?.render(renderer);
-  }
-}
-
 const engine = new GameEngine(input);
-engine.init();
+engine.init(new MainMenu());
 const game = new Game(scene);
 
 class RenderPipeline {

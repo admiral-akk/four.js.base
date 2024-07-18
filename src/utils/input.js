@@ -200,11 +200,6 @@ class InputManager {
     for (const key of keys) {
       const events = this.history.object.get(key);
       {
-        // clicked
-        // if last two events are:
-        // mouse down
-        // mouse up
-
         const last = events.length > 0 ? events[events.length - 1] : null;
         if (last && last.tick === this.tick && last.type === "rayhit") {
           object.hover.push(key);
