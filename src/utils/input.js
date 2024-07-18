@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { element } from "three/examples/jsm/nodes/Nodes.js";
 
 class InputManager {
   updateTime({ userDeltaTime, gameDeltaTime }) {
@@ -13,9 +14,47 @@ class InputManager {
     return this.uniqueVal++;
   }
 
+  storeEvent(ev) {
+    ev.tick = this.tick;
+    switch (ev.type) {
+      case "wheel":
+      case "pointerup":
+      case "pointerdown":
+      case "pointermove":
+        this.history.mouse.push(ev);
+        break;
+      case "blur":
+      case "focusout":
+        break;
+      case "keydown":
+      case "keyup":
+        if (!this.history.key.has(ev.key)) {
+          this.history.key.set(ev.key, []);
+        }
+        this.history.key.get(ev.key).push(ev);
+        break;
+      case "mousedown":
+      case "mouseup":
+      case "mouseleave":
+      case "mouseout":
+      case "mouseover":
+        if (!this.history.ui.has(ev.inputKey)) {
+          this.history.ui.set(ev.inputKey, []);
+        }
+        this.history.ui.get(ev.inputKey).push(ev);
+        break;
+      default:
+        break;
+    }
+  }
+
   constructor(windowManager, time) {
     this.tick = 0;
-    this.history = [];
+    this.history = {
+      mouse: [],
+      key: new Map(),
+      ui: new Map(),
+    };
     this.uniqueVal = 0;
     this.mouseState = {
       posDelta: new THREE.Vector2(),
@@ -35,13 +74,13 @@ class InputManager {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
-      this.history.push({ tick: this.tick, type: event.type });
+      this.storeEvent({ type: event.type });
     });
     window.addEventListener("focusout", (event) => {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
-      this.history.push({ tick: this.tick, type: event.type });
+      this.storeEvent({ type: event.type });
     });
     window.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
@@ -53,7 +92,7 @@ class InputManager {
       if (!pressedKeys.has(key)) {
         pressedKeys.set(key, { heldGameTime: 0, heldUserTime: 0, ticks: 0 });
       }
-      this.history.push({ tick: this.tick, type: event.type, key: key });
+      this.storeEvent({ type: event.type, key });
     });
     window.addEventListener("keyup", (event) => {
       const key = event.key.toLowerCase();
@@ -62,7 +101,7 @@ class InputManager {
       if (pressedKeys.has(key)) {
         pressedKeys.delete(key);
       }
-      this.history.push({ tick: this.tick, type: event.type, key: key });
+      this.storeEvent({ type: event.type, key });
     });
 
     const handleMouseEvent = (event) => {
@@ -85,8 +124,7 @@ class InputManager {
       }
 
       this.mouseState.buttons = event.buttons;
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
         pos: pos,
         buttons: event.buttons,
@@ -95,10 +133,10 @@ class InputManager {
 
     const handleScrollEvent = (event) => {
       this.mouseState.mouseWheel.deltaY = event.deltaY;
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
-        deltaY: event.deltaY,
+        pos: pos,
+        buttons: event.buttons,
       });
     };
 
@@ -137,7 +175,7 @@ class InputManager {
     };
 
     // handle released
-    const latestCurrentPointerUp = this.history.findLast((ev) => {
+    const latestCurrentPointerUp = this.history.mouse.findLast((ev) => {
       if (ev.tick !== this.tick) {
         return false;
       }
@@ -150,7 +188,7 @@ class InputManager {
     });
     if (latestCurrentPointerUp) {
       // find what the previous
-      const prevPointer = this.history.findLast((ev) => {
+      const prevPointer = this.history.mouse.findLast((ev) => {
         if (ev.tick === this.tick) {
           return false;
         }
@@ -171,7 +209,7 @@ class InputManager {
     }
 
     // handle pressed
-    const latestCurrentPointerDown = this.history.findLast((ev) => {
+    const latestCurrentPointerDown = this.history.mouse.findLast((ev) => {
       if (ev.tick !== this.tick) {
         return false;
       }
@@ -184,7 +222,7 @@ class InputManager {
     });
     if (latestCurrentPointerDown) {
       // find what the previous
-      const prevPointer = this.history.findLast((ev) => {
+      const prevPointer = this.history.mouse.findLast((ev) => {
         if (ev.tick === this.tick) {
           return false;
         }
@@ -206,7 +244,7 @@ class InputManager {
 
     // handle held
     // handle mouse position
-    const latestMouseEvent = this.history.findLast((ev) => {
+    const latestMouseEvent = this.history.mouse.findLast((ev) => {
       switch (ev.type) {
         case "pointerdown":
         case "pointerup":
@@ -226,24 +264,30 @@ class InputManager {
     return mouse;
   }
 
-  getState() {
-    const mouse = this.getMouseState();
+  getKeyState() {
     const key = {
       pressed: [],
       held: [],
       released: [],
     };
+    return key;
+  }
+
+  getUiState() {
     const ui = {
       idle: [],
       down: [],
       clicked: [],
       hover: [],
     };
+    return ui;
+  }
 
+  getState() {
     return {
-      mouse,
-      key,
-      ui,
+      mouse: this.getMouseState(),
+      key: this.getKeyState(),
+      ui: this.getUiState(),
     };
   }
 
@@ -253,8 +297,7 @@ class InputManager {
     this.ui.set(element.inputKey, element);
     element.onmousedown = (event) => {
       this.ui.get(element.inputKey).state = "down";
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
@@ -266,40 +309,35 @@ class InputManager {
       } else {
         this.ui.get(element.inputKey).state = "hover";
       }
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseenter = (event) => {
       this.ui.get(element.inputKey).state = "hover";
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseover = (event) => {
       this.ui.get(element.inputKey).state = "hover";
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseleave = (event) => {
       this.ui.get(element.inputKey).state = "idle";
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseout = (event) => {
       this.ui.get(element.inputKey).state = "idle";
-      this.history.push({
-        tick: this.tick,
+      this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
