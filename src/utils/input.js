@@ -265,12 +265,43 @@ class InputManager {
   }
 
   getKeyState() {
-    const key = {
+    const keyState = {
       pressed: [],
       held: [],
       released: [],
     };
-    return key;
+    const keys = this.history.key.keys();
+
+    for (const key of keys) {
+      const events = this.history.key.get(key);
+      {
+        // released
+        const last = events.length > 0 ? events[events.length - 1] : null;
+        const secondLast = events.length > 1 ? events[events.length - 2] : null;
+        if (
+          last &&
+          secondLast &&
+          last.tick === this.tick &&
+          last.type === "keyup" &&
+          secondLast.type === "keydown"
+        ) {
+          keyState.released.push(key);
+        }
+      }
+      {
+        // pressed
+        const last = events.length > 0 ? events[events.length - 1] : null;
+        if (last && last.type === "keydown") {
+          if (last.tick === this.tick) {
+            keyState.pressed.push(key);
+          } else {
+            keyState.held.push(key);
+          }
+        }
+      }
+    }
+
+    return keyState;
   }
 
   getUiState() {

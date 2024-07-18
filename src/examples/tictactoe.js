@@ -42,7 +42,7 @@ class TicTacToeIntent {
   }
 
   update(scene, input, camera) {
-    const mouse = input.getState().mouse;
+    const { mouse } = input.getState();
     const { pos, released } = mouse;
     if (released && pos) {
       _raycaster.setFromCamera(pos, camera);
