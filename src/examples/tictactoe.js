@@ -226,6 +226,7 @@ class TicTacToeScene extends THREE.Scene {
       this.add(mesh);
     };
 
+    this.tl = gsap.timeline();
     makeLine(new THREE.Vector3(1, 0, 0), 6, 0.2);
     makeLine(new THREE.Vector3(-1, 0, 0), 6, 0.2);
     makeLine(new THREE.Vector3(0, 1, 0), 0.2, 6);
@@ -264,8 +265,6 @@ class TicTacToeScene extends THREE.Scene {
       this.hint.position.copy(
         new THREE.Vector3(2 * position.x - 2, 2 * position.y - 2, 0)
       );
-      console.log(position);
-      console.log(game.board);
       if (game.board.has(position)) {
         this.hint.material.opacity = 0;
       } else {
@@ -294,7 +293,7 @@ class TicTacToeScene extends THREE.Scene {
       this.hint.material.opacity = 0;
     }
     const makeMark = (position, player) => {
-      const plane = new THREE.PlaneGeometry(1.6, 1.6);
+      const plane = new THREE.PlaneGeometry(1.3, 1.3);
       const mesh = new THREE.Mesh(
         plane,
         new MeshBasicMaterial({ color: player === "X" ? "green" : "red" })
@@ -304,24 +303,38 @@ class TicTacToeScene extends THREE.Scene {
         new THREE.Vector3(2 * position.x - 2, 2 * position.y - 2, 0)
       );
 
-      mesh.scale.copy(new THREE.Vector3(0.5, 0.5, 0.5));
-      gsap.to(mesh.scale, {
-        duration: 0.8,
-        ease: "elastic.out(1,0.3)",
-        x: 1,
-        y: 1,
-        z: 1,
-      });
+      this.tl.fromTo(
+        mesh.scale,
+        {
+          x: 0.5,
+          y: 0.5,
+          z: 0.5,
+        },
+        {
+          duration: 0.8,
+          ease: "elastic.out(1,0.3)",
+          x: 1,
+          y: 1,
+          z: 1,
+        }
+      );
       this.add(mesh);
     };
     for (let i = 0; i < effects.length; i++) {
       const effect = effects[i];
       switch (effect.effect) {
         case "add":
+          console.log("make mark");
           makeMark(effect.pos, effect.player);
           break;
         case "gameover":
-          engine.replaceState(new TicTacToe());
+          console.log("game over");
+          const restart = () => engine.replaceState(new TicTacToe());
+          if (!this.tl.isActive()) {
+            restart();
+          } else {
+            this.tl.onComplete = restart;
+          }
           break;
         default:
           break;
@@ -336,6 +349,7 @@ class TicTacToe {
   init() {
     this.game = new TicTacToeGame();
     this.scene = new TicTacToeScene();
+    this.scene.ui = this.ui;
     this.scene.init();
     this.intent = new TicTacToeIntent(this.ui);
     this.intent.init(this.scene);
