@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { KeyedMap, KeyedSet } from "../utils/helper.js";
 import { MeshBasicMaterial } from "three";
+import { gsap } from "gsap";
 import { generateCamera } from "../utils/camera.js";
 
 export class MainMenu {
@@ -302,6 +303,15 @@ class TicTacToeScene extends THREE.Scene {
       mesh.position.copy(
         new THREE.Vector3(2 * position.x - 2, 2 * position.y - 2, 0)
       );
+
+      mesh.scale.copy(new THREE.Vector3(0.5, 0.5, 0.5));
+      gsap.to(mesh.scale, {
+        duration: 0.8,
+        ease: "elastic.out(1,0.3)",
+        x: 1,
+        y: 1,
+        z: 1,
+      });
       this.add(mesh);
     };
     for (let i = 0; i < effects.length; i++) {
