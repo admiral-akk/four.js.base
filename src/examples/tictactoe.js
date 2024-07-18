@@ -1,3 +1,8 @@
+import * as THREE from "three";
+import { KeyedMap, KeyedSet } from "../utils/helper.js";
+import { MeshBasicMaterial } from "three";
+import { generateCamera } from "../utils/camera.js";
+
 class Position {
   constructor(x, y) {
     this.x = x;
@@ -36,7 +41,7 @@ class TicTacToeIntent {
     }
   }
 
-  update(scene) {
+  update(scene, input, camera) {
     const { pos, buttons } = input.mouseState;
     if (buttons && pos) {
       _raycaster.setFromCamera(pos, camera);
@@ -202,7 +207,7 @@ class TicTacToeScene extends THREE.Scene {
   }
 }
 
-class TicTacToe {
+export class TicTacToe {
   constructor() {}
 
   init() {
@@ -211,6 +216,17 @@ class TicTacToe {
     this.scene.init();
     this.intent = new TicTacToeIntent();
     this.intent.init(this.scene);
+    this.camera = generateCamera(this.scene, {
+      subtypeConfig: {
+        type: "perspective",
+        fov: 75,
+        zoom: 10,
+      },
+      aspectRatio: 16 / 9,
+      near: 0.001,
+      far: 40.0,
+      position: new THREE.Vector3(0, 0, 4).normalize().multiplyScalar(10),
+    });
   }
 
   cleanup() {}
@@ -219,11 +235,11 @@ class TicTacToe {
   resume() {}
 
   update(engine) {
-    const commands = this.intent.update(this.scene);
+    const commands = this.intent.update(this.scene, engine.input, this.camera);
     const effects = this.game.update(commands);
     this.scene.update(effects, engine);
   }
   render(renderer) {
-    renderer.render(this.scene, camera);
+    renderer.render(this.scene, this.camera);
   }
 }

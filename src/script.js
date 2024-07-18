@@ -17,6 +17,7 @@ import { uniform } from "three/examples/jsm/nodes/Nodes.js";
 
 import { Text } from "troika-three-text";
 import { MeshBasicMaterial } from "three";
+import { TicTacToe } from "./examples/tictactoe.js";
 import { KeyedMap, KeyedSet } from "./utils/helper.js";
 
 // input
@@ -54,7 +55,7 @@ class MainMenu {
     const ui = document.querySelector("div.ui");
 
     this.clicked = false;
-    var div = document.createElement("button");
+    var div = document.createElement("div");
     div.onclick = (ev) => {
       this.clicked = true;
     };
@@ -99,8 +100,8 @@ class MainMenu {
   resume() {}
 
   update(engine) {
-    if (this.clicked) {
-      //engine.replaceState(new TicTacToe());
+    if (this.div.state === "clicked") {
+      engine.replaceState(new TicTacToe());
     }
   }
   render(renderer) {}
@@ -108,8 +109,9 @@ class MainMenu {
 
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 class GameEngine {
-  constructor() {
+  constructor(input) {
     this.states = [];
+    this.input = input;
   }
 
   init() {
@@ -151,6 +153,7 @@ class GameEngine {
 
   update() {
     this.currentState()?.update(this);
+    this.input.endLoop();
   }
 
   render(renderer) {
@@ -158,7 +161,7 @@ class GameEngine {
   }
 }
 
-const engine = new GameEngine();
+const engine = new GameEngine(input);
 engine.init();
 const game = new Game(scene);
 

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { element } from "three/examples/jsm/nodes/Nodes.js";
 
 class InputManager {
   updateTime({ userDeltaTime, gameDeltaTime }) {
@@ -9,7 +10,12 @@ class InputManager {
     });
   }
 
+  getUnique() {
+    return this.uniqueVal++;
+  }
+
   constructor(windowManager, time) {
+    this.uniqueVal = 0;
     this.mouseState = {
       posDelta: new THREE.Vector2(),
       pos: null,
@@ -21,6 +27,7 @@ class InputManager {
     this.keyState = {
       pressedKeys: new Map(),
     };
+    this.ui = new Map();
     this.sizes = { width: 1, height: 1 };
     this.listeners = [];
     window.addEventListener("blur", () => {
@@ -103,10 +110,74 @@ class InputManager {
   updateSize(sizes) {
     this.sizes = sizes;
   }
+
+  register(element) {
+    element.inputKey = this.getUnique();
+    element.state = "idle";
+    this.ui.set(element.inputKey, element);
+    element.onmousedown = () => {
+      this.ui.get(element.inputKey).state = "down";
+    };
+    element.onmouseup = () => {
+      const state = this.ui.get(element.inputKey);
+      if (state.state === "down") {
+        this.ui.get(element.inputKey).state = "clicked";
+      } else {
+        this.ui.get(element.inputKey).state = "hover";
+      }
+    };
+    element.onmouseenter = () => {
+      this.ui.get(element.inputKey).state = "hover";
+    };
+    element.onmouseover = () => {
+      this.ui.get(element.inputKey).state = "hover";
+    };
+    element.onmouseleave = () => {
+      this.ui.get(element.inputKey).state = "idle";
+    };
+    element.onmouseout = () => {
+      this.ui.get(element.inputKey).state = "idle";
+    };
+  }
+  //onclick	The user clicks on an element
+  // oncontextmenu	The user right-clicks on an element
+  // ondblclick	The user double-clicks on an element
+  // onmousedown	A mouse button is pressed over an element
+  // onmouseenter	The pointer is moved onto an element
+  // onmouseleave	The pointer is moved out of an element
+  // onmousemove	The pointer is moving over an element
+  // onmouseout	The mouse pointer moves out of an element
+  // onmouseover	The mouse pointer is moved over an element
+  // onmouseup
+
   endLoop() {
     this.mouseState.posDelta.x = 0;
     this.mouseState.posDelta.y = 0;
     this.mouseState.mouseWheel.deltaY = null;
+
+    const elements = document.getElementsByTagName("*");
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      if (element.style.pointerEvents !== "auto") {
+        continue;
+      }
+      if (this.ui.has(element.inputKey)) {
+        continue;
+      }
+      this.register(element);
+    }
+
+    const keys = this.ui.keys();
+    keys.forEach((k) => {
+      const element = this.ui.get(k);
+      //console.log(this.ui.get(k));
+      if (!element.parentNode) {
+        this.ui.delete(k);
+      } else if (element.state === "clicked") {
+        element.state = "hover";
+      }
+      console.log(element.state);
+    });
   }
 }
 
