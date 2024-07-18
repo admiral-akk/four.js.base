@@ -35,7 +35,7 @@ export class MainMenu {
 
   update(engine) {
     const { ui } = engine.input.getState();
-    if (ui.clicked.find((v) => v === this.div.inputKey) !== undefined) {
+    if (ui.clicked.find((v) => v === this.div) !== undefined) {
       engine.replaceState(new TicTacToe());
     }
   }

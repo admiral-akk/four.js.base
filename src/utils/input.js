@@ -60,10 +60,10 @@ class InputManager {
       case "mouseleave":
       case "mouseout":
       case "mouseenter":
-        if (!this.history.ui.has(ev.inputKey)) {
-          this.history.ui.set(ev.inputKey, []);
+        if (!this.history.ui.has(ev.element)) {
+          this.history.ui.set(ev.element, []);
         }
-        this.history.ui.get(ev.inputKey).push(ev);
+        this.history.ui.get(ev.element).push(ev);
         break;
       default:
         break;
@@ -91,7 +91,7 @@ class InputManager {
     this.keyState = {
       pressedKeys: new Map(),
     };
-    this.ui = new Map();
+    this.ui = new Set();
     this.sizes = { width: 1, height: 1 };
     this.listeners = [];
     window.addEventListener("blur", (event) => {
@@ -438,36 +438,35 @@ class InputManager {
   }
 
   register(element) {
-    element.inputKey = this.getUnique();
-    this.ui.set(element.inputKey, element);
+    this.ui.add(element);
     element.onmousedown = (event) => {
       this.storeEvent({
         type: event.type,
-        inputKey: element.inputKey,
+        element,
       });
     };
     element.onmouseup = (event) => {
       this.storeEvent({
         type: event.type,
-        inputKey: element.inputKey,
+        element,
       });
     };
     element.onmouseenter = (event) => {
       this.storeEvent({
         type: event.type,
-        inputKey: element.inputKey,
+        element,
       });
     };
     element.onmouseleave = (event) => {
       this.storeEvent({
         type: event.type,
-        inputKey: element.inputKey,
+        element,
       });
     };
     element.onmouseout = (event) => {
       this.storeEvent({
         type: event.type,
-        inputKey: element.inputKey,
+        element,
       });
     };
   }
@@ -483,21 +482,12 @@ class InputManager {
       if (element.style.pointerEvents !== "auto") {
         continue;
       }
-      if (this.ui.has(element.inputKey)) {
+      if (this.ui.has(element)) {
         continue;
       }
       this.register(element);
     }
 
-    const keys = this.ui.keys();
-    keys.forEach((k) => {
-      const element = this.ui.get(k);
-      if (!element.parentNode) {
-        this.ui.delete(k);
-      } else if (element.state === "clicked") {
-        element.state = "hover";
-      }
-    });
     this.tick++;
   }
 }
