@@ -41,7 +41,6 @@ class TicTacToeIntent {
   }
 
   update(scene, input, camera) {
-    input.update(scene, camera);
     const { mouse, object } = input.getState();
     const { released } = mouse;
     if (released) {
@@ -172,11 +171,69 @@ class TicTacToeScene extends THREE.Scene {
     makeLine(new THREE.Vector3(-1, 0, 0), 6, 0.2);
     makeLine(new THREE.Vector3(0, 1, 0), 0.2, 6);
     makeLine(new THREE.Vector3(0, -1, 0), 0.2, 6);
+    const makeHint = (position, player) => {
+      const plane = new THREE.PlaneGeometry(1.6, 1.6);
+      const material = new MeshBasicMaterial({
+        color: player === "X" ? "green" : "red",
+      });
+      const mesh = new THREE.Mesh(plane, material);
+
+      mesh.position.copy(
+        new THREE.Vector3(2 * position.x - 2, 2 * position.y - 2, 0)
+      );
+      material.transparent = true;
+      material.opacity = 0;
+      this.add(mesh);
+      return mesh;
+    };
+    this.hint = makeHint({ x: 0, y: 0 }, "X");
   }
 
   cleanup() {}
 
-  update(effects, engine) {
+  update(game, effects, engine, input) {
+    this.hint.material.color =
+      game.activePlayer === "X"
+        ? new THREE.Color("green")
+        : new THREE.Color("red");
+    const { mouse, object } = input.getState();
+    const buttons = (mouse.pressed || 0) | (mouse.held || 0);
+
+    // update hint to be where it's pointing
+    if (object.hover.length) {
+      const position = object.hover[0].pos;
+      this.hint.position.copy(
+        new THREE.Vector3(2 * position.x - 2, 2 * position.y - 2, 0)
+      );
+      console.log(position);
+      console.log(game.board);
+      if (game.board.has(position)) {
+        this.hint.material.opacity = 0;
+      } else {
+        switch (buttons) {
+          default:
+          case 0:
+            this.hint.material.opacity = 0.5;
+            break;
+          case 1:
+            if (game.activePlayer === "X") {
+              this.hint.material.opacity = 0.75;
+            } else {
+              this.hint.material.opacity = 0.25;
+            }
+            break;
+          case 2:
+            if (game.activePlayer === "O") {
+              this.hint.material.opacity = 0.25;
+            } else {
+              this.hint.material.opacity = 0.75;
+            }
+            break;
+        }
+      }
+    } else {
+      this.hint.material.opacity = 0;
+    }
     const makeMark = (position, player) => {
       const plane = new THREE.PlaneGeometry(1.6, 1.6);
       const mesh = new THREE.Mesh(
@@ -233,9 +290,10 @@ export class TicTacToe {
   resume() {}
 
   update(engine) {
+    engine.input.update(this.scene, this.camera);
     const commands = this.intent.update(this.scene, engine.input, this.camera);
     const effects = this.game.update(commands);
-    this.scene.update(effects, engine);
+    this.scene.update(this.game, effects, engine, engine.input);
   }
   render(renderer) {
     renderer.render(this.scene, this.camera);

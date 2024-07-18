@@ -4,6 +4,11 @@ class KeyedMap extends Map {
     return super.set(key, value);
   }
 
+  has(keyedValue) {
+    const key = keyedValue.key ? keyedValue.key() : keyedValue;
+    return super.has(key);
+  }
+
   get(keyedValue) {
     const key = keyedValue.key ? keyedValue.key() : keyedValue;
     return super.get(key);
