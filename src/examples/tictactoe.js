@@ -7,9 +7,6 @@ export class MainMenu {
   constructor() {}
 
   init() {
-    const ui = document.querySelector("div.ui");
-
-    this.clicked = false;
     var div = document.createElement("div");
     // https://css-tricks.com/fitting-text-to-a-container/
     div.style.position = "absolute";
@@ -22,13 +19,11 @@ export class MainMenu {
     div.style.container = "ui";
     div.innerHTML = "Hello world";
     div.style.pointerEvents = "auto";
-    ui.appendChild(div);
-    this.ui = ui;
+    this.ui.appendChild(div);
     this.div = div;
   }
-  cleanup() {
-    this.ui.removeChild(this.div);
-  }
+
+  cleanup() {}
 
   pause() {}
   resume() {}
@@ -53,8 +48,23 @@ class Position {
 }
 
 class TicTacToeIntent {
-  constructor() {
+  constructor(ui) {
     this.targets = new KeyedSet();
+
+    var div = document.createElement("div");
+    // https://css-tricks.com/fitting-text-to-a-container/
+    div.style.position = "absolute";
+    div.style.fontSize = "2cqi";
+    div.style.top = "90%";
+    div.style.right = "45%";
+    div.style.height = "10%";
+    div.style.width = "10%";
+    div.style.background = "red";
+    div.style.container = "ui";
+    div.innerHTML = "Main menu";
+    div.style.pointerEvents = "auto";
+    ui.appendChild(div);
+    this.div = div;
   }
 
   init(scene) {
@@ -308,7 +318,7 @@ class TicTacToe {
     this.game = new TicTacToeGame();
     this.scene = new TicTacToeScene();
     this.scene.init();
-    this.intent = new TicTacToeIntent();
+    this.intent = new TicTacToeIntent(this.ui);
     this.intent.init(this.scene);
     this.camera = generateCamera(this.scene, {
       subtypeConfig: {

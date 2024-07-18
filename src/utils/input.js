@@ -18,6 +18,15 @@ class InputManager {
     }
   }
 
+  cleanupContainer(ui) {
+    if (this.history.ui.has(ui)) {
+      this.history.ui.delete(ui);
+    }
+    for (let i = 0; i < ui.children.length; i++) {
+      this.cleanupContainer(ui.children[i]);
+    }
+  }
+
   updateTime({ userDeltaTime, gameDeltaTime }) {
     this.keyState.pressedKeys.forEach((v) => {
       v.heldUserTime += userDeltaTime;
