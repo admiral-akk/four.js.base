@@ -90,8 +90,11 @@ class TicTacToeIntent {
   }
 
   update(scene, input, camera) {
-    const { mouse, object } = input.getState();
+    const { mouse, object, ui } = input.getState();
     const { released } = mouse;
+    if (ui.clicked.length) {
+      return [{ type: "mainmenu" }];
+    }
     if (released) {
       const target = object.hover.find((v) => {
         return this.targets.has(v);
@@ -99,9 +102,9 @@ class TicTacToeIntent {
       if (target) {
         const pos = target.pos;
         if (released & 1) {
-          return [{ pos: pos, player: "X" }];
+          return [{ type: "mark", pos: pos, player: "X" }];
         } else {
-          return [{ pos: pos, player: "Y" }];
+          return [{ type: "mark", pos: pos, player: "Y" }];
         }
       }
     }
@@ -180,20 +183,26 @@ class TicTacToeGame {
     const effects = [];
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
-      if (command.player !== this.activePlayer) {
-        continue;
-      }
+      switch (command.type) {
+        case "mark":
+          if (command.player !== this.activePlayer) {
+            continue;
+          }
 
-      if (this.board.has(command.pos)) {
-        continue;
+          if (this.board.has(command.pos)) {
+            continue;
+          }
+          this.board.set(command.pos, command.player);
+          this.activePlayer = command.player === "X" ? "Y" : "X";
+          effects.push({
+            effect: "add",
+            pos: command.pos,
+            player: command.player,
+          });
+          break;
+        default:
+          break;
       }
-      this.board.set(command.pos, command.player);
-      this.activePlayer = command.player === "X" ? "Y" : "X";
-      effects.push({
-        effect: "add",
-        pos: command.pos,
-        player: command.player,
-      });
     }
     const gameOverEffect = this.gameover();
     if (gameOverEffect) {
@@ -341,8 +350,13 @@ class TicTacToe {
   update(engine) {
     engine.input.update(this.scene, this.camera);
     const commands = this.intent.update(this.scene, engine.input, this.camera);
-    const effects = this.game.update(commands);
-    this.scene.update(this.game, effects, engine, engine.input);
+    const endGame = commands.find((v) => v.type === "mainmenu");
+    if (endGame) {
+      engine.replaceState(new MainMenu());
+    } else {
+      const effects = this.game.update(commands);
+      this.scene.update(this.game, effects, engine, engine.input);
+    }
   }
   render(renderer) {
     renderer.render(this.scene, this.camera);
