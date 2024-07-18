@@ -1,8 +1,6 @@
 import { mergeUniforms } from "three/src/renderers/shaders/UniformsUtils.js";
 import { UniformsLib } from "three/src/renderers/shaders/UniformsLib.js";
 
-import { default as packing } from "three/src/renderers/shaders/ShaderChunk/packing.glsl.js";
-
 const basicCustomShader = {
   uniforms: mergeUniforms([UniformsLib.lights]),
 

@@ -20,7 +20,6 @@ const cameraConfig = {
     .normalize()
     .multiplyScalar(perspectiveConfig.zoom),
 };
-const _raycaster = new THREE.Raycaster();
 const generateCamera = (
   scene,
   { aspectRatio, subtypeConfig, near, far, position }

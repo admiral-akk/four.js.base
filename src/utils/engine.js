@@ -41,6 +41,7 @@ export class GameEngine {
     state.init();
     this.states.push(state);
   }
+
   pushState(state) {
     state.ui = this.makeContainer();
     this.currentState()?.pause();
