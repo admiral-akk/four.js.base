@@ -101,7 +101,6 @@ class MainMenu {
 
   update(engine) {
     const { ui } = engine.input.getState();
-    console.log(ui);
     if (ui.clicked.find((v) => v === this.div.inputKey) !== undefined) {
       engine.replaceState(new TicTacToe());
     }

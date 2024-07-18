@@ -1,7 +1,23 @@
 import * as THREE from "three";
-import { element } from "three/examples/jsm/nodes/Nodes.js";
+
+const _raycaster = new THREE.Raycaster();
+_raycaster.layers.set(1);
 
 class InputManager {
+  update(scene, camera) {
+    const { pos } = this.getState().mouse;
+    _raycaster.setFromCamera(pos, camera);
+    const intersects = _raycaster.intersectObjects(scene.children);
+    for (let i = 0; i < intersects.length; i++) {
+      this.storeEvent({
+        type: "rayhit",
+        object: intersects[i].object,
+        distance: intersects[i].distance,
+        order: i,
+      });
+    }
+  }
+
   updateTime({ userDeltaTime, gameDeltaTime }) {
     this.keyState.pressedKeys.forEach((v) => {
       v.heldUserTime += userDeltaTime;
@@ -17,6 +33,12 @@ class InputManager {
   storeEvent(ev) {
     ev.tick = this.tick;
     switch (ev.type) {
+      case "rayhit":
+        if (!this.history.object.has(ev.object)) {
+          this.history.object.set(ev.object, []);
+        }
+        this.history.object.get(ev.object).push(ev);
+        break;
       case "wheel":
       case "pointerup":
       case "pointerdown":
@@ -49,11 +71,13 @@ class InputManager {
   }
 
   constructor(windowManager, time) {
+    this.state = {};
     this.tick = 0;
     this.history = {
       mouse: [],
       key: new Map(),
       ui: new Map(),
+      object: new Map(),
     };
     this.uniqueVal = 0;
     this.mouseState = {
@@ -164,6 +188,30 @@ class InputManager {
 
   updateSize(sizes) {
     this.sizes = sizes;
+  }
+
+  getObjectState() {
+    const object = {
+      hover: [],
+    };
+
+    const keys = this.history.object.keys();
+
+    for (const key of keys) {
+      const events = this.history.object.get(key);
+      {
+        // clicked
+        // if last two events are:
+        // mouse down
+        // mouse up
+
+        const last = events.length > 0 ? events[events.length - 1] : null;
+        if (last && last.tick === this.tick && last.type === "rayhit") {
+          object.hover.push(key);
+        }
+      }
+    }
+    return object;
   }
 
   getMouseState() {
@@ -390,6 +438,7 @@ class InputManager {
       mouse: this.getMouseState(),
       key: this.getKeyState(),
       ui: this.getUiState(),
+      object: this.getObjectState(),
     };
   }
 
@@ -427,16 +476,6 @@ class InputManager {
       });
     };
   }
-  //onclick	The user clicks on an element
-  // oncontextmenu	The user right-clicks on an element
-  // ondblclick	The user double-clicks on an element
-  // onmousedown	A mouse button is pressed over an element
-  // onmouseenter	The pointer is moved onto an element
-  // onmouseleave	The pointer is moved out of an element
-  // onmousemove	The pointer is moving over an element
-  // onmouseout	The mouse pointer moves out of an element
-  // onmouseover	The mouse pointer is moved over an element
-  // onmouseup
 
   endLoop() {
     this.mouseState.posDelta.x = 0;

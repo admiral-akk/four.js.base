@@ -13,8 +13,6 @@ class Position {
   }
 }
 
-const _raycaster = new THREE.Raycaster();
-
 class TicTacToeIntent {
   constructor() {
     this.targets = new KeyedSet();
@@ -29,6 +27,7 @@ class TicTacToeIntent {
 
       mesh.position.copy(new THREE.Vector3(2 * x - 2, 2 * y - 2, 0));
       scene.add(mesh);
+      mesh.layers.enable(1);
       mesh.pos = new Position(x, y);
       mesh.key = mesh.pos.key;
       return mesh;
@@ -42,17 +41,15 @@ class TicTacToeIntent {
   }
 
   update(scene, input, camera) {
-    const { mouse } = input.getState();
-    const { pos, released } = mouse;
-    if (released && pos) {
-      _raycaster.setFromCamera(pos, camera);
-      const intersects = _raycaster.intersectObjects(scene.children);
-
-      const target = intersects.find((v) => {
-        return this.targets.has(v.object);
+    input.update(scene, camera);
+    const { mouse, object } = input.getState();
+    const { released } = mouse;
+    if (released) {
+      const target = object.hover.find((v) => {
+        return this.targets.has(v);
       });
       if (target) {
-        const pos = target.object.pos;
+        const pos = target.pos;
         if (released & 1) {
           return [{ pos: pos, player: "X" }];
         } else {
