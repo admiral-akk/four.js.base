@@ -100,7 +100,9 @@ class MainMenu {
   resume() {}
 
   update(engine) {
-    if (this.div.state === "clicked") {
+    const { ui } = engine.input.getState();
+    console.log(ui);
+    if (ui.clicked.find((v) => v === this.div.inputKey) !== undefined) {
       engine.replaceState(new TicTacToe());
     }
   }
@@ -167,7 +169,6 @@ const game = new Game(scene);
 
 class RenderPipeline {
   constructor(renderer) {
-    console.log(renderer);
     this.renderer = renderer;
 
     this.normalTarget = renderer.newRenderTarget(1);

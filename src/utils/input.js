@@ -37,7 +37,7 @@ class InputManager {
       case "mouseup":
       case "mouseleave":
       case "mouseout":
-      case "mouseover":
+      case "mouseenter":
         if (!this.history.ui.has(ev.inputKey)) {
           this.history.ui.set(ev.inputKey, []);
         }
@@ -280,6 +280,77 @@ class InputManager {
       clicked: [],
       hover: [],
     };
+    const keys = this.history.ui.keys();
+
+    for (const key of keys) {
+      const events = this.history.ui.get(key);
+      {
+        // clicked
+        // if last two events are:
+        // mouse down
+        // mouse up
+
+        const last = events.length > 0 ? events[events.length - 1] : null;
+        const secondLast = events.length > 1 ? events[events.length - 2] : null;
+        if (
+          last &&
+          secondLast &&
+          last.tick === this.tick &&
+          last.type === "mouseup" &&
+          secondLast.type === "mousedown"
+        ) {
+          ui.clicked.push(key);
+        }
+      }
+      {
+        // down
+        // if last event is mouse down and this tick
+
+        const last = events.length > 0 ? events[events.length - 1] : null;
+        if (last && last.type === "mousedown") {
+          ui.down.push(key);
+        }
+      }
+      {
+        // hover
+        // if last event is mouse enter, over, or up + not clicked
+
+        const last = events.length > 0 ? events[events.length - 1] : null;
+        switch (last.type) {
+          case "mouseup":
+            if (ui.clicked.includes(key)) {
+              break;
+            }
+          case "mouseover":
+          case "mouseenter":
+            ui.hover.push(key);
+            break;
+
+          default:
+            break;
+        }
+      }
+      {
+        // idle
+        // if last event is mouse enter, over, or up + not clicked
+
+        const last = events.length > 0 ? events[events.length - 1] : null;
+        if (last) {
+          switch (last.type) {
+            case "mouseleave":
+            case "mouseout":
+              ui.idle.push(key);
+              break;
+
+            default:
+              break;
+          }
+        } else {
+          break;
+        }
+      }
+    }
+
     return ui;
   }
 
@@ -293,50 +364,32 @@ class InputManager {
 
   register(element) {
     element.inputKey = this.getUnique();
-    element.state = "idle";
     this.ui.set(element.inputKey, element);
     element.onmousedown = (event) => {
-      this.ui.get(element.inputKey).state = "down";
       this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseup = (event) => {
-      const state = this.ui.get(element.inputKey);
-      if (state.state === "down") {
-        this.ui.get(element.inputKey).state = "clicked";
-      } else {
-        this.ui.get(element.inputKey).state = "hover";
-      }
       this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseenter = (event) => {
-      this.ui.get(element.inputKey).state = "hover";
-      this.storeEvent({
-        type: event.type,
-        inputKey: element.inputKey,
-      });
-    };
-    element.onmouseover = (event) => {
-      this.ui.get(element.inputKey).state = "hover";
       this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseleave = (event) => {
-      this.ui.get(element.inputKey).state = "idle";
       this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
       });
     };
     element.onmouseout = (event) => {
-      this.ui.get(element.inputKey).state = "idle";
       this.storeEvent({
         type: event.type,
         inputKey: element.inputKey,
@@ -374,13 +427,11 @@ class InputManager {
     const keys = this.ui.keys();
     keys.forEach((k) => {
       const element = this.ui.get(k);
-      //console.log(this.ui.get(k));
       if (!element.parentNode) {
         this.ui.delete(k);
       } else if (element.state === "clicked") {
         element.state = "hover";
       }
-      console.log(element.state);
     });
     this.tick++;
   }
