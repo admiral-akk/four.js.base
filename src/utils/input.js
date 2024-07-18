@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { element } from "three/examples/jsm/nodes/Nodes.js";
 
 class InputManager {
   updateTime({ userDeltaTime, gameDeltaTime }) {
@@ -15,6 +14,8 @@ class InputManager {
   }
 
   constructor(windowManager, time) {
+    this.tick = 0;
+    this.history = [];
     this.uniqueVal = 0;
     this.mouseState = {
       posDelta: new THREE.Vector2(),
@@ -30,15 +31,17 @@ class InputManager {
     this.ui = new Map();
     this.sizes = { width: 1, height: 1 };
     this.listeners = [];
-    window.addEventListener("blur", () => {
+    window.addEventListener("blur", (event) => {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
+      this.history.push({ tick: this.tick, type: event.type });
     });
-    window.addEventListener("focusout", () => {
+    window.addEventListener("focusout", (event) => {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
+      this.history.push({ tick: this.tick, type: event.type });
     });
     window.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
@@ -50,6 +53,7 @@ class InputManager {
       if (!pressedKeys.has(key)) {
         pressedKeys.set(key, { heldGameTime: 0, heldUserTime: 0, ticks: 0 });
       }
+      this.history.push({ tick: this.tick, type: event.type, key: key });
     });
     window.addEventListener("keyup", (event) => {
       const key = event.key.toLowerCase();
@@ -58,6 +62,7 @@ class InputManager {
       if (pressedKeys.has(key)) {
         pressedKeys.delete(key);
       }
+      this.history.push({ tick: this.tick, type: event.type, key: key });
     });
 
     const handleMouseEvent = (event) => {
@@ -66,10 +71,11 @@ class InputManager {
         return;
       }
       const previous = this.mouseState.pos;
-      this.mouseState.pos = new THREE.Vector2(
+      const pos = new THREE.Vector2(
         ((event.clientX - sizes.horizontalOffset) / sizes.width) * 2 - 1,
         -((event.clientY - sizes.verticalOffset) / sizes.height) * 2 + 1
       );
+      this.mouseState.pos = pos;
 
       if (previous) {
         this.mouseState.posDelta = new THREE.Vector2(
@@ -79,10 +85,21 @@ class InputManager {
       }
 
       this.mouseState.buttons = event.buttons;
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        pos: pos,
+        buttons: event.buttons,
+      });
     };
 
     const handleScrollEvent = (event) => {
       this.mouseState.mouseWheel.deltaY = event.deltaY;
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        deltaY: event.deltaY,
+      });
     };
 
     window.addEventListener("wheel", handleScrollEvent);
@@ -111,32 +128,171 @@ class InputManager {
     this.sizes = sizes;
   }
 
+  getState() {
+    const mouse = {
+      pos: null,
+      pressed: 0,
+      held: 0,
+      released: 0,
+    };
+    const key = {
+      pressed: [],
+      held: [],
+      released: [],
+    };
+    const ui = {
+      idle: [],
+      down: [],
+      clicked: [],
+      hover: [],
+    };
+
+    // handle mouse position
+    const latestMouseEvent = this.history.findLast((ev) => {
+      switch (ev.type) {
+        case "pointerdown":
+        case "pointerup":
+        case "pointermove":
+          return true;
+        default:
+          return false;
+      }
+    });
+    if (latestMouseEvent) {
+      mouse.pos = latestMouseEvent.pos;
+    }
+
+    // handle released
+    const latestCurrentPointerUp = this.history.findLast((ev) => {
+      if (ev.tick !== this.tick) {
+        return false;
+      }
+      switch (ev.type) {
+        case "pointerup":
+          return true;
+        default:
+          return false;
+      }
+    });
+    if (latestCurrentPointerUp) {
+      // find what the previous
+      const prevPointer = this.history.findLast((ev) => {
+        if (ev.tick === this.tick) {
+          return false;
+        }
+        switch (ev.type) {
+          case "pointerdown":
+          case "pointerup":
+          case "pointermove":
+            return true;
+          default:
+            return false;
+        }
+      });
+      if (prevPointer) {
+        mouse.released =
+          prevPointer.buttons -
+          (prevPointer.buttons & latestCurrentPointerUp.buttons);
+      }
+    }
+
+    // handle pressed
+    const latestCurrentPointerDown = this.history.findLast((ev) => {
+      if (ev.tick !== this.tick) {
+        return false;
+      }
+      switch (ev.type) {
+        case "pointerdown":
+          return true;
+        default:
+          return false;
+      }
+    });
+    if (latestCurrentPointerDown) {
+      // find what the previous
+      const prevPointer = this.history.findLast((ev) => {
+        if (ev.tick === this.tick) {
+          return false;
+        }
+        switch (ev.type) {
+          case "pointerdown":
+          case "pointerup":
+          case "pointermove":
+            return true;
+          default:
+            return false;
+        }
+      });
+      if (prevPointer) {
+        mouse.pressed =
+          latestCurrentPointerDown.buttons -
+          (prevPointer.buttons & latestCurrentPointerDown.buttons);
+      }
+    }
+
+    return {
+      mouse,
+      key,
+      ui,
+    };
+  }
+
   register(element) {
     element.inputKey = this.getUnique();
     element.state = "idle";
     this.ui.set(element.inputKey, element);
-    element.onmousedown = () => {
+    element.onmousedown = (event) => {
       this.ui.get(element.inputKey).state = "down";
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        inputKey: element.inputKey,
+      });
     };
-    element.onmouseup = () => {
+    element.onmouseup = (event) => {
       const state = this.ui.get(element.inputKey);
       if (state.state === "down") {
         this.ui.get(element.inputKey).state = "clicked";
       } else {
         this.ui.get(element.inputKey).state = "hover";
       }
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        inputKey: element.inputKey,
+      });
     };
-    element.onmouseenter = () => {
+    element.onmouseenter = (event) => {
       this.ui.get(element.inputKey).state = "hover";
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        inputKey: element.inputKey,
+      });
     };
-    element.onmouseover = () => {
+    element.onmouseover = (event) => {
       this.ui.get(element.inputKey).state = "hover";
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        inputKey: element.inputKey,
+      });
     };
-    element.onmouseleave = () => {
+    element.onmouseleave = (event) => {
       this.ui.get(element.inputKey).state = "idle";
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        inputKey: element.inputKey,
+      });
     };
-    element.onmouseout = () => {
+    element.onmouseout = (event) => {
       this.ui.get(element.inputKey).state = "idle";
+      this.history.push({
+        tick: this.tick,
+        type: event.type,
+        inputKey: element.inputKey,
+      });
     };
   }
   //onclick	The user clicks on an element
@@ -178,6 +334,7 @@ class InputManager {
       }
       console.log(element.state);
     });
+    this.tick++;
   }
 }
 

@@ -42,8 +42,8 @@ class TicTacToeIntent {
   }
 
   update(scene, input, camera) {
-    const { pos, buttons } = input.mouseState;
-    if (buttons && pos) {
+    const { pos, released } = input.getState().mouse;
+    if (released && pos) {
       _raycaster.setFromCamera(pos, camera);
       const intersects = _raycaster.intersectObjects(scene.children);
 
@@ -52,7 +52,7 @@ class TicTacToeIntent {
       });
       if (target) {
         const pos = target.object.pos;
-        if (buttons & 1) {
+        if (released & 1) {
           return [{ pos: pos, player: "X" }];
         } else {
           return [{ pos: pos, player: "Y" }];
