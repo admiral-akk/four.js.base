@@ -128,39 +128,13 @@ class InputManager {
     this.sizes = sizes;
   }
 
-  getState() {
+  getMouseState() {
     const mouse = {
       pos: null,
       pressed: 0,
       held: 0,
       released: 0,
     };
-    const key = {
-      pressed: [],
-      held: [],
-      released: [],
-    };
-    const ui = {
-      idle: [],
-      down: [],
-      clicked: [],
-      hover: [],
-    };
-
-    // handle mouse position
-    const latestMouseEvent = this.history.findLast((ev) => {
-      switch (ev.type) {
-        case "pointerdown":
-        case "pointerup":
-        case "pointermove":
-          return true;
-        default:
-          return false;
-      }
-    });
-    if (latestMouseEvent) {
-      mouse.pos = latestMouseEvent.pos;
-    }
 
     // handle released
     const latestCurrentPointerUp = this.history.findLast((ev) => {
@@ -229,6 +203,42 @@ class InputManager {
           (prevPointer.buttons & latestCurrentPointerDown.buttons);
       }
     }
+
+    // handle held
+    // handle mouse position
+    const latestMouseEvent = this.history.findLast((ev) => {
+      switch (ev.type) {
+        case "pointerdown":
+        case "pointerup":
+        case "pointermove":
+          return true;
+        default:
+          return false;
+      }
+    });
+    if (latestMouseEvent) {
+      mouse.pos = latestMouseEvent.pos;
+      mouse.held =
+        latestMouseEvent.buttons -
+        (mouse.pressed & latestMouseEvent.buttons) -
+        (mouse.released & latestMouseEvent.buttons);
+    }
+    return mouse;
+  }
+
+  getState() {
+    const mouse = this.getMouseState();
+    const key = {
+      pressed: [],
+      held: [],
+      released: [],
+    };
+    const ui = {
+      idle: [],
+      down: [],
+      clicked: [],
+      hover: [],
+    };
 
     return {
       mouse,
