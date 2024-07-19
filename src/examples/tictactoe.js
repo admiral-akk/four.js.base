@@ -148,12 +148,15 @@ class TicTacToeGame {
   }
 }
 
-class TicTacToeScene extends THREE.Scene {
+class TicTacToe extends THREE.Scene {
   constructor() {
     super();
+    this.targets = new KeyedSet();
+    this.marks = new KeyedMap();
+    this.commands = [];
   }
 
-  commands(input) {
+  generateCommands(input) {
     const { mouse, object, ui } = input.getState();
     const { released } = mouse;
     if (ui.clicked.length) {
@@ -176,7 +179,18 @@ class TicTacToeScene extends THREE.Scene {
   }
 
   init() {
-    this.targets = new KeyedSet();
+    this.game = new TicTacToeGame();
+    this.camera = generateCamera(this, {
+      subtypeConfig: {
+        type: "perspective",
+        fov: 75,
+        zoom: 10,
+      },
+      aspectRatio: 16 / 9,
+      near: 0.001,
+      far: 40.0,
+      position: new THREE.Vector3(0, 0, 4).normalize().multiplyScalar(10),
+    });
 
     var div = document.createElement("div");
     // https://css-tricks.com/fitting-text-to-a-container/
@@ -243,9 +257,22 @@ class TicTacToeScene extends THREE.Scene {
     }
   }
 
-  cleanup() {}
+  update(engine) {
+    engine.input.update(this, this.camera);
+    this.commands = this.commands.concat(this.generateCommands(engine.input));
+    const endGame = this.commands.find((v) => v.type === "mainmenu");
+    if (endGame) {
+      engine.replaceState(new MainMenu());
+    } else if (this.commands.length > 0) {
+      const effects = this.game.update(this.commands);
+      this.updateG(this.game, effects, engine, engine.input);
+    } else {
+      this.updateG(this.game, [], engine, engine.input);
+    }
+    this.commands = [];
+  }
 
-  update(game, effects, engine, input) {
+  updateG(game, effects, engine, input) {
     this.hint.material.color =
       game.activePlayer === "X"
         ? new THREE.Color("green")
@@ -293,6 +320,7 @@ class TicTacToeScene extends THREE.Scene {
         new MeshBasicMaterial({ color: player === "X" ? "green" : "red" })
       );
 
+      this.marks.set(position, mesh);
       mesh.position.copy(
         new THREE.Vector3(2 * position.x - 2, 2 * position.y - 2, 0)
       );
@@ -310,7 +338,8 @@ class TicTacToeScene extends THREE.Scene {
           x: 1,
           y: 1,
           z: 1,
-        }
+        },
+        this.tl.time()
       );
       this.add(mesh);
     };
@@ -322,6 +351,40 @@ class TicTacToeScene extends THREE.Scene {
           makeMark(effect.pos, effect.player);
           break;
         case "gameover":
+          // highlight the winning lines if any
+          effect.lines.forEach((line) => {
+            let delay = ">";
+            for (let i = 0; i < line.length; i++) {
+              const mesh = this.marks.get(line[i]);
+              this.tl.to(
+                mesh.scale,
+                {
+                  duration: 0.2,
+                  ease: "power3.in",
+                  x: 1.4,
+                  y: 1.4,
+                  z: 1.4,
+                },
+                delay
+              );
+              this.tl.to(
+                mesh.scale,
+                {
+                  duration: 0.2,
+                  ease: "power3.out",
+                  x: 1.0,
+                  y: 1.0,
+                  z: 1.0,
+                },
+                ">"
+              );
+              delay = "<";
+            }
+          });
+          // show the game over menu
+
+          const createMenu = () => {};
+
           console.log("game over");
           const restart = () => engine.replaceState(new TicTacToe());
           if (!this.tl.isActive()) {
@@ -335,47 +398,10 @@ class TicTacToeScene extends THREE.Scene {
       }
     }
   }
-}
-
-class TicTacToe {
-  constructor() {}
-
-  init() {
-    this.game = new TicTacToeGame();
-    this.scene = new TicTacToeScene();
-    this.scene.ui = this.ui;
-    this.scene.init();
-    this.camera = generateCamera(this.scene, {
-      subtypeConfig: {
-        type: "perspective",
-        fov: 75,
-        zoom: 10,
-      },
-      aspectRatio: 16 / 9,
-      near: 0.001,
-      far: 40.0,
-      position: new THREE.Vector3(0, 0, 4).normalize().multiplyScalar(10),
-    });
-  }
-
   cleanup() {}
   pause() {}
   resume() {}
-
-  update(engine) {
-    engine.input.update(this.scene, this.camera);
-    const commands = this.scene.commands(engine.input);
-    const endGame = commands.find((v) => v.type === "mainmenu");
-    if (endGame) {
-      engine.replaceState(new MainMenu());
-    } else if (commands.length > 0) {
-      const effects = this.game.update(commands);
-      this.scene.update(this.game, effects, engine, engine.input);
-    } else {
-      this.scene.update(this.game, [], engine, engine.input);
-    }
-  }
   render(renderer) {
-    renderer.render(this.scene, this.camera);
+    renderer.render(this, this.camera);
   }
 }
