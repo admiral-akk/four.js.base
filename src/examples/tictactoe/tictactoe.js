@@ -2,10 +2,12 @@ import * as THREE from "three";
 import { KeyedMap, KeyedSet } from "../../utils/helper.js";
 import { MeshBasicMaterial } from "three";
 import { gsap } from "gsap";
-import { generateCamera } from "../../utils/camera.js";
 
-export class MainMenu {
-  constructor() {}
+export class MainMenu extends THREE.Scene {
+  constructor() {
+    super();
+    this.camera = new THREE.PerspectiveCamera(75, 16 / 9);
+  }
 
   init() {
     var div = document.createElement("div");
@@ -35,7 +37,9 @@ export class MainMenu {
       engine.replaceState(new TicTacToe());
     }
   }
-  render(renderer) {}
+  render(renderer) {
+    renderer.render(this, this.camera);
+  }
 }
 
 class Position {

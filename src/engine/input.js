@@ -42,13 +42,14 @@ class InputManager {
   storeEvent(ev) {
     ev.tick = this.tick;
     switch (ev.type) {
+      case "wheel":
+        break;
       case "rayhit":
         if (!this.history.object.has(ev.object)) {
           this.history.object.set(ev.object, []);
         }
         this.history.object.get(ev.object).push(ev);
         break;
-      case "wheel":
       case "pointerup":
       case "pointerdown":
       case "pointermove":
@@ -165,11 +166,9 @@ class InputManager {
     };
 
     const handleScrollEvent = (event) => {
-      this.mouseState.mouseWheel.deltaY = event.deltaY;
       this.storeEvent({
         type: event.type,
-        pos: pos,
-        buttons: event.buttons,
+        deltaY: event.deltaY,
       });
     };
 

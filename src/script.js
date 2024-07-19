@@ -1,19 +1,18 @@
 import "./style.css";
-import { TimeManager } from "./utils/time.js";
-import { WindowManager } from "./utils/window.js";
-import { DebugManager } from "./utils/debug.js";
-import { CustomerRenderer } from "./utils/renderer.js";
+import { TimeManager } from "./engine/time.js";
+import { WindowManager } from "./engine/window.js";
+import { CustomerRenderer } from "./engine/renderer.js";
 import Stats from "stats-js";
-import { generateLoadingManager } from "./utils/loader.js";
-import { InputManager } from "./utils/input.js";
-
+import { generateLoadingManager } from "./engine/loader.js";
+import { InputManager } from "./engine/input.js";
+import GUI from "lil-gui";
 import { Text } from "troika-three-text";
-import { GameEngine } from "./utils/engine.js";
+import { GameEngine } from "./engine/engine.js";
 import { MainMenu } from "./examples/tictactoe/tictactoe.js";
 
 const initialState = new MainMenu();
 
-const gui = new DebugManager();
+const gui = new GUI();
 
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
