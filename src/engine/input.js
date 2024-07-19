@@ -18,6 +18,21 @@ class InputManager {
     }
   }
 
+  cleanupScene(scene) {
+    scene.traverse((child) => {
+      if (this.history.object.has(child)) {
+        this.history.object.delete(child);
+      }
+    });
+    const ui = scene.ui;
+    if (this.history.ui.has(ui)) {
+      this.history.ui.delete(ui);
+    }
+    for (let i = 0; i < ui.children.length; i++) {
+      this.cleanupContainer(ui.children[i]);
+    }
+  }
+
   cleanupContainer(ui) {
     if (this.history.ui.has(ui)) {
       this.history.ui.delete(ui);

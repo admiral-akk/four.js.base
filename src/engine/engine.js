@@ -29,16 +29,16 @@ export class GameEngine {
     return div;
   }
 
-  cleanupContainer(ui) {
-    this.ui.removeChild(ui);
-    this.input.cleanupContainer(ui);
+  cleanupScene(current) {
+    this.ui.removeChild(current.ui);
+    this.input.cleanupScene(current);
   }
 
   replaceState(state) {
     const current = this.currentState();
     if (current) {
       this.states.pop().cleanup();
-      this.cleanupContainer(current.ui);
+      this.cleanupScene(current);
     }
     state.ui = this.makeContainer();
     state.init();
@@ -56,7 +56,7 @@ export class GameEngine {
     const current = this.currentState();
     if (current) {
       this.states.pop().cleanup();
-      this.cleanupContainer(current.ui);
+      this.cleanupScene(current);
     }
     this.currentState()?.resume();
   }
