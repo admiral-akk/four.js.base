@@ -96,15 +96,9 @@ class InputManager {
     this.sizes = { width: 1, height: 1 };
     this.listeners = [];
     window.addEventListener("blur", (event) => {
-      const { pressedKeys } = this.keyState;
-      pressedKeys.clear();
-      this.mouseState.buttons = null;
       this.storeEvent(null, { type: event.type });
     });
     window.addEventListener("focusout", (event) => {
-      const { pressedKeys } = this.keyState;
-      pressedKeys.clear();
-      this.mouseState.buttons = null;
       this.storeEvent(null, { type: event.type });
     });
     window.addEventListener("keydown", (event) => {
@@ -113,19 +107,11 @@ class InputManager {
         return;
       }
       event.preventDefault();
-      const { pressedKeys } = this.keyState;
-      if (!pressedKeys.has(key)) {
-        pressedKeys.set(key, { heldGameTime: 0, heldUserTime: 0, ticks: 0 });
-      }
       this.storeEvent(key, { type: event.type });
     });
     window.addEventListener("keyup", (event) => {
       const key = event.key.toLowerCase();
       event.preventDefault();
-      const { pressedKeys } = this.keyState;
-      if (pressedKeys.has(key)) {
-        pressedKeys.delete(key);
-      }
       this.storeEvent(key, { type: event.type });
     });
 
@@ -166,10 +152,6 @@ class InputManager {
     );
     windowManager.listeners.push(this);
     windowManager.update();
-  }
-
-  getKey(k) {
-    return this.keyState.pressedKeys.get(k);
   }
 
   updateSize(sizes) {
