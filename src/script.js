@@ -20,7 +20,7 @@ document.body.appendChild(stats.dom);
 const time = new TimeManager();
 const loader = generateLoadingManager();
 const windowManager = new WindowManager(16 / 9);
-const input = new InputManager(windowManager);
+const input = new InputManager(windowManager, time);
 const renderer = new CustomerRenderer(windowManager);
 
 const engine = new GameEngine(input, time, loader, renderer);

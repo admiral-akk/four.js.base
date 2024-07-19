@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { Vector3 } from "three";
+import { KeyedMap, KeyedSet } from "../../utils/helper.js";
 
 export class MainMenu extends THREE.Scene {
   constructor() {
@@ -65,6 +66,28 @@ export class MainMenu extends THREE.Scene {
   }
   render(renderer) {
     renderer.render(this, this.camera);
+  }
+}
+
+// need a notion of:
+// tower
+// lives
+// enemy
+// attack
+
+class TowerDefenseGame {
+  constructor() {
+    this.state = {
+      lives: 10,
+    };
+    this.towers = new KeyedMap();
+    this.enemies = [];
+  }
+
+  placeTower(pos) {
+    if (!this.towers.has(pos)) {
+      this.towers.set(pos, { range: 1, damage: 1 });
+    }
   }
 }
 

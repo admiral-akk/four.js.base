@@ -73,7 +73,7 @@ class InputManager {
     if (!store) {
       return;
     }
-    ev.tick = this.tick;
+    ev.frame = this.frame;
 
     if (store instanceof Array) {
       store.push(ev);
@@ -85,9 +85,9 @@ class InputManager {
     }
   }
 
-  constructor(windowManager) {
+  constructor(windowManager, time) {
     this.state = {};
-    this.tick = 0;
+    this.frame = 0;
     this.history = {
       mouse: [],
       key: new Map(),
@@ -154,6 +154,11 @@ class InputManager {
     );
     windowManager.listeners.push(this);
     windowManager.update();
+    time.listeners.push(this);
+  }
+
+  updateTime({ frame }) {
+    this.frame = frame;
   }
 
   updateSize(sizes) {
@@ -171,7 +176,7 @@ class InputManager {
       const events = this.history.object.get(key);
       {
         const last = events.length > 0 ? events[events.length - 1] : null;
-        if (last && last.tick === this.tick && last.type === "rayhit") {
+        if (last && last.frame === this.frame && last.type === "rayhit") {
           object.hover.push(key);
         }
       }
@@ -189,7 +194,7 @@ class InputManager {
 
     // handle released
     const latestCurrentPointerUp = this.history.mouse.findLast((ev) => {
-      if (ev.tick !== this.tick) {
+      if (ev.frame !== this.frame) {
         return false;
       }
       switch (ev.type) {
@@ -202,7 +207,7 @@ class InputManager {
     if (latestCurrentPointerUp) {
       // find what the previous
       const prevPointer = this.history.mouse.findLast((ev) => {
-        if (ev.tick === this.tick) {
+        if (ev.frame === this.frame) {
           return false;
         }
         switch (ev.type) {
@@ -223,7 +228,7 @@ class InputManager {
 
     // handle pressed
     const latestCurrentPointerDown = this.history.mouse.findLast((ev) => {
-      if (ev.tick !== this.tick) {
+      if (ev.frame !== this.frame) {
         return false;
       }
       switch (ev.type) {
@@ -236,7 +241,7 @@ class InputManager {
     if (latestCurrentPointerDown) {
       // find what the previous
       const prevPointer = this.history.mouse.findLast((ev) => {
-        if (ev.tick === this.tick) {
+        if (ev.frame === this.frame) {
           return false;
         }
         switch (ev.type) {
@@ -294,7 +299,7 @@ class InputManager {
         if (
           last &&
           secondLast &&
-          last.tick === this.tick &&
+          last.frame === this.frame &&
           last.type === "keyup" &&
           secondLast.type === "keydown"
         ) {
@@ -305,7 +310,7 @@ class InputManager {
         // pressed
         const last = events.length > 0 ? events[events.length - 1] : null;
         if (last && last.type === "keydown") {
-          if (last.tick === this.tick) {
+          if (last.frame === this.frame) {
             keyState.pressed.push(key);
           } else {
             keyState.held.push(key);
@@ -339,7 +344,7 @@ class InputManager {
         if (
           last &&
           secondLast &&
-          last.tick === this.tick &&
+          last.frame === this.frame &&
           last.type === "mouseup" &&
           secondLast.type === "mousedown"
         ) {
@@ -348,7 +353,7 @@ class InputManager {
       }
       {
         // down
-        // if last event is mouse down and this tick
+        // if last event is mouse down and this frame
 
         const last = events.length > 0 ? events[events.length - 1] : null;
         if (last && last.type === "mousedown") {
@@ -448,7 +453,6 @@ class InputManager {
       }
       this.register(element);
     }
-    this.tick++;
   }
 }
 
