@@ -327,7 +327,7 @@ class TicTacToeScene extends THREE.Scene {
           if (!this.tl.isActive()) {
             restart();
           } else {
-            this.tl.onComplete = restart;
+            this.tl.eventCallback("onComplete", restart);
           }
           break;
         default:
@@ -368,9 +368,11 @@ class TicTacToe {
     const endGame = commands.find((v) => v.type === "mainmenu");
     if (endGame) {
       engine.replaceState(new MainMenu());
-    } else {
+    } else if (commands.length > 0) {
       const effects = this.game.update(commands);
       this.scene.update(this.game, effects, engine, engine.input);
+    } else {
+      this.scene.update(this.game, [], engine, engine.input);
     }
   }
   render(renderer) {
