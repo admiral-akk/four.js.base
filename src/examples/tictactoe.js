@@ -179,17 +179,15 @@ class TicTacToe extends THREE.Scene {
 
   init() {
     this.game = new TicTacToeGame();
-    this.camera = generateCamera(this, {
-      subtypeConfig: {
-        type: "perspective",
-        fov: 75,
-        zoom: 10,
-      },
-      aspectRatio: 16 / 9,
-      near: 0.001,
-      far: 40.0,
-      position: new THREE.Vector3(0, 0, 4).normalize().multiplyScalar(10),
-    });
+    const camera = new THREE.PerspectiveCamera(75, 16 / 9);
+    this.add(camera);
+    camera.position.copy(
+      new THREE.Vector3(0, 0, 4).normalize().multiplyScalar(10)
+    );
+
+    camera.lookAt(new THREE.Vector3());
+
+    this.camera = camera;
 
     var div = document.createElement("div");
     // https://css-tricks.com/fitting-text-to-a-container/
