@@ -1,9 +1,12 @@
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class GameEngine {
-  constructor(input) {
+  constructor(input, time, loader, renderer) {
     this.ui = document.querySelector("div.uiContainer");
     this.states = [];
     this.input = input;
+    this.time = time;
+    this.loader = loader;
+    this.renderer = renderer;
   }
 
   init(initialState) {
@@ -59,11 +62,13 @@ export class GameEngine {
   }
 
   update() {
+    this.time.tick();
     this.currentState()?.update(this);
     this.input.endLoop();
+    this.time.endLoop();
   }
 
-  render(renderer) {
-    this.currentState()?.render(renderer);
+  render() {
+    this.currentState()?.render(this.renderer);
   }
 }

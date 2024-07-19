@@ -57,6 +57,42 @@ class CustomerRenderer extends WebGLRenderer {
       rt.updateSize(this);
     });
   }
+
+  renderOverride(scene, camera, material, target) {
+    const oldTarget = this.getRenderTarget();
+    const oldOverride = scene.overrideMaterial;
+
+    scene.overrideMaterial = material;
+    this.setRenderTarget(target);
+
+    this.render(scene, camera);
+
+    scene.overrideMaterial = oldOverride;
+    this.setRenderTarget(oldTarget);
+  }
+
+  applyPostProcess(uniforms, fragShader, outputBuffer) {
+    const gradientPass = new FullScreenQuad(
+      new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: `
+        #include <packing>
+        varying vec2 vUv;
+    
+        void main() {
+    
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    
+        }`,
+        fragmentShader: fragShader,
+      })
+    );
+    const temp = this.getRenderTarget();
+    this.setRenderTarget(outputBuffer);
+    gradientPass.render(this);
+    this.setRenderTarget(temp);
+  }
 }
 
 export { CustomerRenderer };

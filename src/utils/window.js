@@ -1,5 +1,5 @@
 class WindowManager {
-  constructor(camera) {
+  constructor(aspect) {
     this.sizes = {
       width: window.innerWidth,
       height: window.innerHeight,
@@ -12,14 +12,14 @@ class WindowManager {
     const canvasContainer = document.querySelector("div.relative");
 
     this.update = () => {
-      if (window.innerHeight * camera.aspect > window.innerWidth) {
+      if (window.innerHeight * aspect > window.innerWidth) {
         this.sizes.width = window.innerWidth;
-        this.sizes.height = window.innerWidth / camera.aspect;
+        this.sizes.height = window.innerWidth / aspect;
         this.sizes.verticalOffset =
           (window.innerHeight - this.sizes.height) / 2;
         this.sizes.horizontalOffset = 0;
       } else {
-        this.sizes.width = window.innerHeight * camera.aspect;
+        this.sizes.width = window.innerHeight * aspect;
         this.sizes.height = window.innerHeight;
         this.sizes.verticalOffset = 0;
         this.sizes.horizontalOffset =
