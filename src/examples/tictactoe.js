@@ -48,71 +48,6 @@ class Position {
   }
 }
 
-class TicTacToeIntent {
-  constructor(ui) {
-    this.targets = new KeyedSet();
-
-    var div = document.createElement("div");
-    // https://css-tricks.com/fitting-text-to-a-container/
-    div.style.position = "absolute";
-    div.style.fontSize = "2cqi";
-    div.style.top = "90%";
-    div.style.right = "45%";
-    div.style.height = "10%";
-    div.style.width = "10%";
-    div.style.background = "red";
-    div.style.container = "ui";
-    div.innerHTML = "Main menu";
-    div.style.pointerEvents = "auto";
-    ui.appendChild(div);
-    this.div = div;
-  }
-
-  init(scene) {
-    const makeTarget = (x, y) => {
-      const plane = new THREE.PlaneGeometry(1.6, 1.6);
-      const mesh = new THREE.Mesh(plane, new MeshBasicMaterial());
-
-      mesh.visible = false;
-
-      mesh.position.copy(new THREE.Vector3(2 * x - 2, 2 * y - 2, 0));
-      scene.add(mesh);
-      mesh.layers.enable(1);
-      mesh.pos = new Position(x, y);
-      mesh.key = mesh.pos.key;
-      return mesh;
-    };
-    for (let i = 0; i < 9; i++) {
-      const x = i % 3;
-      const y = (i / 3) | 0;
-      const target = makeTarget(x, y);
-      this.targets.add(target);
-    }
-  }
-
-  update(scene, input, camera) {
-    const { mouse, object, ui } = input.getState();
-    const { released } = mouse;
-    if (ui.clicked.length) {
-      return [{ type: "mainmenu" }];
-    }
-    if (released) {
-      const target = object.hover.find((v) => {
-        return this.targets.has(v);
-      });
-      if (target) {
-        const pos = target.pos;
-        if (released & 1) {
-          return [{ type: "mark", pos: pos, player: "X" }];
-        } else {
-          return [{ type: "mark", pos: pos, player: "Y" }];
-        }
-      }
-    }
-    return [];
-  }
-}
-
 class TicTacToeGame {
   constructor() {
     this.activePlayer = "X";
@@ -218,7 +153,46 @@ class TicTacToeScene extends THREE.Scene {
     super();
   }
 
+  commands(input) {
+    const { mouse, object, ui } = input.getState();
+    const { released } = mouse;
+    if (ui.clicked.length) {
+      return [{ type: "mainmenu" }];
+    }
+    if (released) {
+      const target = object.hover.find((v) => {
+        return this.targets.has(v);
+      });
+      if (target) {
+        const pos = target.pos;
+        if (released & 1) {
+          return [{ type: "mark", pos: pos, player: "X" }];
+        } else {
+          return [{ type: "mark", pos: pos, player: "Y" }];
+        }
+      }
+    }
+    return [];
+  }
+
   init() {
+    this.targets = new KeyedSet();
+
+    var div = document.createElement("div");
+    // https://css-tricks.com/fitting-text-to-a-container/
+    div.style.position = "absolute";
+    div.style.fontSize = "2cqi";
+    div.style.top = "90%";
+    div.style.right = "45%";
+    div.style.height = "10%";
+    div.style.width = "10%";
+    div.style.background = "red";
+    div.style.container = "ui";
+    div.innerHTML = "Main menu";
+    div.style.pointerEvents = "auto";
+    this.ui.appendChild(div);
+    this.div = div;
+
     const makeLine = (position, height, width) => {
       const geo = new THREE.BoxGeometry(width, height, 0.2);
       const mesh = new THREE.Mesh(geo, new MeshBasicMaterial());
@@ -247,6 +221,26 @@ class TicTacToeScene extends THREE.Scene {
       return mesh;
     };
     this.hint = makeHint({ x: 0, y: 0 }, "X");
+
+    const makeTarget = (x, y) => {
+      const plane = new THREE.PlaneGeometry(1.6, 1.6);
+      const mesh = new THREE.Mesh(plane, new MeshBasicMaterial());
+
+      mesh.visible = false;
+
+      mesh.position.copy(new THREE.Vector3(2 * x - 2, 2 * y - 2, 0));
+      this.add(mesh);
+      mesh.layers.enable(1);
+      mesh.pos = new Position(x, y);
+      mesh.key = mesh.pos.key;
+      return mesh;
+    };
+    for (let i = 0; i < 9; i++) {
+      const x = i % 3;
+      const y = (i / 3) | 0;
+      const target = makeTarget(x, y);
+      this.targets.add(target);
+    }
   }
 
   cleanup() {}
@@ -351,8 +345,6 @@ class TicTacToe {
     this.scene = new TicTacToeScene();
     this.scene.ui = this.ui;
     this.scene.init();
-    this.intent = new TicTacToeIntent(this.ui);
-    this.intent.init(this.scene);
     this.camera = generateCamera(this.scene, {
       subtypeConfig: {
         type: "perspective",
@@ -367,13 +359,12 @@ class TicTacToe {
   }
 
   cleanup() {}
-
   pause() {}
   resume() {}
 
   update(engine) {
     engine.input.update(this.scene, this.camera);
-    const commands = this.intent.update(this.scene, engine.input, this.camera);
+    const commands = this.scene.commands(engine.input);
     const endGame = commands.find((v) => v.type === "mainmenu");
     if (endGame) {
       engine.replaceState(new MainMenu());
