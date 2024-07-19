@@ -9,9 +9,8 @@ class InputManager {
     _raycaster.setFromCamera(pos, camera);
     const intersects = _raycaster.intersectObjects(scene.children);
     for (let i = 0; i < intersects.length; i++) {
-      this.storeEvent({
+      this.storeEvent(intersects[i].object, {
         type: "rayhit",
-        object: intersects[i].object,
         distance: intersects[i].distance,
         order: i,
       });
@@ -24,13 +23,7 @@ class InputManager {
         this.history.object.delete(child);
       }
     });
-    const ui = scene.ui;
-    if (this.history.ui.has(ui)) {
-      this.history.ui.delete(ui);
-    }
-    for (let i = 0; i < ui.children.length; i++) {
-      this.cleanupContainer(ui.children[i]);
-    }
+    this.cleanupContainer(scene.ui);
   }
 
   cleanupContainer(ui) {
@@ -42,60 +35,52 @@ class InputManager {
     }
   }
 
-  updateTime({ userDeltaTime, gameDeltaTime }) {
-    this.keyState.pressedKeys.forEach((v) => {
-      v.heldUserTime += userDeltaTime;
-      v.heldGameTime += gameDeltaTime;
-      v.ticks += 1;
-    });
-  }
-
-  getUnique() {
-    return this.uniqueVal++;
-  }
-
-  storeEvent(ev) {
-    ev.tick = this.tick;
-    switch (ev.type) {
-      case "wheel":
-        break;
+  getEventStore(type) {
+    switch (type) {
       case "rayhit":
-        if (!this.history.object.has(ev.object)) {
-          this.history.object.set(ev.object, []);
-        }
-        this.history.object.get(ev.object).push(ev);
-        break;
+        return this.history.object;
       case "pointerup":
       case "pointerdown":
       case "pointermove":
-        this.history.mouse.push(ev);
-        break;
-      case "blur":
-      case "focusout":
-        break;
+        return this.history.mouse;
       case "keydown":
       case "keyup":
-        if (!this.history.key.has(ev.key)) {
-          this.history.key.set(ev.key, []);
-        }
-        this.history.key.get(ev.key).push(ev);
-        break;
+        return this.history.key;
       case "mousedown":
       case "mouseup":
       case "mouseleave":
       case "mouseout":
       case "mouseenter":
-        if (!this.history.ui.has(ev.element)) {
-          this.history.ui.set(ev.element, []);
-        }
-        this.history.ui.get(ev.element).push(ev);
+        return this.history.ui;
+      case "blur":
+      case "focusout":
+        break;
+      case "wheel":
         break;
       default:
         break;
     }
+    return null;
   }
 
-  constructor(windowManager, time) {
+  storeEvent(key, ev) {
+    const store = this.getEventStore(ev.type);
+    if (!store) {
+      return;
+    }
+    ev.tick = this.tick;
+
+    if (key === null) {
+      store.push(ev);
+    } else {
+      if (!store.has(key)) {
+        store.set(key, []);
+      }
+      store.get(key).push(ev);
+    }
+  }
+
+  constructor(windowManager) {
     this.state = {};
     this.tick = 0;
     this.history = {
@@ -123,13 +108,13 @@ class InputManager {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
-      this.storeEvent({ type: event.type });
+      this.storeEvent(null, { type: event.type });
     });
     window.addEventListener("focusout", (event) => {
       const { pressedKeys } = this.keyState;
       pressedKeys.clear();
       this.mouseState.buttons = null;
-      this.storeEvent({ type: event.type });
+      this.storeEvent(null, { type: event.type });
     });
     window.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
@@ -141,7 +126,7 @@ class InputManager {
       if (!pressedKeys.has(key)) {
         pressedKeys.set(key, { heldGameTime: 0, heldUserTime: 0, ticks: 0 });
       }
-      this.storeEvent({ type: event.type, key });
+      this.storeEvent(key, { type: event.type });
     });
     window.addEventListener("keyup", (event) => {
       const key = event.key.toLowerCase();
@@ -150,7 +135,7 @@ class InputManager {
       if (pressedKeys.has(key)) {
         pressedKeys.delete(key);
       }
-      this.storeEvent({ type: event.type, key });
+      this.storeEvent(key, { type: event.type });
     });
 
     const handleMouseEvent = (event) => {
@@ -173,7 +158,7 @@ class InputManager {
       }
 
       this.mouseState.buttons = event.buttons;
-      this.storeEvent({
+      this.storeEvent(null, {
         type: event.type,
         pos: pos,
         buttons: event.buttons,
@@ -181,7 +166,7 @@ class InputManager {
     };
 
     const handleScrollEvent = (event) => {
-      this.storeEvent({
+      this.storeEvent(null, {
         type: event.type,
         deltaY: event.deltaY,
       });
@@ -200,7 +185,6 @@ class InputManager {
       },
       false
     );
-    time.listeners.push(this);
     windowManager.listeners.push(this);
     windowManager.update();
   }
@@ -463,33 +447,28 @@ class InputManager {
   register(element) {
     this.ui.add(element);
     element.onmousedown = (event) => {
-      this.storeEvent({
+      this.storeEvent(element, {
         type: event.type,
-        element,
       });
     };
     element.onmouseup = (event) => {
-      this.storeEvent({
+      this.storeEvent(element, {
         type: event.type,
-        element,
       });
     };
     element.onmouseenter = (event) => {
-      this.storeEvent({
+      this.storeEvent(element, {
         type: event.type,
-        element,
       });
     };
     element.onmouseleave = (event) => {
-      this.storeEvent({
+      this.storeEvent(element, {
         type: event.type,
-        element,
       });
     };
     element.onmouseout = (event) => {
-      this.storeEvent({
+      this.storeEvent(element, {
         type: event.type,
-        element,
       });
     };
   }
