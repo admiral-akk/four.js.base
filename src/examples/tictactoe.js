@@ -287,7 +287,7 @@ class TicTacToe extends THREE.Scene {
     const buttons = (mouse.pressed || 0) | (mouse.held || 0);
 
     // update hint to be where it's pointing
-    if (object.hover.length) {
+    if (game.gameover() === null && object.hover.length) {
       const position = object.hover[0].pos;
       this.hint.position.copy(
         new THREE.Vector3(2 * position.x - 2, 2 * position.y - 2, 0)
