@@ -9,7 +9,7 @@ import { InputManager } from "./utils/input.js";
 
 import { Text } from "troika-three-text";
 import { GameEngine } from "./utils/engine.js";
-import { MainMenu } from "./examples/tictactoe.js";
+import { MainMenu } from "./examples/tictactoe/tictactoe.js";
 
 const initialState = new MainMenu();
 

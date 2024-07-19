@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { KeyedMap, KeyedSet } from "../utils/helper.js";
+import { KeyedMap, KeyedSet } from "../../utils/helper.js";
 import { MeshBasicMaterial } from "three";
 import { gsap } from "gsap";
-import { generateCamera } from "../utils/camera.js";
+import { generateCamera } from "../../utils/camera.js";
 
 export class MainMenu {
   constructor() {}
