@@ -3,7 +3,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 import { FontLoader } from "three/addons/loaders/FontLoader.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
-import { mod } from "three/examples/jsm/nodes/Nodes.js";
 
 function generateLoadingManager(
   onLoad = () => {},
