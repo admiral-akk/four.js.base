@@ -171,11 +171,7 @@ class TicTacToe extends THREE.Scene {
       });
       if (target) {
         const pos = target.pos;
-        if (released & 1) {
-          return [{ type: "mark", pos: pos, player: "X" }];
-        } else {
-          return [{ type: "mark", pos: pos, player: "Y" }];
-        }
+        return [{ type: "mark", pos: pos, player: this.game.activePlayer }];
       }
     }
     return [];
@@ -390,14 +386,27 @@ class TicTacToe extends THREE.Scene {
           // show the game over menu
 
           const createMenu = () => {
+            var menu = document.createElement("div");
+            menu.style.position = "absolute";
+            menu.style.fontSize = "2cqi";
+            menu.style.top = "30%";
+            menu.style.right = "40%";
+            menu.style.height = "40%";
+            menu.style.display = "flex";
+            menu.style.flexDirection = "column";
+            menu.style.width = "20%";
+            menu.style.alignItems = "center";
+            menu.style.background = "yellow";
+            menu.style.justifyContent = "space-around";
+            menu.style.container = "ui";
+            this.ui.appendChild(menu);
+
             var div = document.createElement("div");
             // https://css-tricks.com/fitting-text-to-a-container/
-            div.style.position = "absolute";
+
             div.style.fontSize = "2cqi";
-            div.style.top = "40%";
-            div.style.right = "45%";
-            div.style.height = "10%";
-            div.style.width = "10%";
+            div.style.height = "40%";
+            div.style.width = "90%";
             div.style.background = "red";
             div.style.container = "ui";
             div.innerHTML = "New Game";
@@ -405,19 +414,17 @@ class TicTacToe extends THREE.Scene {
             div.style.pointerEvents = "auto";
             var div2 = document.createElement("div");
             // https://css-tricks.com/fitting-text-to-a-container/
-            div2.style.position = "absolute";
+
             div2.style.fontSize = "2cqi";
-            div2.style.top = "60%";
-            div2.style.right = "45%";
-            div2.style.height = "10%";
-            div2.style.width = "10%";
+            div2.style.height = "40%";
+            div2.style.width = "90%";
             div2.style.background = "red";
             div2.style.container = "ui";
             div2.innerHTML = "Main Menu";
             div2.command = { type: "mainmenu" };
             div2.style.pointerEvents = "auto";
-            this.ui.appendChild(div);
-            this.ui.appendChild(div2);
+            menu.appendChild(div);
+            menu.appendChild(div2);
           };
           if (!this.tl.isActive()) {
             createMenu();
