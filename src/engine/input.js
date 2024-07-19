@@ -70,7 +70,7 @@ class InputManager {
     }
     ev.tick = this.tick;
 
-    if (key === null) {
+    if (store instanceof Array) {
       store.push(ev);
     } else {
       if (!store.has(key)) {
