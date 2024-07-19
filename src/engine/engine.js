@@ -63,8 +63,12 @@ export class GameEngine {
 
   update() {
     this.time.tick();
-    this.currentState()?.update(this);
-    this.input.endLoop();
+    const current = this.currentState();
+    if (current) {
+      this.input.update(current, current.camera);
+      current.update(this);
+      this.input.endLoop();
+    }
     this.time.endLoop();
   }
 

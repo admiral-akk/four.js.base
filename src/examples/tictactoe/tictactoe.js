@@ -7,6 +7,7 @@ export class MainMenu extends THREE.Scene {
   constructor() {
     super();
     this.camera = new THREE.PerspectiveCamera(75, 16 / 9);
+    this.add(this.camera);
   }
 
   init() {
@@ -259,7 +260,6 @@ class TicTacToe extends THREE.Scene {
   }
 
   update(engine) {
-    engine.input.update(this, this.camera);
     this.commands = this.commands.concat(this.generateCommands(engine.input));
     const endGame = this.commands.find((v) => v.type === "mainmenu");
     const newGame = this.commands.find((v) => v.type === "newgame");

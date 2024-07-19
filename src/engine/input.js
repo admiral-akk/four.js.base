@@ -6,6 +6,9 @@ _raycaster.layers.set(1);
 class InputManager {
   update(scene, camera) {
     const { pos } = this.getState().mouse;
+    if (!pos) {
+      return;
+    }
     _raycaster.setFromCamera(pos, camera);
     const intersects = _raycaster.intersectObjects(scene.children);
     for (let i = 0; i < intersects.length; i++) {
