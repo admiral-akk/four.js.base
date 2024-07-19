@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { KeyedMap, KeyedSet } from "../../utils/helper.js";
 import { MeshBasicMaterial } from "three";
 import { gsap } from "gsap";
+import { Position } from "../../utils/helper.js";
 
 export class MainMenu extends THREE.Scene {
   constructor() {
@@ -40,16 +41,6 @@ export class MainMenu extends THREE.Scene {
   }
   render(renderer) {
     renderer.render(this, this.camera);
-  }
-}
-
-class Position {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-  key() {
-    return this.x + "-" + this.y;
   }
 }
 
@@ -394,11 +385,11 @@ class TicTacToe extends THREE.Scene {
             menu.style.top = "30%";
             menu.style.right = "40%";
             menu.style.height = "40%";
+            menu.style.width = "20%";
+            menu.style.background = "yellow";
             menu.style.display = "flex";
             menu.style.flexDirection = "column";
-            menu.style.width = "20%";
             menu.style.alignItems = "center";
-            menu.style.background = "yellow";
             menu.style.justifyContent = "space-around";
             menu.style.container = "ui";
             this.ui.appendChild(menu);

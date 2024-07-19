@@ -12,9 +12,11 @@ class InputManager {
     _raycaster.setFromCamera(pos, camera);
     const intersects = _raycaster.intersectObjects(scene.children);
     for (let i = 0; i < intersects.length; i++) {
-      this.storeEvent(intersects[i].object, {
+      const intersection = intersects[i];
+      this.storeEvent(intersection.object, {
         type: "rayhit",
-        distance: intersects[i].distance,
+        distance: intersection.distance,
+        point: intersection.point,
         order: i,
       });
     }

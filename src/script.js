@@ -6,9 +6,8 @@ import Stats from "stats-js";
 import { generateLoadingManager } from "./engine/loader.js";
 import { InputManager } from "./engine/input.js";
 import GUI from "lil-gui";
-import { Text } from "troika-three-text";
 import { GameEngine } from "./engine/engine.js";
-import { MainMenu } from "./examples/tictactoe/tictactoe.js";
+import { MainMenu } from "./examples/tower_defense/towerdefense.js";
 
 const initialState = new MainMenu();
 

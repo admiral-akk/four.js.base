@@ -1,4 +1,4 @@
-class KeyedMap extends Map {
+export class KeyedMap extends Map {
   set(keyedValue, value) {
     const key = keyedValue.key ? keyedValue.key() : keyedValue;
     return super.set(key, value);
@@ -20,7 +20,7 @@ class KeyedMap extends Map {
   }
 }
 
-class KeyedSet extends Set {
+export class KeyedSet extends Set {
   add(keyedValue) {
     const key = keyedValue.key ? keyedValue.key() : keyedValue;
     return super.add(key);
@@ -36,4 +36,14 @@ class KeyedSet extends Set {
     return super.delete(key);
   }
 }
-export { KeyedSet, KeyedMap };
+
+export class Position {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  key() {
+    return this.x + "-" + this.y;
+  }
+}
