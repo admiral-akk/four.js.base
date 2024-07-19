@@ -92,18 +92,6 @@ class InputManager {
       ui: new Map(),
       object: new Map(),
     };
-    this.uniqueVal = 0;
-    this.mouseState = {
-      posDelta: new THREE.Vector2(),
-      pos: null,
-      buttons: null,
-      mouseWheel: {
-        deltaY: null,
-      },
-    };
-    this.keyState = {
-      pressedKeys: new Map(),
-    };
     this.ui = new Set();
     this.sizes = { width: 1, height: 1 };
     this.listeners = [];
@@ -146,21 +134,10 @@ class InputManager {
       if (event.target.className !== "webgl") {
         return;
       }
-      const previous = this.mouseState.pos;
       const pos = new THREE.Vector2(
         ((event.clientX - sizes.horizontalOffset) / sizes.width) * 2 - 1,
         -((event.clientY - sizes.verticalOffset) / sizes.height) * 2 + 1
       );
-      this.mouseState.pos = pos;
-
-      if (previous) {
-        this.mouseState.posDelta = new THREE.Vector2(
-          this.mouseState.pos.x - previous.x,
-          this.mouseState.pos.y - previous.y
-        );
-      }
-
-      this.mouseState.buttons = event.buttons;
       this.storeEvent(null, {
         type: event.type,
         pos: pos,
@@ -179,7 +156,6 @@ class InputManager {
     window.addEventListener("pointerdown", handleMouseEvent);
     window.addEventListener("pointerup", handleMouseEvent);
     window.addEventListener("pointermove", handleMouseEvent);
-
     window.addEventListener(
       "contextmenu",
       (ev) => {
@@ -477,10 +453,6 @@ class InputManager {
   }
 
   endLoop() {
-    this.mouseState.posDelta.x = 0;
-    this.mouseState.posDelta.y = 0;
-    this.mouseState.mouseWheel.deltaY = null;
-
     const elements = document.getElementsByTagName("*");
     for (let i = 0; i < elements.length; i++) {
       const element = elements[i];
@@ -492,7 +464,6 @@ class InputManager {
       }
       this.register(element);
     }
-
     this.tick++;
   }
 }
