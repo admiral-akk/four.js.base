@@ -159,8 +159,11 @@ class TicTacToe extends THREE.Scene {
   generateCommands(input) {
     const { mouse, object, ui } = input.getState();
     const { released } = mouse;
-    if (ui.clicked.length) {
-      return [{ type: "mainmenu" }];
+    if (ui.clicked.length > 0) {
+      return [ui.clicked[0].command];
+    }
+    if (this.game.gameover() !== null) {
+      return [];
     }
     if (released) {
       const target = object.hover.find((v) => {
@@ -203,9 +206,9 @@ class TicTacToe extends THREE.Scene {
     div.style.background = "red";
     div.style.container = "ui";
     div.innerHTML = "Main menu";
+    div.command = { type: "mainmenu" };
     div.style.pointerEvents = "auto";
     this.ui.appendChild(div);
-    this.div = div;
 
     const makeLine = (position, height, width) => {
       const geo = new THREE.BoxGeometry(width, height, 0.2);
@@ -261,8 +264,11 @@ class TicTacToe extends THREE.Scene {
     engine.input.update(this, this.camera);
     this.commands = this.commands.concat(this.generateCommands(engine.input));
     const endGame = this.commands.find((v) => v.type === "mainmenu");
+    const newGame = this.commands.find((v) => v.type === "newgame");
     if (endGame) {
       engine.replaceState(new MainMenu());
+    } else if (newGame) {
+      engine.replaceState(new TicTacToe());
     } else if (this.commands.length > 0) {
       const effects = this.game.update(this.commands);
       this.updateG(this.game, effects, engine, engine.input);
@@ -383,14 +389,40 @@ class TicTacToe extends THREE.Scene {
           });
           // show the game over menu
 
-          const createMenu = () => {};
-
-          console.log("game over");
-          const restart = () => engine.replaceState(new TicTacToe());
+          const createMenu = () => {
+            var div = document.createElement("div");
+            // https://css-tricks.com/fitting-text-to-a-container/
+            div.style.position = "absolute";
+            div.style.fontSize = "2cqi";
+            div.style.top = "40%";
+            div.style.right = "45%";
+            div.style.height = "10%";
+            div.style.width = "10%";
+            div.style.background = "red";
+            div.style.container = "ui";
+            div.innerHTML = "New Game";
+            div.command = { type: "newgame" };
+            div.style.pointerEvents = "auto";
+            var div2 = document.createElement("div");
+            // https://css-tricks.com/fitting-text-to-a-container/
+            div2.style.position = "absolute";
+            div2.style.fontSize = "2cqi";
+            div2.style.top = "60%";
+            div2.style.right = "45%";
+            div2.style.height = "10%";
+            div2.style.width = "10%";
+            div2.style.background = "red";
+            div2.style.container = "ui";
+            div2.innerHTML = "Main Menu";
+            div2.command = { type: "mainmenu" };
+            div2.style.pointerEvents = "auto";
+            this.ui.appendChild(div);
+            this.ui.appendChild(div2);
+          };
           if (!this.tl.isActive()) {
-            restart();
+            createMenu();
           } else {
-            this.tl.eventCallback("onComplete", restart);
+            this.tl.eventCallback("onComplete", createMenu);
           }
           break;
         default:
