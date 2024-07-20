@@ -1,3 +1,4 @@
+/* these are just to get the canvas right */
 * {
   margin: 0;
   padding: 0;
@@ -24,10 +25,6 @@
   container-name: ui;
 }
 
-.card {
-  font-size: 2cqi;
-}
-
 html,
 body {
   overflow: hidden;
@@ -39,4 +36,38 @@ body {
   --widget-color: #0af;
   --padding: 2px;
   --widget-height: 2;
+}
+
+/* font sizing */
+div {
+  font-size: 2cqi;
+  container: ui;
+}
+
+.f-s {
+  font-size: 1cqi;
+}
+
+.f-l {
+  font-size: 3cqi;
+}
+
+/* c for container */
+.row-c {
+  align-items: center;
+  justify-content: space-around;
+  display: flex;
+}
+
+.column-c {
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  display: flex;
+  background-color: lightgray;
+}
+
+/* ui disables pointer events to allow the canvas to accept them */
+.interactive {
+  pointer-events: auto;
 }

@@ -26,6 +26,23 @@ export class GameEngine {
     div.className = "ui";
     div.style.zIndex = `${this.states.length + 1}`;
     this.ui.appendChild(div);
+
+    div.createElement = ({
+      type = "div",
+      style = {},
+      parent = div,
+      classNames = "",
+      text = "",
+    }) => {
+      const element = document.createElement(type);
+      element.className = classNames;
+      for (const [key, value] of Object.entries(style)) {
+        element.style[key] = value;
+      }
+      element.innerText = text;
+      parent.appendChild(element);
+      return element;
+    };
     return div;
   }
 

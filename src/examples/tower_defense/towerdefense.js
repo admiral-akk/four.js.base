@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Vector3 } from "three";
-import { KeyedMap, KeyedSet } from "../../utils/helper.js";
+import { KeyedMap, KeyedSet, Position } from "../../utils/helper.js";
+import { Entity } from "../../engine/entity.js";
 
 export class MainMenu extends THREE.Scene {
   constructor() {
@@ -10,48 +11,36 @@ export class MainMenu extends THREE.Scene {
   }
 
   init() {
-    var div = document.createElement("div");
-    // https://css-tricks.com/fitting-text-to-a-container/
-    div.style.position = "absolute";
-    div.style.fontSize = "2cqi";
-    div.style.top = "10%";
-    div.style.right = "10%";
-    div.style.height = "10%";
-    div.style.width = "80%";
-    div.style.justifyContent = "space-around";
-    div.style.margin = "auto";
-    div.style.display = "flex";
-    div.style.flexDirection = "column";
-    div.style.alignItems = "center";
-    div.style.justifyContent = "space-around";
+    const div = this.ui.createElement({
+      classNames: "column-c",
+      style: {
+        position: "absolute",
+        top: "10%",
+        right: "10%",
+        height: "10%",
+        width: "80%",
+      },
+    });
+    this.ui.createElement({
+      text: "My First Tower Defense",
+      parent: div,
+    });
 
-    div.style.background = "red";
-    div.style.container = "ui";
-    var div2 = document.createElement("div");
-    div2.style.fontSize = "2cqi";
-    div2.innerHTML = "My First Tower Defense";
-    this.ui.appendChild(div);
-    div.appendChild(div2);
+    this.start = this.ui.createElement({
+      classNames: "interactive column-c",
+      style: {
+        position: "absolute",
+        top: "80%",
+        right: "40%",
+        height: "10%",
+        width: "20%",
+      },
+    });
 
-    var start = document.createElement("div");
-    start.style.position = "absolute";
-    start.style.fontSize = "2cqi";
-    start.style.top = "80%";
-    start.style.right = "40%";
-    start.style.height = "10%";
-    start.style.width = "10%";
-    start.style.pointerEvents = "auto";
-    start.style.background = "red";
-    start.style.display = "flex";
-    start.style.flexDirection = "column";
-    start.style.alignItems = "center";
-    start.style.justifyContent = "space-around";
-    var div3 = document.createElement("div");
-    div3.style.fontSize = "2cqi";
-    div3.innerHTML = "Start Game";
-    start.appendChild(div3);
-    this.start = start;
-    this.ui.appendChild(start);
+    this.ui.createElement({
+      text: "Start Game",
+      parent: this.start,
+    });
   }
 
   cleanup() {}
@@ -69,6 +58,21 @@ export class MainMenu extends THREE.Scene {
   }
 }
 
+class Enemy extends Entity {
+  constructor(pos) {
+    super();
+    this.pos = pos;
+  }
+}
+
+class Tower extends Entity {
+  constructor() {
+    super();
+    this.range = 1;
+    this.damage = 1;
+  }
+}
+
 // need a notion of:
 // tower
 // lives
@@ -80,14 +84,99 @@ class TowerDefenseGame {
     this.state = {
       lives: 10,
     };
+    this.goal = new Position(0, 0);
     this.towers = new KeyedMap();
     this.enemies = [];
   }
 
-  placeTower(pos) {
-    if (!this.towers.has(pos)) {
-      this.towers.set(pos, { range: 1, damage: 1 });
+  path(start, end) {
+    const path = [start];
+    while (!path[path.length - 1].equals(end)) {
+      const last = path[path.length - 1];
+      if (last.x !== end.x) {
+        path.push(new Position(last.x + Math.sign(end.x - last.x), last.y));
+      } else {
+        path.push(new Position(last.x, last.y + Math.sign(end.y - last.y)));
+      }
     }
+    return path;
+  }
+
+  step(commands) {
+    const lives = this.state.lives;
+    const effects = [];
+
+    // first build any towers
+    for (let i = 0; i < commands.length; i++) {
+      const command = commands[i];
+      switch (command.type) {
+        case "build":
+          if (this.towers.has(pos)) {
+            this.towers.set(pos, new Tower());
+            effects.push({ effect: "build", pos });
+          }
+          break;
+        case "spawn":
+          this.enemies.push(new Enemy(command.pos));
+          effects.push({ effects: "spawnenemy", pos });
+          break;
+        default:
+          break;
+      }
+    }
+
+    // then have the towers attack
+    towers.forEach((tower, pos) => {
+      const target = this.enemies.find((e) => e.pos.dist(pos) <= tower.range);
+      if (target) {
+        target.health -= tower.damage;
+        effects.push({
+          effect: "attack",
+          attacker: tower.entityId,
+          enemy: target.entityId,
+        });
+      }
+    });
+
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
+      if (enemy.health <= 0) {
+        effects.push({
+          effect: "enemydied",
+          enemy: enemy.entityId,
+        });
+        this.enemies.splice(i, 1);
+      }
+    }
+
+    // then have the enemies move
+    for (let i = 0; i < this.enemies.length; i++) {
+      const enemy = this.enemies[i];
+      const path = this.path(enemy.pos, this.goal);
+
+      effects.push({
+        effect: "enemymoved",
+        enemy: enemy.entityId,
+        target: path[1],
+      });
+    }
+
+    // then see if any made it and subtract lives
+    this.enemies
+      .filter((e) => e.pos.equals(this.goal))
+      .forEach((enemy) => {
+        effects.push({ effect: "reachedflag", entityId: enemy.entityId });
+        this.state.lives--;
+      });
+
+    // then check lives
+    if (this.state.lives <= 0) {
+      effects.push({ effect: "gameover" });
+    } else if (this.state.lives != lives) {
+      effects.push({ effect: "liveschange", lives: this.state.lives });
+    }
+
+    return effects;
   }
 }
 
@@ -112,8 +201,11 @@ class TowerDefense extends THREE.Scene {
       geo.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
       this.add(mesh);
+      mesh.layers.enable(1);
+      return mesh;
     };
-    makeGround(5, 5);
+
+    this.ground = makeGround(5, 5);
   }
 
   cleanup() {}

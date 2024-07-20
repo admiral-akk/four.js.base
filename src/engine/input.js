@@ -445,7 +445,7 @@ class InputManager {
     const elements = document.getElementsByTagName("*");
     for (let i = 0; i < elements.length; i++) {
       const element = elements[i];
-      if (element.style.pointerEvents !== "auto") {
+      if (window.getComputedStyle(element, null).pointerEvents !== "auto") {
         continue;
       }
       if (this.ui.has(element)) {

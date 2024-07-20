@@ -43,6 +43,14 @@ export class Position {
     this.y = y;
   }
 
+  dist(other) {
+    return Math.abs(other.x - this.x) + Math.abs(other.y - this.y);
+  }
+
+  equals(other) {
+    return this.dist(other) === 0;
+  }
+
   key() {
     return this.x + "-" + this.y;
   }
