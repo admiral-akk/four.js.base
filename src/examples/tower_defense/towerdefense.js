@@ -71,6 +71,7 @@ class Enemy extends Entity {
     this.name = "enemy";
     this.pos = pos;
     this.health = 2;
+    this.speed = 1;
   }
 }
 
@@ -178,7 +179,7 @@ class TowerDefenseGame {
     for (let i = 0; i < this.enemies.length; i++) {
       const enemy = this.enemies[i];
       const path = this.path(enemy.pos, this.goal);
-      enemy.pos = path[1];
+      enemy.pos = path[Math.min(path.length - 1, enemy.speed)];
 
       effects.push({
         effect: "moved",

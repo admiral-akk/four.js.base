@@ -26,6 +26,14 @@ export class KeyedSet extends Set {
     return super.add(key);
   }
 
+  pop() {
+    for (const value of this) {
+      set.delete(value);
+      return value;
+    }
+    return null;
+  }
+
   has(keyedValue) {
     const key = keyedValue.key ? keyedValue.key() : keyedValue;
     return super.has(key);
@@ -41,6 +49,20 @@ export class Position {
   constructor(x, y) {
     this.x = x;
     this.y = y;
+  }
+
+  neighbors() {
+    const { x, y } = this;
+    return [
+      new Position(x + 1, y),
+      new Position(x - 1, y),
+      new Position(x, y + 1),
+      new Position(x, y - 1),
+    ];
+  }
+
+  dist_max(other) {
+    return Math.max(Math.abs(other.x - this.x), Math.abs(other.y - this.y));
   }
 
   dist(other) {
