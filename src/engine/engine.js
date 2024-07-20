@@ -36,14 +36,21 @@ export class GameEngine {
       parent = div,
       classNames = "",
       text = "",
+      data = {},
+      children = [],
     }) => {
       const element = document.createElement(type);
       element.className = classNames;
       for (const [key, value] of Object.entries(style)) {
         element.style[key] = value;
       }
+      element.isCustom = true;
+      element.data = data;
       element.innerText = text;
       parent.appendChild(element);
+      children.map((c) => {
+        element.appendChild(div.createElement(c));
+      });
       return element;
     };
     return div;

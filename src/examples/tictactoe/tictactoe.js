@@ -342,7 +342,6 @@ class TicTacToe extends THREE.Scene {
       const effect = effects[i];
       switch (effect.effect) {
         case "add":
-          console.log("make mark");
           makeMark(effect.pos, effect.player);
           break;
         case "gameover":

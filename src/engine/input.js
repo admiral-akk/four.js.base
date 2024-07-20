@@ -448,6 +448,9 @@ class InputManager {
       if (window.getComputedStyle(element, null).pointerEvents !== "auto") {
         continue;
       }
+      if (element.isCustom !== true) {
+        continue;
+      }
       if (this.ui.has(element)) {
         continue;
       }

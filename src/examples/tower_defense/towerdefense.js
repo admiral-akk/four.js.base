@@ -17,7 +17,7 @@ export class MainMenu extends GameState {
   }
 
   init() {
-    const div = this.ui.createElement({
+    this.ui.createElement({
       classNames: "column-c",
       style: {
         position: "absolute",
@@ -26,10 +26,11 @@ export class MainMenu extends GameState {
         height: "10%",
         width: "80%",
       },
-    });
-    this.ui.createElement({
-      text: "My First Tower Defense",
-      parent: div,
+      children: [
+        {
+          text: "My First Tower Defense",
+        },
+      ],
     });
 
     this.start = this.ui.createElement({
@@ -41,11 +42,11 @@ export class MainMenu extends GameState {
         height: "10%",
         width: "20%",
       },
-    });
-
-    this.ui.createElement({
-      text: "Start Game",
-      parent: this.start,
+      children: [
+        {
+          text: "Start Game",
+        },
+      ],
     });
   }
 
@@ -67,13 +68,16 @@ export class MainMenu extends GameState {
 class Enemy extends Entity {
   constructor(pos) {
     super();
+    this.name = "enemy";
     this.pos = pos;
   }
 }
 
 class Tower extends Entity {
-  constructor() {
+  constructor(pos) {
     super();
+    this.name = "tower";
+    this.pos = pos;
     this.range = 1;
     this.damage = 1;
   }
@@ -108,28 +112,48 @@ class TowerDefenseGame {
     return path;
   }
 
-  step(commands) {
-    const lives = this.state.lives;
+  handle(commands) {
     const effects = [];
-
-    // first build any towers
+    if (commands.length) {
+      console.log(commands);
+    }
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
       switch (command.type) {
-        case "build":
-          if (this.towers.has(pos)) {
-            this.towers.set(pos, new Tower());
-            effects.push({ effect: "build", pos });
+        case "create":
+          const { entity } = command;
+          const pos = entity.pos;
+          console.log(entity);
+          switch (entity.name) {
+            case "tower":
+              if (!this.towers.has(pos)) {
+                this.towers.set(pos, entity);
+                effects.push({ effect: "spawn", entity });
+              }
+              break;
+            case "enemy":
+              this.enemies.push(entity);
+              effects.push({ effect: "spawn", entity });
+              console.log(effects);
+              break;
+            default:
+              break;
           }
-          break;
-        case "spawn":
-          this.enemies.push(new Enemy(command.pos));
-          effects.push({ effects: "spawnenemy", pos });
           break;
         default:
           break;
       }
     }
+    if (effects.length) {
+      console.log(effects);
+    }
+
+    return effects;
+  }
+
+  step() {
+    const lives = this.state.lives;
+    const effects = [];
 
     // then have the towers attack
     towers.forEach((tower, pos) => {
@@ -199,6 +223,8 @@ class TowerDefense extends GameState {
   }
 
   init() {
+    this.game = new TowerDefenseGame();
+    this.activeCreation = null;
     this.camera.position.copy(new Vector3(4, 4, 4));
     this.camera.lookAt(new Vector3());
 
@@ -212,30 +238,184 @@ class TowerDefense extends GameState {
     };
 
     const makeHint = () => {
-      const geo = new THREE.SphereGeometry(1);
-      const mesh = new THREE.Mesh(
-        geo,
-        new THREE.MeshBasicMaterial({ color: "grey" })
-      );
+      const geo = new THREE.SphereGeometry(0.2);
+      const material = new THREE.MeshBasicMaterial({ color: "grey" });
+      const mesh = new THREE.Mesh(geo, material);
+      material.transparent = true;
+      material.opacity = 0;
       this.add(mesh);
       return mesh;
     };
 
     this.ground = makeGround(5, 5);
     this.hint = makeHint();
+    this.build = this.ui.createElement({
+      classNames: "interactive column-c",
+      style: {
+        position: "absolute",
+        top: "80%",
+        right: "20%",
+        height: "10%",
+        width: "20%",
+      },
+      data: {
+        command: {
+          type: "buildmode",
+        },
+      },
+      children: [
+        {
+          text: "Build",
+        },
+      ],
+    });
+    this.spawn = this.ui.createElement({
+      classNames: "interactive column-c",
+      style: {
+        position: "absolute",
+        top: "80%",
+        right: "60%",
+        height: "10%",
+        width: "20%",
+      },
+      data: {
+        command: {
+          type: "enemymode",
+        },
+      },
+      children: [
+        {
+          text: "Spawn Enemy",
+        },
+      ],
+    });
   }
 
   cleanup() {}
   pause() {}
   resume() {}
 
+  generateCommands(state) {
+    const { mouse, object, ui } = state;
+    const { released } = mouse;
+    if (ui.clicked.length > 0) {
+      return [ui.clicked[0].data.command];
+    }
+    const hit = object.hover.get(this.ground);
+    if (hit && released && this.activeCreation !== null) {
+      const { x, z } = hit.point;
+      const pos = new Position(Math.round(x), Math.round(z));
+      return [
+        {
+          type: "create",
+          entity: new this.activeCreation.constructor(pos),
+        },
+      ];
+    }
+    return [];
+  }
+
+  updateInputState(commands) {
+    for (let i = 0; i < commands.length; i++) {
+      const command = commands[i];
+      switch (command.type) {
+        case "enemymode":
+          this.activeCreation =
+            this.activeCreation?.name === "enemy" ? null : new Enemy(null);
+          break;
+        case "buildmode":
+          this.activeCreation =
+            this.activeCreation?.name === "tower" ? null : new Tower(null);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  updateRender(effects) {
+    if (effects.length > 0) {
+      console.log(effects);
+    }
+    for (let i = 0; i < effects.length; i++) {
+      const effect = effects[i];
+      switch (effect.effect) {
+        case "spawn":
+          const { entity } = effect;
+          switch (entity.name) {
+            case "tower":
+              const makeTower = () => {
+                const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+                const material = new THREE.MeshBasicMaterial({
+                  color: "red",
+                });
+                const mesh = new THREE.Mesh(geo, material);
+                this.add(mesh);
+                mesh.position.copy(
+                  new Vector3(entity.pos.x, 0.1, entity.pos.y)
+                );
+                mesh.entity = entity;
+                return mesh;
+              };
+              makeTower();
+              break;
+            case "enemy":
+              const makeEnemy = () => {
+                const geo = new THREE.ConeGeometry(0.2, 0.3);
+                const material = new THREE.MeshBasicMaterial({
+                  color: "green",
+                });
+                const mesh = new THREE.Mesh(geo, material);
+                this.add(mesh);
+                mesh.position.copy(
+                  new Vector3(entity.pos.x, 0.1, entity.pos.y)
+                );
+                mesh.entity = entity;
+                return mesh;
+              };
+              makeEnemy();
+              break;
+            default:
+              break;
+          }
+          break;
+        case "attack":
+          break;
+        case "enemydied":
+          break;
+        case "enemymoved":
+          break;
+        case "reachedflag":
+          break;
+        case "gameover":
+          break;
+        case "liveschange":
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
   update(engine) {
-    const { object } = engine.input.getState();
+    const state = engine.input.getState();
+    const commands = this.generateCommands(state);
+    this.updateInputState(commands);
+    let effects = this.game.handle(commands);
+    this.updateRender(effects);
+
+    if (commands.find((c) => c.type === "step")) {
+      effects = effects.concat(this.game.step());
+    }
+
+    const { object } = state;
     const hit = object.hover.get(this.ground);
     if (hit) {
-      console.log(hit);
       this.hint.visible = true;
-      this.hint.position.copy(new Vector3(hit.point.x, 1, hit.point.z));
+      this.hint.material.opacity = 0.5;
+      this.hint.position.copy(
+        new Vector3(Math.round(hit.point.x), 0.3, Math.round(hit.point.z))
+      );
     } else {
       this.hint.visible = false;
     }
