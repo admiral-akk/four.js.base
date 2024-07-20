@@ -156,7 +156,7 @@ class TowerDefenseGame {
     const effects = [];
 
     // then have the towers attack
-    towers.forEach((tower, pos) => {
+    this.towers.forEach((tower, pos) => {
       const target = this.enemies.find((e) => e.pos.dist(pos) <= tower.range);
       if (target) {
         target.health -= tower.damage;
@@ -183,21 +183,26 @@ class TowerDefenseGame {
     for (let i = 0; i < this.enemies.length; i++) {
       const enemy = this.enemies[i];
       const path = this.path(enemy.pos, this.goal);
+      enemy.pos = path[1];
 
       effects.push({
-        effect: "enemymoved",
-        enemy: enemy.entityId,
-        target: path[1],
+        effect: "moved",
+        entity: enemy,
       });
     }
 
-    // then see if any made it and subtract lives
-    this.enemies
-      .filter((e) => e.pos.equals(this.goal))
-      .forEach((enemy) => {
-        effects.push({ effect: "reachedflag", entityId: enemy.entityId });
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
+      if (enemy.pos.equals(this.goal)) {
+        effects.push({
+          effect: "enemydied",
+          enemy: enemy.entityId,
+        });
+        this.enemies.splice(i, 1);
         this.state.lives--;
-      });
+        effects.push({ effect: "reachedFlag", entity: enemy });
+      }
+    }
 
     // then check lives
     if (this.state.lives <= 0) {
@@ -254,7 +259,7 @@ class TowerDefense extends GameState {
       style: {
         position: "absolute",
         top: "80%",
-        right: "20%",
+        right: "10%",
         height: "10%",
         width: "20%",
       },
@@ -269,12 +274,33 @@ class TowerDefense extends GameState {
         },
       ],
     });
+    this.step = this.ui.createElement({
+      classNames: "interactive column-c",
+      style: {
+        position: "absolute",
+        top: "80%",
+        right: "40%",
+        height: "10%",
+        width: "20%",
+      },
+      data: {
+        command: {
+          type: "step",
+        },
+      },
+      children: [
+        {
+          text: "Step",
+        },
+      ],
+    });
+
     this.spawn = this.ui.createElement({
       classNames: "interactive column-c",
       style: {
         position: "absolute",
         top: "80%",
-        right: "60%",
+        right: "70%",
         height: "10%",
         width: "20%",
       },
@@ -383,7 +409,18 @@ class TowerDefense extends GameState {
           break;
         case "enemydied":
           break;
-        case "enemymoved":
+        case "moved":
+          console.log("moved");
+          const matching = [];
+          this.traverse((child) => {
+            if (child.entity === effect.entity) {
+              matching.push(child);
+            }
+          });
+          matching.forEach((v) => {
+            const { x, y } = v.entity.pos;
+            v.position.copy(new THREE.Vector3(x, v.position.y, y));
+          });
           break;
         case "reachedflag":
           break;
@@ -402,11 +439,11 @@ class TowerDefense extends GameState {
     const commands = this.generateCommands(state);
     this.updateInputState(commands);
     let effects = this.game.handle(commands);
-    this.updateRender(effects);
 
     if (commands.find((c) => c.type === "step")) {
       effects = effects.concat(this.game.step());
     }
+    this.updateRender(effects);
 
     const { object } = state;
     const hit = object.hover.get(this.ground);
