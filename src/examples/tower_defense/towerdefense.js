@@ -80,7 +80,9 @@ class Tower extends Entity {
     super();
     this.name = "tower";
     this.pos = pos;
-    this.range = 2;
+    this.range = 20;
+    this.cooldown = 4;
+    this.nextAttackTick = 0;
     this.damage = 1;
   }
 }
@@ -99,6 +101,7 @@ class TowerDefenseGame {
     this.goal = new Position(0, 0);
     this.towers = [];
     this.enemies = [];
+    this.tick = 0;
   }
 
   path(start, end) {
@@ -152,20 +155,24 @@ class TowerDefenseGame {
     const lives = this.state.lives;
     const effects = [];
 
-    // then have the towers attack
-    this.towers.forEach((tower) => {
+    for (let i = 0; i < this.towers.length; i++) {
+      const tower = this.towers[i];
+      if (tower.nextAttackTick > this.tick) {
+        continue;
+      }
       const target = this.enemies.find(
         (e) => e.pos.dist(tower.pos) <= tower.range
       );
       if (target) {
         target.health -= tower.damage;
+        tower.nextAttackTick = this.tick + tower.cooldown;
         effects.push({
           effect: "attack",
           attacker: tower,
           target,
         });
       }
-    });
+    }
 
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
@@ -206,6 +213,7 @@ class TowerDefenseGame {
       effects.push({ effect: "liveschange", lives: this.state.lives });
     }
 
+    this.tick++;
     return effects;
   }
 }
@@ -325,7 +333,7 @@ class TowerDefense extends GameState {
     const hit = object.hover.get(this.ground);
     if (hit && released && this.activeCreation !== null) {
       const { x, z } = hit.point;
-      const pos = new Position(Math.round(x), Math.round(z));
+      const pos = new Position(10 * Math.round(x), 10 * Math.round(z));
       return [
         {
           type: "create",
@@ -370,7 +378,7 @@ class TowerDefense extends GameState {
                 const mesh = new THREE.Mesh(geo, material);
                 this.add(mesh);
                 mesh.position.copy(
-                  new Vector3(entity.pos.x, 0.1, entity.pos.y)
+                  new Vector3(entity.pos.x / 10, 0.1, entity.pos.y / 10)
                 );
                 mesh.entity = entity;
                 return mesh;
@@ -386,7 +394,7 @@ class TowerDefense extends GameState {
                 const mesh = new THREE.Mesh(geo, material);
                 this.add(mesh);
                 mesh.position.copy(
-                  new Vector3(entity.pos.x, 0.1, entity.pos.y)
+                  new Vector3(entity.pos.x / 10, 0.1, entity.pos.y / 10)
                 );
                 mesh.entity = entity;
                 return mesh;
@@ -422,7 +430,7 @@ class TowerDefense extends GameState {
           });
           matching.forEach((v) => {
             const { x, y } = v.entity.pos;
-            v.position.copy(new THREE.Vector3(x, v.position.y, y));
+            v.position.copy(new THREE.Vector3(x / 10, v.position.y, y / 10));
           });
           break;
         case "gameover":
