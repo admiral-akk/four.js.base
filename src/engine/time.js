@@ -3,7 +3,7 @@ import * as THREE from "three";
 class TimeManager {
   tick() {
     const deltaTime = this.clock.getDelta();
-    this.frame++;
+    this.time.frame++;
     this.time.userTime += deltaTime;
     this.time.gameTime += deltaTime * this.gameSpeed;
     this.time.userDeltaTime = deltaTime;

@@ -167,7 +167,7 @@ class InputManager {
 
   getObjectState() {
     const object = {
-      hover: [],
+      hover: new Map(),
     };
 
     const keys = this.history.object.keys();
@@ -177,7 +177,7 @@ class InputManager {
       {
         const last = events.length > 0 ? events[events.length - 1] : null;
         if (last && last.frame === this.frame && last.type === "rayhit") {
-          object.hover.push(key);
+          object.hover.set(key, last);
         }
       }
     }

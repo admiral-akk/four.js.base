@@ -193,7 +193,7 @@ class TowerDefense extends GameState {
       window,
       cameraConfig: {
         isPerspective: false,
-        width: 4,
+        width: 10,
       },
     });
   }
@@ -207,17 +207,39 @@ class TowerDefense extends GameState {
       geo.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
       this.add(mesh);
+      mesh.layers.enable(1);
+      return mesh;
+    };
+
+    const makeHint = () => {
+      const geo = new THREE.SphereGeometry(1);
+      const mesh = new THREE.Mesh(
+        geo,
+        new THREE.MeshBasicMaterial({ color: "grey" })
+      );
+      this.add(mesh);
       return mesh;
     };
 
     this.ground = makeGround(5, 5);
+    this.hint = makeHint();
   }
 
   cleanup() {}
   pause() {}
   resume() {}
 
-  update(engine) {}
+  update(engine) {
+    const { object } = engine.input.getState();
+    const hit = object.hover.get(this.ground);
+    if (hit) {
+      console.log(hit);
+      this.hint.visible = true;
+      this.hint.position.copy(new Vector3(hit.point.x, 1, hit.point.z));
+    } else {
+      this.hint.visible = false;
+    }
+  }
 
   render(renderer) {
     renderer.render(this, this.camera);
