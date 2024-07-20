@@ -1,16 +1,19 @@
+import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
+
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class GameEngine {
-  constructor(input, time, loader, renderer) {
+  constructor(input, time, loader, renderer, window) {
     this.ui = document.querySelector("div.uiContainer");
     this.states = [];
     this.input = input;
     this.time = time;
     this.loader = loader;
     this.renderer = renderer;
+    this.window = window;
   }
 
-  init(initialState) {
-    this.pushState(initialState);
+  init(stateConstructor) {
+    this.pushState(stateConstructor);
   }
 
   currentState() {
@@ -51,20 +54,26 @@ export class GameEngine {
     this.input.cleanupScene(current);
   }
 
-  replaceState(state) {
+  replaceState(stateConstructor) {
     const current = this.currentState();
     if (current) {
       this.states.pop().cleanup();
       this.cleanupScene(current);
     }
-    state.ui = this.makeContainer();
+    const state = stateConstructor({
+      ui: this.makeContainer(),
+      window: this.window,
+    });
     state.init();
     this.states.push(state);
   }
 
-  pushState(state) {
-    state.ui = this.makeContainer();
+  pushState(stateConstructor) {
     this.currentState()?.pause();
+    const state = stateConstructor({
+      ui: this.makeContainer(),
+      window: this.window,
+    });
     state.init();
     this.states.push(state);
   }
@@ -91,5 +100,28 @@ export class GameEngine {
 
   render() {
     this.currentState()?.render(this.renderer);
+  }
+}
+
+export class GameState extends Scene {
+  constructor({ ui, window, cameraConfig }) {
+    super();
+    this.ui = ui;
+    const { aspect } = window.sizes;
+    let camera = null;
+    if (cameraConfig.isPerspective) {
+      const { fov } = cameraConfig;
+      camera = new PerspectiveCamera(fov, aspect);
+    } else {
+      const halfWidth = cameraConfig.width / 2;
+      camera = new OrthographicCamera(
+        -halfWidth * aspect,
+        halfWidth * aspect,
+        halfWidth,
+        -halfWidth
+      );
+    }
+    this.add(camera);
+    this.camera = camera;
   }
 }

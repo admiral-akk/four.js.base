@@ -9,7 +9,7 @@ import GUI from "lil-gui";
 import { GameEngine } from "./engine/engine.js";
 import { MainMenu } from "./examples/tower_defense/towerdefense.js";
 
-const initialState = new MainMenu();
+const initialState = (v) => new MainMenu(v);
 
 const gui = new GUI();
 
@@ -23,7 +23,7 @@ const windowManager = new WindowManager(16 / 9);
 const input = new InputManager(windowManager, time);
 const renderer = new CustomerRenderer(windowManager);
 
-const engine = new GameEngine(input, time, loader, renderer);
+const engine = new GameEngine(input, time, loader, renderer, windowManager);
 
 engine.init(initialState);
 

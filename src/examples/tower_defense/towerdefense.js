@@ -1,13 +1,19 @@
 import * as THREE from "three";
 import { Vector3 } from "three";
-import { KeyedMap, KeyedSet, Position } from "../../utils/helper.js";
+import { KeyedMap, Position } from "../../utils/helper.js";
 import { Entity } from "../../engine/entity.js";
+import { GameState } from "../../engine/engine.js";
 
-export class MainMenu extends THREE.Scene {
-  constructor() {
-    super();
-    this.camera = new THREE.PerspectiveCamera(75, 16 / 9);
-    this.add(this.camera);
+export class MainMenu extends GameState {
+  constructor({ ui, window }) {
+    super({
+      ui,
+      window,
+      cameraConfig: {
+        isPerspective: true,
+        fov: 75,
+      },
+    });
   }
 
   init() {
@@ -50,7 +56,7 @@ export class MainMenu extends THREE.Scene {
   update(engine) {
     const { ui } = engine.input.getState();
     if (ui.clicked.find((v) => v === this.start) !== undefined) {
-      engine.replaceState(new TowerDefense());
+      engine.replaceState((v) => new TowerDefense(v));
     }
   }
   render(renderer) {
@@ -180,16 +186,16 @@ class TowerDefenseGame {
   }
 }
 
-class TowerDefense extends THREE.Scene {
-  constructor() {
-    super();
-    this.camera = new THREE.OrthographicCamera(
-      (-4 * 16) / 9,
-      (4 * 16) / 9,
-      4,
-      -4
-    );
-    this.add(this.camera);
+class TowerDefense extends GameState {
+  constructor({ ui, window }) {
+    super({
+      ui,
+      window,
+      cameraConfig: {
+        isPerspective: false,
+        width: 4,
+      },
+    });
   }
 
   init() {
@@ -201,7 +207,6 @@ class TowerDefense extends THREE.Scene {
       geo.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
       this.add(mesh);
-      mesh.layers.enable(1);
       return mesh;
     };
 

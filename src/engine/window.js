@@ -5,6 +5,7 @@ class WindowManager {
       height: window.innerHeight,
       verticalOffset: 0,
       horizontalOffset: 0,
+      aspect,
     };
     this.listeners = [];
 
@@ -12,14 +13,14 @@ class WindowManager {
     const canvasContainer = document.querySelector("div.relative");
 
     this.update = () => {
-      if (window.innerHeight * aspect > window.innerWidth) {
+      if (window.innerHeight * this.sizes.aspect > window.innerWidth) {
         this.sizes.width = window.innerWidth;
-        this.sizes.height = window.innerWidth / aspect;
+        this.sizes.height = window.innerWidth / this.sizes.aspect;
         this.sizes.verticalOffset =
           (window.innerHeight - this.sizes.height) / 2;
         this.sizes.horizontalOffset = 0;
       } else {
-        this.sizes.width = window.innerHeight * aspect;
+        this.sizes.width = window.innerHeight * this.sizes.aspect;
         this.sizes.height = window.innerHeight;
         this.sizes.verticalOffset = 0;
         this.sizes.horizontalOffset =
