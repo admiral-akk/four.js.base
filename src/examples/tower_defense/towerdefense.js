@@ -97,7 +97,7 @@ class TowerDefenseGame {
       lives: 10,
     };
     this.goal = new Position(0, 0);
-    this.towers = new KeyedMap();
+    this.towers = [];
     this.enemies = [];
   }
 
@@ -124,8 +124,11 @@ class TowerDefenseGame {
           const pos = entity.pos;
           switch (entity.name) {
             case "tower":
-              if (!this.towers.has(pos)) {
-                this.towers.set(pos, entity);
+              const occupied = this.towers.find(
+                (t) => t.pos.dist_max(pos) <= 1
+              );
+              if (!occupied) {
+                this.towers.push(entity);
                 effects.push({ effect: "spawn", entity });
               }
               break;
