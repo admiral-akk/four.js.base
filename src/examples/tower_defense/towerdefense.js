@@ -70,6 +70,7 @@ class Enemy extends Entity {
     super();
     this.name = "enemy";
     this.pos = pos;
+    this.health = 2;
   }
 }
 
@@ -78,7 +79,7 @@ class Tower extends Entity {
     super();
     this.name = "tower";
     this.pos = pos;
-    this.range = 1;
+    this.range = 2;
     this.damage = 1;
   }
 }
@@ -114,16 +115,12 @@ class TowerDefenseGame {
 
   handle(commands) {
     const effects = [];
-    if (commands.length) {
-      console.log(commands);
-    }
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
       switch (command.type) {
         case "create":
           const { entity } = command;
           const pos = entity.pos;
-          console.log(entity);
           switch (entity.name) {
             case "tower":
               if (!this.towers.has(pos)) {
@@ -134,7 +131,6 @@ class TowerDefenseGame {
             case "enemy":
               this.enemies.push(entity);
               effects.push({ effect: "spawn", entity });
-              console.log(effects);
               break;
             default:
               break;
@@ -143,9 +139,6 @@ class TowerDefenseGame {
         default:
           break;
       }
-    }
-    if (effects.length) {
-      console.log(effects);
     }
 
     return effects;
@@ -156,14 +149,16 @@ class TowerDefenseGame {
     const effects = [];
 
     // then have the towers attack
-    this.towers.forEach((tower, pos) => {
-      const target = this.enemies.find((e) => e.pos.dist(pos) <= tower.range);
+    this.towers.forEach((tower) => {
+      const target = this.enemies.find(
+        (e) => e.pos.dist(tower.pos) <= tower.range
+      );
       if (target) {
         target.health -= tower.damage;
         effects.push({
           effect: "attack",
-          attacker: tower.entityId,
-          enemy: target.entityId,
+          attacker: tower,
+          target,
         });
       }
     });
@@ -194,10 +189,6 @@ class TowerDefenseGame {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
       if (enemy.pos.equals(this.goal)) {
-        effects.push({
-          effect: "died",
-          entity: enemy,
-        });
         this.enemies.splice(i, 1);
         this.state.lives--;
         effects.push({ effect: "reachedFlag", entity: enemy });
@@ -360,9 +351,6 @@ class TowerDefense extends GameState {
   }
 
   updateRender(effects) {
-    if (effects.length > 0) {
-      console.log(effects);
-    }
     for (let i = 0; i < effects.length; i++) {
       const effect = effects[i];
       switch (effect.effect) {
@@ -408,6 +396,7 @@ class TowerDefense extends GameState {
         case "attack":
           break;
         case "died":
+        case "reachedFlag":
           {
             const matching = [];
             this.traverse((child) => {
@@ -431,8 +420,6 @@ class TowerDefense extends GameState {
             const { x, y } = v.entity.pos;
             v.position.copy(new THREE.Vector3(x, v.position.y, y));
           });
-          break;
-        case "reachedflag":
           break;
         case "gameover":
           break;
