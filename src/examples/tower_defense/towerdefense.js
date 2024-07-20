@@ -172,8 +172,8 @@ class TowerDefenseGame {
       const enemy = this.enemies[i];
       if (enemy.health <= 0) {
         effects.push({
-          effect: "enemydied",
-          enemy: enemy.entityId,
+          effect: "died",
+          entity: enemy,
         });
         this.enemies.splice(i, 1);
       }
@@ -195,8 +195,8 @@ class TowerDefenseGame {
       const enemy = this.enemies[i];
       if (enemy.pos.equals(this.goal)) {
         effects.push({
-          effect: "enemydied",
-          enemy: enemy.entityId,
+          effect: "died",
+          entity: enemy,
         });
         this.enemies.splice(i, 1);
         this.state.lives--;
@@ -407,10 +407,20 @@ class TowerDefense extends GameState {
           break;
         case "attack":
           break;
-        case "enemydied":
+        case "died":
+          {
+            const matching = [];
+            this.traverse((child) => {
+              if (child.entity === effect.entity) {
+                matching.push(child);
+              }
+            });
+            matching.forEach((v) => {
+              this.remove(v);
+            });
+          }
           break;
         case "moved":
-          console.log("moved");
           const matching = [];
           this.traverse((child) => {
             if (child.entity === effect.entity) {
