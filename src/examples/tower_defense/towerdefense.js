@@ -1,8 +1,53 @@
 import * as THREE from "three";
 import { Vector3 } from "three";
-import { KeyedMap, Position } from "../../utils/helper.js";
 import { Entity } from "../../engine/entity.js";
 import { GameState } from "../../engine/engine.js";
+
+const granularity = 100;
+
+class Position {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  toVector3() {
+    return new Vector3(this.x / granularity, 0.3, this.y / granularity);
+  }
+
+  static toPosition(v) {
+    return new Position(
+      Math.round(v.x * granularity),
+      Math.round(v.z * granularity)
+    );
+  }
+
+  neighbors() {
+    const { x, y } = this;
+    return [
+      new Position(x + 1, y),
+      new Position(x - 1, y),
+      new Position(x, y + 1),
+      new Position(x, y - 1),
+    ];
+  }
+
+  dist_max(other) {
+    return Math.max(Math.abs(other.x - this.x), Math.abs(other.y - this.y));
+  }
+
+  dist(other) {
+    return Math.abs(other.x - this.x) + Math.abs(other.y - this.y);
+  }
+
+  equals(other) {
+    return this.dist(other) === 0;
+  }
+
+  key() {
+    return this.x + "-" + this.y;
+  }
+}
 
 export class MainMenu extends GameState {
   constructor({ ui, window }) {
@@ -236,11 +281,32 @@ class TowerDefense extends GameState {
     this.camera.position.copy(new Vector3(4, 4, 4));
     this.camera.lookAt(new Vector3());
 
+    const grid = (x, y) => {
+      const geo = new THREE.PlaneGeometry(1, 1);
+      geo.rotateX(-Math.PI / 2);
+      const mesh = new THREE.Mesh(
+        geo,
+        new THREE.MeshBasicMaterial({
+          color: (x + y) % 2 === 0 ? "lightgray" : "grey",
+        })
+      );
+      this.add(mesh);
+      mesh.position.copy(new Vector3(x, 0, y));
+      return mesh;
+    };
+
+    for (let x = -5; x <= 5; x++) {
+      for (let y = -5; y <= 5; y++) {
+        grid(x, y);
+      }
+    }
+
     const makeGround = (height, width) => {
       const geo = new THREE.PlaneGeometry(width, height);
       geo.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
       this.add(mesh);
+      mesh.visible = false;
       mesh.layers.enable(1);
       return mesh;
     };
@@ -255,7 +321,7 @@ class TowerDefense extends GameState {
       return mesh;
     };
 
-    this.ground = makeGround(5, 5);
+    this.ground = makeGround(100, 100);
     this.hint = makeHint();
     this.build = this.ui.createElement({
       classNames: "interactive column-c",
@@ -332,8 +398,7 @@ class TowerDefense extends GameState {
     }
     const hit = object.hover.get(this.ground);
     if (hit && released && this.activeCreation !== null) {
-      const { x, z } = hit.point;
-      const pos = new Position(10 * Math.round(x), 10 * Math.round(z));
+      const pos = Position.toPosition(hit.point);
       return [
         {
           type: "create",
@@ -377,9 +442,7 @@ class TowerDefense extends GameState {
                 });
                 const mesh = new THREE.Mesh(geo, material);
                 this.add(mesh);
-                mesh.position.copy(
-                  new Vector3(entity.pos.x / 10, 0.1, entity.pos.y / 10)
-                );
+                mesh.position.copy(entity.pos.toVector3());
                 mesh.entity = entity;
                 return mesh;
               };
@@ -393,9 +456,7 @@ class TowerDefense extends GameState {
                 });
                 const mesh = new THREE.Mesh(geo, material);
                 this.add(mesh);
-                mesh.position.copy(
-                  new Vector3(entity.pos.x / 10, 0.1, entity.pos.y / 10)
-                );
+                mesh.position.copy(entity.pos.toVector3());
                 mesh.entity = entity;
                 return mesh;
               };
@@ -429,8 +490,7 @@ class TowerDefense extends GameState {
             }
           });
           matching.forEach((v) => {
-            const { x, y } = v.entity.pos;
-            v.position.copy(new THREE.Vector3(x / 10, v.position.y, y / 10));
+            v.position.copy(v.entity.pos.toVector3());
           });
           break;
         case "gameover":
@@ -449,7 +509,7 @@ class TowerDefense extends GameState {
     this.updateInputState(commands);
     let effects = this.game.handle(commands);
 
-    if (commands.find((c) => c.type === "step")) {
+    if (commands.find((c) => c.type === "step") || true) {
       effects = effects.concat(this.game.step());
     }
     this.updateRender(effects);
@@ -459,9 +519,7 @@ class TowerDefense extends GameState {
     if (hit) {
       this.hint.visible = true;
       this.hint.material.opacity = 0.5;
-      this.hint.position.copy(
-        new Vector3(Math.round(hit.point.x), 0.3, Math.round(hit.point.z))
-      );
+      this.hint.position.copy(Position.toPosition(hit.point).toVector3());
     } else {
       this.hint.visible = false;
     }
