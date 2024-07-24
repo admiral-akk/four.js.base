@@ -127,9 +127,20 @@ class Tower extends Entity {
     this.pos = position ? GridPosition.toGridPosition(position) : null;
     this.position = this.pos?.toVector3();
     this.range = 2;
-    this.cooldown = 4;
+    this.cooldown = 40;
     this.nextAttackTick = 0;
     this.damage = 1;
+  }
+}
+
+class Projectile extends Entity {
+  constructor({ target, tower }) {
+    super();
+    this.name = "projectile";
+    this.position = tower.position.clone();
+    this.target = target;
+    this.tower = tower;
+    this.speed = 0.02;
   }
 }
 
@@ -147,6 +158,7 @@ class TowerDefenseGame {
     this.goal = new GridPosition(0, 0);
     this.towers = [];
     this.enemies = [];
+    this.projectiles = [];
     this.tick = 0;
   }
 
@@ -201,7 +213,26 @@ class TowerDefenseGame {
     const lives = this.state.lives;
     const effects = [];
 
-    for (let i = 0; i < this.towers.length; i++) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const projectile = this.projectiles[i];
+      const delta = projectile.target.position.clone().sub(projectile.position);
+
+      if (delta.length() <= projectile.speed) {
+        this.projectiles.splice(i, 1);
+        projectile.target.health -= projectile.tower.damage;
+        effects.push({ effect: "died", entity: projectile });
+      } else {
+        projectile.position.add(
+          delta.normalize().multiplyScalar(projectile.speed)
+        );
+        effects.push({
+          effect: "moved",
+          entity: projectile,
+        });
+      }
+    }
+
+    for (let i = this.towers.length - 1; i >= 0; i--) {
       const tower = this.towers[i];
       if (tower.nextAttackTick > this.tick) {
         continue;
@@ -210,12 +241,13 @@ class TowerDefenseGame {
         (e) => e.position.distanceTo(tower.position) <= tower.range
       );
       if (target) {
-        target.health -= tower.damage;
+        const projectile = new Projectile({ target, tower });
+        this.projectiles.push(projectile);
         tower.nextAttackTick = this.tick + tower.cooldown;
+        console.log(projectile);
         effects.push({
-          effect: "attack",
-          attacker: tower,
-          target,
+          effect: "spawn",
+          entity: projectile,
         });
       }
     }
@@ -228,6 +260,13 @@ class TowerDefenseGame {
           entity: enemy,
         });
         this.enemies.splice(i, 1);
+        for (let j = this.projectiles.length - 1; j >= 0; j--) {
+          const projectile = this.projectiles[j];
+          if (projectile.target === enemy) {
+            this.projectiles.splice(j, 1);
+            effects.push({ effect: "died", entity: projectile });
+          }
+        }
       }
     }
 
@@ -429,6 +468,7 @@ class TowerDefense extends GameState {
       switch (effect.effect) {
         case "spawn":
           const { entity } = effect;
+          console.log(effect);
           switch (entity.name) {
             case "tower":
               const makeTower = () => {
@@ -458,6 +498,21 @@ class TowerDefense extends GameState {
               };
               makeEnemy();
               break;
+            case "projectile":
+              const makeProjectile = () => {
+                const geo = new THREE.SphereGeometry(0.05);
+                const material = new THREE.MeshBasicMaterial({
+                  color: "yellow",
+                });
+                const mesh = new THREE.Mesh(geo, material);
+                this.add(mesh);
+                mesh.position.copy(entity.position);
+                mesh.entity = entity;
+                console.log(mesh);
+                return mesh;
+              };
+              makeProjectile();
+              break;
             default:
               break;
           }
@@ -473,6 +528,9 @@ class TowerDefense extends GameState {
                 matching.push(child);
               }
             });
+            if (effect.entity.name === "projectile") {
+              console.log(matching);
+            }
             matching.forEach((v) => {
               this.remove(v);
             });
@@ -485,6 +543,9 @@ class TowerDefense extends GameState {
               matching.push(child);
             }
           });
+          if (effect.entity.name === "projectile") {
+            console.log(matching);
+          }
           matching.forEach((v) => {
             v.position.copy(v.entity.position);
           });
