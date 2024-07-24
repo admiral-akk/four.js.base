@@ -3,32 +3,32 @@ import { Vector3 } from "three";
 import { Entity } from "../../engine/entity.js";
 import { GameState } from "../../engine/engine.js";
 
-const granularity = 100;
+const gridSize = 0.4;
 
-class Position {
+class GridPosition {
   constructor(x, y) {
     this.x = x;
     this.y = y;
   }
 
   toVector3() {
-    return new Vector3(this.x / granularity, 0.3, this.y / granularity);
+    return new Vector3(this.x * gridSize, 0.3, this.y * gridSize);
   }
 
-  static toPosition(v) {
-    return new Position(
-      Math.round(v.x * granularity),
-      Math.round(v.z * granularity)
+  static toGridPosition(v) {
+    return new GridPosition(
+      Math.round(v.x / gridSize),
+      Math.round(v.z / gridSize)
     );
   }
 
   neighbors() {
     const { x, y } = this;
     return [
-      new Position(x + 1, y),
-      new Position(x - 1, y),
-      new Position(x, y + 1),
-      new Position(x, y - 1),
+      new GridPosition(x + 1, y),
+      new GridPosition(x - 1, y),
+      new GridPosition(x, y + 1),
+      new GridPosition(x, y - 1),
     ];
   }
 
@@ -111,21 +111,22 @@ export class MainMenu extends GameState {
 }
 
 class Enemy extends Entity {
-  constructor(pos) {
+  constructor(position) {
     super();
     this.name = "enemy";
-    this.pos = pos;
+    this.position = position;
     this.health = 2;
-    this.speed = 1;
+    this.speed = 0.01;
   }
 }
 
 class Tower extends Entity {
-  constructor(pos) {
+  constructor(position) {
     super();
     this.name = "tower";
-    this.pos = pos;
-    this.range = 20;
+    this.pos = position ? GridPosition.toGridPosition(position) : null;
+    this.position = this.pos?.toVector3();
+    this.range = 2;
     this.cooldown = 4;
     this.nextAttackTick = 0;
     this.damage = 1;
@@ -143,7 +144,7 @@ class TowerDefenseGame {
     this.state = {
       lives: 10,
     };
-    this.goal = new Position(0, 0);
+    this.goal = new GridPosition(0, 0);
     this.towers = [];
     this.enemies = [];
     this.tick = 0;
@@ -154,9 +155,9 @@ class TowerDefenseGame {
     while (!path[path.length - 1].equals(end)) {
       const last = path[path.length - 1];
       if (last.x !== end.x) {
-        path.push(new Position(last.x + Math.sign(end.x - last.x), last.y));
+        path.push(new GridPosition(last.x + Math.sign(end.x - last.x), last.y));
       } else {
-        path.push(new Position(last.x, last.y + Math.sign(end.y - last.y)));
+        path.push(new GridPosition(last.x, last.y + Math.sign(end.y - last.y)));
       }
     }
     return path;
@@ -173,7 +174,7 @@ class TowerDefenseGame {
           switch (entity.name) {
             case "tower":
               const occupied = this.towers.find(
-                (t) => t.pos.dist_max(pos) <= 1
+                (t) => t.pos.dist(GridPosition.toGridPosition(pos)) <= 1
               );
               if (!occupied) {
                 this.towers.push(entity);
@@ -206,7 +207,7 @@ class TowerDefenseGame {
         continue;
       }
       const target = this.enemies.find(
-        (e) => e.pos.dist(tower.pos) <= tower.range
+        (e) => e.position.distanceTo(tower.position) <= tower.range
       );
       if (target) {
         target.health -= tower.damage;
@@ -231,23 +232,19 @@ class TowerDefenseGame {
     }
 
     // then have the enemies move
-    for (let i = 0; i < this.enemies.length; i++) {
-      const enemy = this.enemies[i];
-      const path = this.path(enemy.pos, this.goal);
-      enemy.pos = path[Math.min(path.length - 1, enemy.speed)];
-
-      effects.push({
-        effect: "moved",
-        entity: enemy,
-      });
-    }
-
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
-      if (enemy.pos.equals(this.goal)) {
+      const delta = this.goal.toVector3().sub(enemy.position);
+      if (delta.length() <= enemy.speed) {
         this.enemies.splice(i, 1);
         this.state.lives--;
         effects.push({ effect: "reachedFlag", entity: enemy });
+      } else {
+        enemy.position.add(delta.normalize().multiplyScalar(enemy.speed));
+        effects.push({
+          effect: "moved",
+          entity: enemy,
+        });
       }
     }
 
@@ -398,11 +395,10 @@ class TowerDefense extends GameState {
     }
     const hit = object.hover.get(this.ground);
     if (hit && released && this.activeCreation !== null) {
-      const pos = Position.toPosition(hit.point);
       return [
         {
           type: "create",
-          entity: new this.activeCreation.constructor(pos),
+          entity: new this.activeCreation.constructor(hit.point),
         },
       ];
     }
@@ -442,7 +438,7 @@ class TowerDefense extends GameState {
                 });
                 const mesh = new THREE.Mesh(geo, material);
                 this.add(mesh);
-                mesh.position.copy(entity.pos.toVector3());
+                mesh.position.copy(entity.position);
                 mesh.entity = entity;
                 return mesh;
               };
@@ -456,7 +452,7 @@ class TowerDefense extends GameState {
                 });
                 const mesh = new THREE.Mesh(geo, material);
                 this.add(mesh);
-                mesh.position.copy(entity.pos.toVector3());
+                mesh.position.copy(entity.position);
                 mesh.entity = entity;
                 return mesh;
               };
@@ -490,7 +486,7 @@ class TowerDefense extends GameState {
             }
           });
           matching.forEach((v) => {
-            v.position.copy(v.entity.pos.toVector3());
+            v.position.copy(v.entity.position);
           });
           break;
         case "gameover":
@@ -519,7 +515,9 @@ class TowerDefense extends GameState {
     if (hit) {
       this.hint.visible = true;
       this.hint.material.opacity = 0.5;
-      this.hint.position.copy(Position.toPosition(hit.point).toVector3());
+      this.hint.position.copy(
+        GridPosition.toGridPosition(hit.point).toVector3()
+      );
     } else {
       this.hint.visible = false;
     }
