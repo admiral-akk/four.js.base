@@ -57,6 +57,7 @@ div {
   align-items: center;
   justify-content: space-around;
   display: flex;
+  background-color: darkgray;
 }
 
 .column-c {

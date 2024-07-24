@@ -3,7 +3,7 @@ import { Vector3 } from "three";
 import { Entity } from "../../engine/entity.js";
 import { GameState } from "../../engine/engine.js";
 
-const gridSize = 0.4;
+const gridSize = 0.5;
 
 class GridPosition {
   constructor(x, y) {
@@ -155,11 +155,41 @@ class TowerDefenseGame {
     this.state = {
       lives: 10,
     };
+    const bound = 7;
+    this.bounds = [
+      new GridPosition(-bound, -bound),
+      new GridPosition(bound, bound),
+    ];
     this.goal = new GridPosition(0, 0);
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
     this.tick = 0;
+  }
+
+  inbounds(pos) {
+    const min = this.bounds[0];
+    const max = this.bounds[1];
+    return pos.x >= min.x && pos.x <= max.x && pos.y >= min.y && pos.y <= max.y;
+  }
+
+  legalBuild(pos) {
+    if (!this.inbounds(pos)) {
+      return false;
+    }
+
+    const occupied = this.towers.find(
+      (t) => t.pos.dist(GridPosition.toGridPosition(pos)) <= 1
+    );
+
+    if (occupied) {
+      return false;
+    }
+
+    if (this.goal.equals(pos)) {
+      return false;
+    }
+    return true;
   }
 
   path(start, end) {
@@ -185,13 +215,11 @@ class TowerDefenseGame {
           const pos = entity.pos;
           switch (entity.name) {
             case "tower":
-              const occupied = this.towers.find(
-                (t) => t.pos.dist(GridPosition.toGridPosition(pos)) <= 1
-              );
-              if (!occupied) {
-                this.towers.push(entity);
-                effects.push({ effect: "spawn", entity });
+              if (!this.legalBuild(pos)) {
+                continue;
               }
+              this.towers.push(entity);
+              effects.push({ effect: "spawn", entity });
               break;
             case "enemy":
               this.enemies.push(entity);
@@ -311,14 +339,16 @@ class TowerDefense extends GameState {
     });
   }
 
+  spawnEnemy() {}
+
   init() {
     this.game = new TowerDefenseGame();
-    this.activeCreation = null;
+    this.buildingConstructor = null;
     this.camera.position.copy(new Vector3(4, 4, 4));
     this.camera.lookAt(new Vector3());
 
     const grid = (x, y) => {
-      const geo = new THREE.PlaneGeometry(1, 1);
+      const geo = new THREE.PlaneGeometry(gridSize, gridSize);
       geo.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(
         geo,
@@ -327,13 +357,13 @@ class TowerDefense extends GameState {
         })
       );
       this.add(mesh);
-      mesh.position.copy(new Vector3(x, 0, y));
+      mesh.position.copy(new Vector3(x * gridSize, 0, y * gridSize));
       return mesh;
     };
 
-    for (let x = -5; x <= 5; x++) {
-      for (let y = -5; y <= 5; y++) {
-        grid(x, y);
+    for (let x = this.game.bounds[0].x; x <= this.game.bounds[1].x; x++) {
+      for (let y = this.game.bounds[0].y; y <= this.game.bounds[1].y; y++) {
+        grid(x - 0.5, y - 0.5);
       }
     }
 
@@ -359,61 +389,50 @@ class TowerDefense extends GameState {
 
     this.ground = makeGround(100, 100);
     this.hint = makeHint();
-    this.build = this.ui.createElement({
-      classNames: "interactive column-c",
+
+    this.buildMenu = this.ui.createElement({
+      classNames: "row-c",
       style: {
         position: "absolute",
         top: "80%",
         right: "10%",
         height: "10%",
-        width: "20%",
+        width: "80%",
       },
-      data: {
-        command: {
-          type: "buildmode",
-        },
-      },
-      children: [
-        {
-          text: "Build",
-        },
-      ],
-    });
-    this.step = this.ui.createElement({
-      classNames: "interactive column-c",
-      style: {
-        position: "absolute",
-        top: "80%",
-        right: "40%",
-        height: "10%",
-        width: "20%",
-      },
-      data: {
-        command: {
-          type: "step",
-        },
-      },
-      children: [
-        {
-          text: "Step",
-        },
-      ],
     });
 
+    this.build = this.ui.createElement({
+      classNames: "interactive column-c",
+      style: {
+        height: "90%",
+        aspectRatio: 1,
+      },
+      data: {
+        command: {
+          type: "selectBuilding",
+          buildingConstructor: Tower,
+        },
+      },
+      parent: this.buildMenu,
+      children: [
+        {
+          classNames: "f-s",
+          text: "Build1",
+        },
+      ],
+    });
     this.spawn = this.ui.createElement({
       classNames: "interactive column-c",
       style: {
-        position: "absolute",
-        top: "80%",
-        right: "70%",
-        height: "10%",
-        width: "20%",
+        height: "90%",
+        width: "30%",
       },
       data: {
         command: {
           type: "enemymode",
         },
       },
+      parent: this.buildMenu,
       children: [
         {
           text: "Spawn Enemy",
@@ -430,36 +449,29 @@ class TowerDefense extends GameState {
     const { mouse, object, ui } = state;
     const { released } = mouse;
     if (ui.clicked.length > 0) {
-      return [ui.clicked[0].data.command];
-    }
-    const hit = object.hover.get(this.ground);
-    if (hit && released && this.activeCreation !== null) {
-      return [
-        {
-          type: "create",
-          entity: new this.activeCreation.constructor(hit.point),
-        },
-      ];
-    }
-    return [];
-  }
-
-  updateInputState(commands) {
-    for (let i = 0; i < commands.length; i++) {
-      const command = commands[i];
+      const command = ui.clicked[0].data.command;
       switch (command.type) {
-        case "enemymode":
-          this.activeCreation =
-            this.activeCreation?.name === "enemy" ? null : new Enemy(null);
-          break;
-        case "buildmode":
-          this.activeCreation =
-            this.activeCreation?.name === "tower" ? null : new Tower(null);
+        case "selectBuilding":
+          this.buildingConstructor =
+            this.buildingConstructor === command.buildingConstructor
+              ? null
+              : command.buildingConstructor;
           break;
         default:
           break;
       }
+      return [];
     }
+    const hit = object.hover.get(this.ground);
+    if (hit && released && this.buildingConstructor) {
+      return [
+        {
+          type: "create",
+          entity: new this.buildingConstructor(hit.point),
+        },
+      ];
+    }
+    return [];
   }
 
   updateRender(effects) {
@@ -563,7 +575,6 @@ class TowerDefense extends GameState {
   update(engine) {
     const state = engine.input.getState();
     const commands = this.generateCommands(state);
-    this.updateInputState(commands);
     let effects = this.game.handle(commands);
 
     if (commands.find((c) => c.type === "step") || true) {
@@ -574,11 +585,15 @@ class TowerDefense extends GameState {
     const { object } = state;
     const hit = object.hover.get(this.ground);
     if (hit) {
-      this.hint.visible = true;
-      this.hint.material.opacity = 0.5;
-      this.hint.position.copy(
-        GridPosition.toGridPosition(hit.point).toVector3()
-      );
+      const pos = GridPosition.toGridPosition(hit.point);
+      const legalPos = this.game.legalBuild(pos);
+      if (legalPos) {
+        this.hint.visible = true;
+        this.hint.material.opacity = 0.5;
+        this.hint.position.copy(pos.toVector3());
+      } else {
+        this.hint.visible = false;
+      }
     } else {
       this.hint.visible = false;
     }
