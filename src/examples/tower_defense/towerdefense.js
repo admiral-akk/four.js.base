@@ -210,6 +210,16 @@ class TowerDefenseGame {
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
       switch (command.type) {
+        case "spawnEnemy":
+          {
+            const entity = new command.enemyConstructor(
+              new GridPosition(10, 10).toVector3()
+            );
+            this.enemies.push(entity);
+            effects.push({ effect: "spawn", entity });
+          }
+
+          break;
         case "create":
           const { entity } = command;
           const pos = entity.pos;
@@ -429,7 +439,8 @@ class TowerDefense extends GameState {
       },
       data: {
         command: {
-          type: "enemymode",
+          type: "spawnEnemy",
+          enemyConstructor: Enemy,
         },
       },
       parent: this.buildMenu,
@@ -460,7 +471,7 @@ class TowerDefense extends GameState {
         default:
           break;
       }
-      return [];
+      return [command];
     }
     const hit = object.hover.get(this.ground);
     if (hit && released && this.buildingConstructor) {
