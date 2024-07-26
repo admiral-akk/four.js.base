@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { Vector3 } from "three";
 import { Entity } from "../../engine/entity.js";
 import { GameState } from "../../engine/engine.js";
+import { KeyedMap, KeyedSet } from "../../utils/helper.js";
 
 const gridSize = 0.5;
 
@@ -9,6 +10,10 @@ class GridPosition {
   constructor(x, y) {
     this.x = x;
     this.y = y;
+  }
+
+  clone() {
+    return new GridPosition(this.x, this.y);
   }
 
   toVector3() {
@@ -217,12 +222,10 @@ export class GameOverMenu extends GameState {
       console.log(command);
       switch (command.type) {
         case "mainMenu":
-          console.log("mainMenu", command);
           engine.popState();
           engine.replaceState(MainMenu);
           break;
         case "newGame":
-          console.log("new game", command);
           engine.popState();
           engine.replaceState(TowerDefense);
           break;
@@ -240,6 +243,33 @@ export class GameOverMenu extends GameState {
 // enemy
 // attack
 
+class Navigator extends KeyedMap {
+  update(goalPos, towersPos, inbounds) {
+    this.clear();
+    const walls = new KeyedSet();
+    walls.addAll(towersPos.map((p) => p.clone()));
+    this.set(goalPos, goalPos);
+    const queue = new KeyedSet();
+    queue.add(goalPos);
+    while (queue.size) {
+      const curr = queue.pop();
+      curr.neighbors().forEach((p) => {
+        if (this.has(p)) {
+          return;
+        }
+        this.set(p, curr);
+        if (walls.has(p)) {
+          return;
+        }
+        if (!inbounds(p)) {
+          return;
+        }
+        queue.add(p);
+      });
+    }
+  }
+}
+
 class TowerDefenseGame {
   constructor() {
     this.state = {
@@ -256,6 +286,16 @@ class TowerDefenseGame {
     this.enemies = [];
     this.projectiles = [];
     this.tick = 0;
+    this.navigator = new Navigator();
+    this.updateNavigation();
+  }
+
+  updateNavigation() {
+    this.navigator.update(
+      this.goal,
+      this.towers.map((t) => t.pos),
+      (p) => this.inbounds(p)
+    );
   }
 
   inbounds(pos) {
@@ -335,6 +375,7 @@ class TowerDefenseGame {
               }
               this.towers.push(entity);
 
+              this.updateNavigation();
               this.state.gold -= entity.cost;
               effects.push({ effect: "spawn", entity });
               break;

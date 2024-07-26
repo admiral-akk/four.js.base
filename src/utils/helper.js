@@ -20,28 +20,21 @@ export class KeyedMap extends Map {
   }
 }
 
-export class KeyedSet extends Set {
+export class KeyedSet extends KeyedMap {
   add(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.add(key);
+    return super.set(keyedValue, keyedValue);
+  }
+
+  addAll(keyedValues) {
+    keyedValues.forEach((v) => this.add(v));
   }
 
   pop() {
-    for (const value of this) {
-      set.delete(value);
+    for (const [key, value] of this) {
+      this.delete(value);
       return value;
     }
     return null;
-  }
-
-  has(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.has(key);
-  }
-
-  delete(keyedValue) {
-    const key = keyedValue.key ? keyedValue.key() : keyedValue;
-    return super.delete(key);
   }
 }
 
