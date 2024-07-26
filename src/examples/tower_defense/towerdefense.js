@@ -214,9 +214,20 @@ class TowerDefenseGame {
       switch (command.type) {
         case "spawnEnemy":
           {
-            const entity = new command.enemyConstructor(
-              new GridPosition(10, 10).toVector3()
-            );
+            const dir = Math.floor(Math.random() * 4);
+            let pos = null;
+            switch (dir) {
+              case 0:
+              default:
+                pos = new GridPosition(
+                  this.bounds[0].x - 1,
+                  Math.floor(
+                    Math.random() * (this.bounds[1].y - this.bounds[0].y) +
+                      this.bounds[0].y
+                  )
+                );
+            }
+            const entity = new command.enemyConstructor(pos.toVector3());
             this.enemies.push(entity);
             effects.push({ effect: "spawn", entity });
           }
