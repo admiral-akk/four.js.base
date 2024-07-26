@@ -294,14 +294,19 @@ class TowerDefenseGame {
     this.navigator.update(
       this.goal,
       this.towers.map((t) => t.pos),
-      (p) => this.inbounds(p)
+      (p) => this.inbounds(p, 1)
     );
   }
 
-  inbounds(pos) {
+  inbounds(pos, relaxation = 0) {
     const min = this.bounds[0];
     const max = this.bounds[1];
-    return pos.x >= min.x && pos.x <= max.x && pos.y >= min.y && pos.y <= max.y;
+    return (
+      pos.x >= min.x - relaxation &&
+      pos.x <= max.x + relaxation &&
+      pos.y >= min.y - relaxation &&
+      pos.y <= max.y + relaxation
+    );
   }
 
   legalBuild(pos) {
@@ -320,6 +325,20 @@ class TowerDefenseGame {
     if (this.goal.equals(pos)) {
       return false;
     }
+
+    const testNavigator = new Navigator();
+    const testTower = Array.from(this.towers.map((t) => t.pos));
+    testTower.push(pos);
+    testNavigator.update(this.goal, testTower, (p) => this.inbounds(p, 1));
+
+    if (
+      !testNavigator.has(
+        new GridPosition(this.bounds[0].x - 1, this.bounds[0].y - 1)
+      )
+    ) {
+      return;
+    }
+
     return true;
   }
 
@@ -357,6 +376,7 @@ class TowerDefenseGame {
                 );
             }
             const entity = new command.enemyConstructor(pos.toVector3());
+            entity.nextPosition = this.navigator.get(pos);
             this.enemies.push(entity);
             effects.push({ effect: "spawn", entity });
           }
@@ -459,18 +479,27 @@ class TowerDefenseGame {
     // then have the enemies move
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
-      const delta = this.goal.toVector3().sub(enemy.position);
-      if (delta.length() <= enemy.speed) {
-        this.enemies.splice(i, 1);
-        this.state.lives--;
-        effects.push({ effect: "reachedFlag", entity: enemy });
-      } else {
-        enemy.position.add(delta.normalize().multiplyScalar(enemy.speed));
-        effects.push({
-          effect: "moved",
-          entity: enemy,
-        });
+      let distanceToMove = enemy.speed;
+      while (distanceToMove > 0) {
+        const delta = enemy.nextPosition.toVector3().sub(enemy.position);
+        if (delta.length() > distanceToMove) {
+          enemy.position.add(delta.normalize().multiplyScalar(distanceToMove));
+          distanceToMove = 0;
+        } else if (this.goal.equals(enemy.nextPosition)) {
+          distanceToMove = 0;
+          this.enemies.splice(i, 1);
+          this.state.lives--;
+          effects.push({ effect: "reachedFlag", entity: enemy });
+        } else {
+          distanceToMove -= delta.length();
+          enemy.position.copy(enemy.nextPosition.toVector3());
+          enemy.nextPosition = this.navigator.get(enemy.nextPosition);
+        }
       }
+      effects.push({
+        effect: "moved",
+        entity: enemy,
+      });
     }
 
     // then check lives
@@ -496,8 +525,6 @@ class TowerDefense extends GameState {
       },
     });
   }
-
-  spawnEnemy() {}
 
   init() {
     this.game = new TowerDefenseGame();
