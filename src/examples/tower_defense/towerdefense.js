@@ -128,6 +128,7 @@ class Tower extends Entity {
     this.position = this.pos?.toVector3();
     this.range = 2;
     this.cooldown = 40;
+    this.cost = 2;
     this.nextAttackTick = 0;
     this.damage = 1;
   }
@@ -154,6 +155,7 @@ class TowerDefenseGame {
   constructor() {
     this.state = {
       lives: 10,
+      gold: 10,
     };
     const bound = 7;
     this.bounds = [
@@ -228,7 +230,12 @@ class TowerDefenseGame {
               if (!this.legalBuild(pos)) {
                 continue;
               }
+              if (this.state.gold < entity.cost) {
+                continue;
+              }
               this.towers.push(entity);
+
+              this.state.gold -= entity.cost;
               effects.push({ effect: "spawn", entity });
               break;
             case "enemy":
@@ -282,7 +289,6 @@ class TowerDefenseGame {
         const projectile = new Projectile({ target, tower });
         this.projectiles.push(projectile);
         tower.nextAttackTick = this.tick + tower.cooldown;
-        console.log(projectile);
         effects.push({
           effect: "spawn",
           entity: projectile,
@@ -298,6 +304,7 @@ class TowerDefenseGame {
           entity: enemy,
         });
         this.enemies.splice(i, 1);
+        this.state.gold++;
         for (let j = this.projectiles.length - 1; j >= 0; j--) {
           const projectile = this.projectiles[j];
           if (projectile.target === enemy) {
@@ -431,6 +438,33 @@ class TowerDefense extends GameState {
         },
       ],
     });
+    this.gold = this.ui.createElement({
+      text: `Gold: ${this.game.state.gold}`,
+      parent: this.ui.createElement({
+        classNames: "row-c",
+        style: {
+          position: "absolute",
+          top: "10%",
+          right: "10%",
+          height: "10%",
+          width: "10%",
+        },
+      }),
+    });
+
+    this.lives = this.ui.createElement({
+      text: `Lives left: ${this.game.state.lives}`,
+      parent: this.ui.createElement({
+        classNames: "row-c",
+        style: {
+          position: "absolute",
+          top: "10%",
+          right: "80%",
+          height: "10%",
+          width: "10%",
+        },
+      }),
+    });
     this.spawn = this.ui.createElement({
       classNames: "interactive column-c",
       style: {
@@ -491,9 +525,9 @@ class TowerDefense extends GameState {
       switch (effect.effect) {
         case "spawn":
           const { entity } = effect;
-          console.log(effect);
           switch (entity.name) {
             case "tower":
+              this.gold.innerText = `Gold: ${this.game.state.gold}`;
               const makeTower = () => {
                 const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
                 const material = new THREE.MeshBasicMaterial({
@@ -531,7 +565,6 @@ class TowerDefense extends GameState {
                 this.add(mesh);
                 mesh.position.copy(entity.position);
                 mesh.entity = entity;
-                console.log(mesh);
                 return mesh;
               };
               makeProjectile();
@@ -543,6 +576,8 @@ class TowerDefense extends GameState {
         case "attack":
           break;
         case "died":
+          this.gold.innerText = `Gold: ${this.game.state.gold}`;
+          this.lives.innerText = `Lives left: ${this.game.state.lives}`;
         case "reachedFlag":
           {
             const matching = [];
@@ -551,9 +586,6 @@ class TowerDefense extends GameState {
                 matching.push(child);
               }
             });
-            if (effect.entity.name === "projectile") {
-              console.log(matching);
-            }
             matching.forEach((v) => {
               this.remove(v);
             });
@@ -566,9 +598,6 @@ class TowerDefense extends GameState {
               matching.push(child);
             }
           });
-          if (effect.entity.name === "projectile") {
-            console.log(matching);
-          }
           matching.forEach((v) => {
             v.position.copy(v.entity.position);
           });
@@ -576,6 +605,7 @@ class TowerDefense extends GameState {
         case "gameover":
           break;
         case "liveschange":
+          this.lives.innerText = `Lives left: ${this.game.state.lives}`;
           break;
         default:
           break;
