@@ -65,10 +65,11 @@ div {
   align-items: center;
   justify-content: space-around;
   display: flex;
-  background-color: lightgray;
+  background-color: darkgray;
 }
 
 /* ui disables pointer events to allow the canvas to accept them */
 .interactive {
   pointer-events: auto;
+  background-color: lightgray;
 }

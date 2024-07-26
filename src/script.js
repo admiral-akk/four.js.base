@@ -9,7 +9,7 @@ import GUI from "lil-gui";
 import { GameEngine } from "./engine/engine.js";
 import { MainMenu } from "./examples/tower_defense/towerdefense.js";
 
-const initialState = (v) => new MainMenu(v);
+const initialState = MainMenu;
 
 const gui = new GUI();
 

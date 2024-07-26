@@ -102,7 +102,7 @@ export class MainMenu extends GameState {
   update(engine) {
     const { ui } = engine.input.getState();
     if (ui.clicked.find((v) => v === this.start) !== undefined) {
-      engine.replaceState((v) => new TowerDefense(v));
+      engine.replaceState(TowerDefense);
     }
   }
   render(renderer) {
@@ -143,6 +143,95 @@ class Projectile extends Entity {
     this.tower = tower;
     this.speed = 0.02;
   }
+}
+
+export class GameOverMenu extends GameState {
+  constructor({ ui, window }) {
+    super({
+      ui,
+      window,
+      cameraConfig: {
+        isPerspective: true,
+        fov: 75,
+      },
+    });
+  }
+
+  init() {
+    this.ui.createElement({
+      classNames: "column-c",
+      style: {
+        position: "absolute",
+        top: "20%",
+        right: "40%",
+        height: "50%",
+        width: "20%",
+      },
+      children: [
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            width: "30%",
+          },
+          data: {
+            command: {
+              type: "newGame",
+            },
+          },
+          children: [
+            {
+              text: "New Game",
+            },
+          ],
+        },
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            width: "30%",
+          },
+          data: {
+            command: {
+              type: "mainMenu",
+            },
+          },
+          children: [
+            {
+              text: "Main Menu",
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  cleanup() {}
+  pause() {}
+  resume() {}
+
+  update(engine) {
+    const { ui } = engine.input.getState();
+    const command = ui.clicked.find((v) => v.data?.command)?.data?.command;
+    if (command) {
+      console.log(command);
+      switch (command.type) {
+        case "mainMenu":
+          console.log("mainMenu", command);
+          engine.popState();
+          engine.replaceState(MainMenu);
+          break;
+        case "newGame":
+          console.log("new game", command);
+          engine.popState();
+          engine.replaceState(TowerDefense);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  render(renderer) {}
 }
 
 // need a notion of:
@@ -614,6 +703,7 @@ class TowerDefense extends GameState {
           });
           break;
         case "gameover":
+          this.lives.innerText = `Lives left: ${this.game.state.lives}`;
           break;
         case "liveschange":
           this.lives.innerText = `Lives left: ${this.game.state.lives}`;
@@ -648,6 +738,10 @@ class TowerDefense extends GameState {
       }
     } else {
       this.hint.visible = false;
+    }
+
+    if (effects.find((v) => v.effect === "gameover")) {
+      engine.pushState(GameOverMenu);
     }
   }
 

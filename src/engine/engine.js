@@ -36,7 +36,7 @@ export class GameEngine {
       parent = div,
       classNames = "",
       text = "",
-      data = {},
+      data = null,
       children = [],
     }) => {
       const element = document.createElement(type);
@@ -45,7 +45,9 @@ export class GameEngine {
         element.style[key] = value;
       }
       element.isCustom = true;
-      element.data = data;
+      if (data) {
+        element.data = data;
+      }
       element.innerText = text;
       parent.appendChild(element);
       children.map((c) => {
@@ -67,7 +69,7 @@ export class GameEngine {
       this.states.pop().cleanup();
       this.cleanupScene(current);
     }
-    const state = stateConstructor({
+    const state = new stateConstructor({
       ui: this.makeContainer(),
       window: this.window,
     });
@@ -77,7 +79,7 @@ export class GameEngine {
 
   pushState(stateConstructor) {
     this.currentState()?.pause();
-    const state = stateConstructor({
+    const state = new stateConstructor({
       ui: this.makeContainer(),
       window: this.window,
     });
