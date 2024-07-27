@@ -139,7 +139,7 @@ export class TowerDefense extends GameState {
       },
       data: {
         command: {
-          type: "spawnEnemy",
+          type: TowerDefenseGame.commands.spawnEnemy,
           enemyConstructor: Enemy,
         },
       },
@@ -147,6 +147,24 @@ export class TowerDefense extends GameState {
       children: [
         {
           text: "Spawn Enemy",
+        },
+      ],
+    });
+    this.spawn = this.ui.createElement({
+      classNames: "interactive column-c",
+      style: {
+        height: "90%",
+        width: "30%",
+      },
+      data: {
+        command: {
+          type: TowerDefenseGame.commands.startFightPhase,
+        },
+      },
+      parent: this.buildMenu,
+      children: [
+        {
+          text: "Start Fight",
         },
       ],
     });

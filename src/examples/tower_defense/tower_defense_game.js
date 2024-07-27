@@ -73,7 +73,8 @@ export class Navigator extends KeyedMap {
 }
 
 export class TowerDefenseGame {
-  static commands = makeEnum(["build", "startFight"]);
+  static phases = makeEnum(["fight", "build"]);
+  static commands = makeEnum(["build", "startFightPhase", "spawnEnemy"]);
   static effects = makeEnum([
     "spawn",
     "died",
@@ -81,6 +82,7 @@ export class TowerDefenseGame {
     "reachedFlag",
     "livesChanged",
     "gameOver",
+    "changedPhase",
   ]);
 
   static buildReason = makeEnum([
@@ -100,6 +102,7 @@ export class TowerDefenseGame {
       new GridPosition(-bound, -bound),
       new GridPosition(bound, bound),
     ];
+    this.phase = TowerDefenseGame.phases.build;
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
@@ -175,32 +178,57 @@ export class TowerDefenseGame {
     };
   }
 
+  setPhase(newPhase, effects) {
+    if (this.phase === newPhase) {
+      return;
+    }
+    effects.push({
+      effect: TowerDefenseGame.effects.changePhase,
+      old: this.phase,
+      new: newPhase,
+    });
+    this.phase = newPhase;
+    switch (newPhase) {
+      case TowerDefenseGame.phases.fight:
+        for (let i = 0; i < 10; i++) {
+          this.spawnEnemy(Enemy, effects);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  spawnEnemy(constructor, effects) {
+    const dir = Math.floor(Math.random() * 4);
+    let pos = null;
+    switch (dir) {
+      case 0:
+      default:
+        pos = new GridPosition(
+          this.bounds[0].x - 1,
+          Math.floor(
+            Math.random() * (this.bounds[1].y - this.bounds[0].y) +
+              this.bounds[0].y
+          )
+        );
+    }
+    const entity = new constructor(pos.toVector3());
+    entity.nextPosition = this.navigator.get(pos);
+    this.enemies.push(entity);
+    effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
+  }
+
   handle(commands) {
     const effects = [];
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
       switch (command.type) {
-        case "spawnEnemy":
-          {
-            const dir = Math.floor(Math.random() * 4);
-            let pos = null;
-            switch (dir) {
-              case 0:
-              default:
-                pos = new GridPosition(
-                  this.bounds[0].x - 1,
-                  Math.floor(
-                    Math.random() * (this.bounds[1].y - this.bounds[0].y) +
-                      this.bounds[0].y
-                  )
-                );
-            }
-            const entity = new command.enemyConstructor(pos.toVector3());
-            entity.nextPosition = this.navigator.get(pos);
-            this.enemies.push(entity);
-            effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
-          }
-
+        case TowerDefenseGame.commands.startFightPhase:
+          this.setPhase(TowerDefenseGame.phases.fight, effects);
+          break;
+        case TowerDefenseGame.commands.spawnEnemy:
+          this.spawnEnemy(command.enemyConstructor, effects);
           break;
         case TowerDefenseGame.commands.build:
           const { entity } = command;
@@ -339,6 +367,13 @@ export class TowerDefenseGame {
         effect: TowerDefenseGame.effects.livesChanged,
         lives: this.state.lives,
       });
+    }
+
+    // check phase change
+    if (this.phase === TowerDefenseGame.phases.fight) {
+      if (this.enemies.length === 0) {
+        this.setPhase(TowerDefenseGame.phases.build, effects);
+      }
     }
 
     this.tick++;
