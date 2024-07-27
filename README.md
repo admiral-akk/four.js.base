@@ -19,6 +19,7 @@ Credits
 - Models: https://kenney.nl/assets
 - Sokoban Puzzles: https://sokoban-jd.blogspot.com/p/all-my-sokoban-collections.html
 - Sokoban Solver: https://github.com/KnightofLuna/sokoban-solver
+- Color generator: https://uicolors.app/create
 
 Learning Resources
 

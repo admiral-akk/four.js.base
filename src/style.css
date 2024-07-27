@@ -73,3 +73,12 @@ div {
   pointer-events: auto;
   background-color: lightgray;
 }
+
+.selected {
+  background-color: #c58f09;
+}
+
+.hovered {
+  border: solid;
+  border-color: #fbf28d;
+}
