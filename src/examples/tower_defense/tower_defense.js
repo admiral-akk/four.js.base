@@ -173,7 +173,7 @@ export class TowerDefense extends GameState {
     if (hit && released && this.buildingConstructor) {
       return [
         {
-          type: "create",
+          type: TowerDefenseGame.commands.build,
           entity: new this.buildingConstructor(hit.point),
         },
       ];
@@ -185,7 +185,7 @@ export class TowerDefense extends GameState {
     for (let i = 0; i < effects.length; i++) {
       const effect = effects[i];
       switch (effect.effect) {
-        case "spawn":
+        case TowerDefenseGame.effects.spawn:
           const { entity } = effect;
           switch (entity.name) {
             case "goal":
@@ -253,10 +253,10 @@ export class TowerDefense extends GameState {
           break;
         case "attack":
           break;
-        case "died":
+        case TowerDefenseGame.effects.died:
           this.gold.innerText = `Gold: ${this.game.state.gold}`;
           this.lives.innerText = `Lives left: ${this.game.state.lives}`;
-        case "reachedFlag":
+        case TowerDefenseGame.effects.reachedFlag:
           {
             const matching = [];
             this.traverse((child) => {
@@ -269,7 +269,7 @@ export class TowerDefense extends GameState {
             });
           }
           break;
-        case "moved":
+        case TowerDefenseGame.effects.moved:
           const matching = [];
           this.traverse((child) => {
             if (child.entity === effect.entity) {
@@ -280,10 +280,10 @@ export class TowerDefense extends GameState {
             v.position.copy(v.entity.position);
           });
           break;
-        case "gameover":
+        case TowerDefenseGame.effects.gameOver:
           this.lives.innerText = `Lives left: ${this.game.state.lives}`;
           break;
-        case "liveschange":
+        case TowerDefenseGame.effects.livesChanged:
           this.lives.innerText = `Lives left: ${this.game.state.lives}`;
           break;
         default:
@@ -340,14 +340,11 @@ export class TowerDefense extends GameState {
         this.hint.material.opacity = 0.5;
       } else {
         switch (legalPos.reason) {
-          case "blocksPath":
-          case "insufficientFunds":
+          case TowerDefenseGame.buildReason.blocksPath:
             this.hint.visible = true;
             this.hint.material.color = new THREE.Color("#cd0808");
             this.hint.material.opacity = 0.5;
             break;
-          case "occupied":
-          case "outOfBounds":
           default:
             this.hint.visible = false;
         }

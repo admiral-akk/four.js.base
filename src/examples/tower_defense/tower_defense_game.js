@@ -1,5 +1,5 @@
 import { Entity } from "../../engine/entity.js";
-import { KeyedMap, KeyedSet } from "../../utils/helper.js";
+import { KeyedMap, KeyedSet, makeEnum } from "../../utils/helper.js";
 import { GridPosition } from "./grid_position.js";
 
 export class Enemy extends Entity {
@@ -73,6 +73,23 @@ export class Navigator extends KeyedMap {
 }
 
 export class TowerDefenseGame {
+  static commands = makeEnum(["build", "startFight"]);
+  static effects = makeEnum([
+    "spawn",
+    "died",
+    "moved",
+    "reachedFlag",
+    "livesChanged",
+    "gameOver",
+  ]);
+
+  static buildReason = makeEnum([
+    "outOfBounds",
+    "occupied",
+    "blocksPath",
+    "legal",
+  ]);
+
   constructor() {
     this.state = {
       lives: 10,
@@ -94,7 +111,7 @@ export class TowerDefenseGame {
     const effects = [];
     this.goal = new Goal(new GridPosition(0, 0));
     this.updateNavigation();
-    effects.push({ effect: "spawn", entity: this.goal });
+    effects.push({ effect: TowerDefenseGame.effects.spawn, entity: this.goal });
     return effects;
   }
 
@@ -121,7 +138,7 @@ export class TowerDefenseGame {
     if (!this.inbounds(gridPos)) {
       return {
         result: false,
-        reason: "outOfBounds",
+        reason: TowerDefenseGame.buildReason.outOfBounds,
       };
     }
 
@@ -130,7 +147,7 @@ export class TowerDefenseGame {
     if (occupied || this.goal.gridPos.equals(gridPos)) {
       return {
         result: false,
-        reason: "occupied",
+        reason: TowerDefenseGame.buildReason.occupied,
       };
     }
 
@@ -148,13 +165,13 @@ export class TowerDefenseGame {
     ) {
       return {
         result: false,
-        reason: "blocksPath",
+        reason: TowerDefenseGame.buildReason.blocksPath,
       };
     }
 
     return {
       result: true,
-      reason: "legal",
+      reason: TowerDefenseGame.buildReason.legal,
     };
   }
 
@@ -181,11 +198,11 @@ export class TowerDefenseGame {
             const entity = new command.enemyConstructor(pos.toVector3());
             entity.nextPosition = this.navigator.get(pos);
             this.enemies.push(entity);
-            effects.push({ effect: "spawn", entity });
+            effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
           }
 
           break;
-        case "create":
+        case TowerDefenseGame.commands.build:
           const { entity } = command;
           const pos = entity.gridPos;
           switch (entity.name) {
@@ -200,11 +217,11 @@ export class TowerDefenseGame {
 
               this.updateNavigation();
               this.state.gold -= entity.cost;
-              effects.push({ effect: "spawn", entity });
+              effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
               break;
             case "enemy":
               this.enemies.push(entity);
-              effects.push({ effect: "spawn", entity });
+              effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
               break;
             default:
               break;
@@ -229,13 +246,16 @@ export class TowerDefenseGame {
       if (delta.length() <= projectile.speed) {
         this.projectiles.splice(i, 1);
         projectile.target.health -= projectile.tower.damage;
-        effects.push({ effect: "died", entity: projectile });
+        effects.push({
+          effect: TowerDefenseGame.effects.died,
+          entity: projectile,
+        });
       } else {
         projectile.position.add(
           delta.normalize().multiplyScalar(projectile.speed)
         );
         effects.push({
-          effect: "moved",
+          effect: TowerDefenseGame.effects.moved,
           entity: projectile,
         });
       }
@@ -254,7 +274,7 @@ export class TowerDefenseGame {
         this.projectiles.push(projectile);
         tower.nextAttackTick = this.tick + tower.cooldown;
         effects.push({
-          effect: "spawn",
+          effect: TowerDefenseGame.effects.spawn,
           entity: projectile,
         });
       }
@@ -264,7 +284,7 @@ export class TowerDefenseGame {
       const enemy = this.enemies[i];
       if (enemy.health <= 0) {
         effects.push({
-          effect: "died",
+          effect: TowerDefenseGame.effects.died,
           entity: enemy,
         });
         this.enemies.splice(i, 1);
@@ -273,7 +293,10 @@ export class TowerDefenseGame {
           const projectile = this.projectiles[j];
           if (projectile.target === enemy) {
             this.projectiles.splice(j, 1);
-            effects.push({ effect: "died", entity: projectile });
+            effects.push({
+              effect: TowerDefenseGame.effects.died,
+              entity: projectile,
+            });
           }
         }
       }
@@ -292,7 +315,10 @@ export class TowerDefenseGame {
           distanceToMove = 0;
           this.enemies.splice(i, 1);
           this.state.lives--;
-          effects.push({ effect: "reachedFlag", entity: enemy });
+          effects.push({
+            effect: TowerDefenseGame.effects.reachedFlag,
+            entity: enemy,
+          });
         } else {
           distanceToMove -= delta.length();
           enemy.position.copy(enemy.nextPosition.toVector3());
@@ -300,16 +326,19 @@ export class TowerDefenseGame {
         }
       }
       effects.push({
-        effect: "moved",
+        effect: TowerDefenseGame.effects.moved,
         entity: enemy,
       });
     }
 
     // then check lives
     if (this.state.lives <= 0) {
-      effects.push({ effect: "gameover" });
+      effects.push({ effect: TowerDefenseGame.effects.gameOver });
     } else if (this.state.lives != lives) {
-      effects.push({ effect: "liveschange", lives: this.state.lives });
+      effects.push({
+        effect: TowerDefenseGame.effects.livesChanged,
+        lives: this.state.lives,
+      });
     }
 
     this.tick++;

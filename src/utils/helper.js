@@ -1,3 +1,12 @@
+// https://stackoverflow.com/questions/44447847/enums-in-javascript-with-es6
+export function makeEnum(arr) {
+  let obj = Object.create(null);
+  for (let val of arr) {
+    obj[val] = Symbol(val);
+  }
+  return Object.freeze(obj);
+}
+
 export class KeyedMap extends Map {
   set(keyedValue, value) {
     const key = keyedValue.key ? keyedValue.key() : keyedValue;
