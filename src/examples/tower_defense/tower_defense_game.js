@@ -3,12 +3,19 @@ import { KeyedMap, KeyedSet, makeEnum } from "../../utils/helper.js";
 import { GridPosition } from "./grid_position.js";
 
 export class Enemy extends Entity {
-  constructor(position) {
+  constructor(
+    gridPos,
+    config = {
+      health: 2,
+      speed: 0.01,
+    }
+  ) {
     super();
     this.name = "enemy";
-    this.position = position;
-    this.health = 2;
-    this.speed = 0.01;
+    this.position = gridPos.toVector3();
+    for (const [key, value] of Object.entries(config)) {
+      this[key] = value;
+    }
   }
 }
 
@@ -208,7 +215,13 @@ export class TowerDefenseGame {
     switch (newPhase) {
       case TowerDefenseGame.phases.fight:
         for (let i = 0; i < 10; i++) {
-          this.spawnEnemy(Enemy, effects);
+          this.spawnEnemy(
+            {
+              health: 2,
+              speed: 0.01,
+            },
+            effects
+          );
         }
         break;
       default:
@@ -216,7 +229,7 @@ export class TowerDefenseGame {
     }
   }
 
-  spawnEnemy(constructor, effects) {
+  spawnEnemy(config, effects) {
     const dir = Math.floor(Math.random() * 4);
     let pos = null;
     switch (dir) {
@@ -230,7 +243,7 @@ export class TowerDefenseGame {
           )
         );
     }
-    const entity = new constructor(pos.toVector3());
+    const entity = new Enemy(pos, config);
     entity.nextPosition = this.navigator.get(pos);
     this.enemies.push(entity);
     effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
@@ -260,7 +273,7 @@ export class TowerDefenseGame {
           this.setPhase(TowerDefenseGame.phases.fight, effects);
           break;
         case TowerDefenseGame.commands.spawnEnemy:
-          this.spawnEnemy(command.enemyConstructor, effects);
+          this.spawnEnemy(command.config, effects);
           break;
         case TowerDefenseGame.commands.build:
           this.build(command.gridPos, command.config, effects);

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Vector3 } from "three";
 import { GameState } from "../../engine/engine.js";
 import { GameOverMenu } from "./game_over_menu.js";
-import { TowerDefenseGame, Enemy, Tower } from "./tower_defense_game.js";
+import { TowerDefenseGame } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
 
 export class TowerDefense extends GameState {
@@ -148,7 +148,10 @@ export class TowerDefense extends GameState {
       data: {
         command: {
           type: TowerDefenseGame.commands.spawnEnemy,
-          enemyConstructor: Enemy,
+          config: {
+            health: 2,
+            speed: 0.01,
+          },
         },
       },
       parent: this.buildMenu,
