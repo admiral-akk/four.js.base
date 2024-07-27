@@ -63,10 +63,6 @@ export class GameOverMenu extends GameState {
     });
   }
 
-  cleanup() {}
-  pause() {}
-  resume() {}
-
   update(engine) {
     const { ui } = engine.input.getState();
     const command = ui.clicked.find((v) => v.data?.command)?.data?.command;

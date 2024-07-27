@@ -152,10 +152,6 @@ export class TowerDefense extends GameState {
     });
   }
 
-  cleanup() {}
-  pause() {}
-  resume() {}
-
   generateCommands(state) {
     const { mouse, object, ui } = state;
     const { released } = mouse;

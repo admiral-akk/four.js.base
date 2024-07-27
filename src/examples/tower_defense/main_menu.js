@@ -47,10 +47,6 @@ export class MainMenu extends GameState {
     });
   }
 
-  cleanup() {}
-  pause() {}
-  resume() {}
-
   update(engine) {
     const { ui } = engine.input.getState();
     if (ui.clicked.find((v) => v === this.start) !== undefined) {

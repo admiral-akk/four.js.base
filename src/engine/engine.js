@@ -133,4 +133,8 @@ export class GameState extends Scene {
     this.add(camera);
     this.camera = camera;
   }
+
+  cleanup() {}
+  pause() {}
+  resume() {}
 }
