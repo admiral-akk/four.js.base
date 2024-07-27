@@ -53,7 +53,4 @@ export class MainMenu extends GameState {
       engine.replaceState(TowerDefense);
     }
   }
-  render(renderer) {
-    renderer.render(this, this.camera);
-  }
 }

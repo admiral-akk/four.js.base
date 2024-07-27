@@ -82,5 +82,4 @@ export class GameOverMenu extends GameState {
       }
     }
   }
-  render(renderer) {}
 }

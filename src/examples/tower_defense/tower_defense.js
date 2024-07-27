@@ -362,8 +362,4 @@ export class TowerDefense extends GameState {
 
     this.updateUi(state);
   }
-
-  render(renderer) {
-    renderer.render(this, this.camera);
-  }
 }

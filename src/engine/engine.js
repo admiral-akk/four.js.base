@@ -137,4 +137,8 @@ export class GameState extends Scene {
   cleanup() {}
   pause() {}
   resume() {}
+
+  render(renderer) {
+    renderer.render(this, this.camera);
+  }
 }
