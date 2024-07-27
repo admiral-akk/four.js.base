@@ -30,15 +30,26 @@ export class GameEngine {
     div.style.zIndex = `${this.states.length + 1}`;
     this.ui.appendChild(div);
 
-    div.createElement = ({
-      type = "div",
-      style = {},
-      parent = div,
-      classNames = "",
-      text = "",
-      data = null,
-      children = [],
-    }) => {
+    div.createElement = (params) => {
+      if (typeof params === "string" || params instanceof String) {
+        const element = document.createElement("div");
+        element.className = "f-s";
+        element.innerText = params;
+        element.isCustom = true;
+        div.appendChild(element);
+        return element;
+      }
+
+      const {
+        type = "div",
+        style = {},
+        parent = div,
+        classNames = "",
+        text = "",
+        data = null,
+        children = [],
+      } = params;
+
       const element = document.createElement(type);
       element.className = classNames;
       for (const [key, value] of Object.entries(style)) {

@@ -74,13 +74,31 @@ export class TowerDefense extends GameState {
     this.hint = makeHint();
 
     this.towerUi = this.ui.createElement({
-      classNames: "row-c",
+      classNames: "column-c",
       style: {
         position: "absolute",
         height: "10%",
         width: "10%",
         display: "none",
       },
+      children: [
+        {
+          classNames: "row-c",
+          children: ["Tower"],
+        },
+        {
+          classNames: "row-c",
+          children: ["Range", "2"],
+        },
+        {
+          classNames: "row-c",
+          children: ["Damage", "1"],
+        },
+        {
+          classNames: "row-c",
+          children: ["Attack Speed", "40"],
+        },
+      ],
     });
 
     this.buildMenu = this.ui.createElement({
@@ -115,12 +133,7 @@ export class TowerDefense extends GameState {
         },
       },
       parent: this.buildMenu,
-      children: [
-        {
-          classNames: "f-s",
-          text: "Build1",
-        },
-      ],
+      children: ["Build1"],
     });
     this.gold = this.ui.createElement({
       text: `Gold: ${this.game.state.gold}`,
@@ -401,12 +414,12 @@ export class TowerDefense extends GameState {
           this.towerUi.style.top = null;
           this.towerUi.style.right = null;
           this.towerUi.style.left = null;
-          if (towerScreenSpace.y > 0) {
+          if (towerScreenSpace.y > 0.5) {
             this.towerUi.style.top = `${(1 - towerScreenSpace.y) * 50}%`;
           } else {
             this.towerUi.style.bottom = `${(towerScreenSpace.y + 1) * 50}%`;
           }
-          if (towerScreenSpace.x > 0) {
+          if (towerScreenSpace.x > 0.5) {
             this.towerUi.style.right = `${(1 - towerScreenSpace.x) * 50}%`;
           } else {
             this.towerUi.style.left = `${(towerScreenSpace.x + 1) * 50}%`;
