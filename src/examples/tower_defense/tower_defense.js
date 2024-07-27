@@ -371,7 +371,7 @@ export class TowerDefense extends GameState {
       this.hint.visible = false;
     }
 
-    if (effects.find((v) => v.effect === "gameover")) {
+    if (effects.find((v) => v.effect === TowerDefenseGame.effects.gameOver)) {
       engine.pushState(GameOverMenu);
     }
 

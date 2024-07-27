@@ -89,6 +89,7 @@ export class TowerDefenseGame {
     "outOfBounds",
     "occupied",
     "blocksPath",
+    "notBuildPhase",
     "legal",
   ]);
 
@@ -142,6 +143,13 @@ export class TowerDefenseGame {
       return {
         result: false,
         reason: TowerDefenseGame.buildReason.outOfBounds,
+      };
+    }
+
+    if (this.phase !== TowerDefenseGame.phases.build) {
+      return {
+        result: false,
+        reason: TowerDefenseGame.buildReason.notBuildPhase,
       };
     }
 
