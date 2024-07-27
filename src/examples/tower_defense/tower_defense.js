@@ -73,6 +73,16 @@ export class TowerDefense extends GameState {
     this.ground = makeGround(100, 100);
     this.hint = makeHint();
 
+    this.towerUi = this.ui.createElement({
+      classNames: "row-c",
+      style: {
+        position: "absolute",
+        height: "10%",
+        width: "10%",
+        display: "none",
+      },
+    });
+
     this.buildMenu = this.ui.createElement({
       classNames: "row-c",
       style: {
@@ -357,24 +367,39 @@ export class TowerDefense extends GameState {
 
     const { object } = state;
     const hit = object.hover.get(this.ground);
-    if (hit && this.buildingConfig) {
+    if (hit) {
       const gridPos = new GridPosition(hit.point);
-      this.hint.position.copy(gridPos.toVector3());
-      const legalPos = this.game.legalBuild(gridPos);
+      if (this.buildingConfig) {
+        this.hint.position.copy(gridPos.toVector3());
+        const legalPos = this.game.legalBuild(gridPos);
 
-      if (legalPos.result) {
-        this.hint.visible = true;
-        this.hint.material.color = new THREE.Color("#1b680c");
-        this.hint.material.opacity = 0.5;
+        if (legalPos.result) {
+          this.hint.visible = true;
+          this.hint.material.color = new THREE.Color("#1b680c");
+          this.hint.material.opacity = 0.5;
+        } else {
+          switch (legalPos.reason) {
+            case TowerDefenseGame.buildReason.blocksPath:
+              this.hint.visible = true;
+              this.hint.material.color = new THREE.Color("#cd0808");
+              this.hint.material.opacity = 0.5;
+              break;
+            default:
+              this.hint.visible = false;
+          }
+        }
       } else {
-        switch (legalPos.reason) {
-          case TowerDefenseGame.buildReason.blocksPath:
-            this.hint.visible = true;
-            this.hint.material.color = new THREE.Color("#cd0808");
-            this.hint.material.opacity = 0.5;
-            break;
-          default:
-            this.hint.visible = false;
+        this.hint.visible = false;
+        const highlightedTower = this.game.towers.find((t) =>
+          t.gridPos.equals(gridPos)
+        );
+        if (highlightedTower) {
+          const towerScreenSpace = gridPos.toVector3().project(this.camera);
+          this.towerUi.style.display = "block";
+          this.towerUi.style.top = `${(1 - towerScreenSpace.y) * 50}%`;
+          this.towerUi.style.right = `${(1 - towerScreenSpace.x) * 50}%`;
+        } else {
+          this.towerUi.style.display = "none";
         }
       }
     } else {
