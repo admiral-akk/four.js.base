@@ -6,25 +6,25 @@ import { GameOverMenu } from "./game_over_menu.js";
 import { KeyedMap, KeyedSet } from "../../utils/helper.js";
 import { Vector2 } from "three";
 
-const gridSize = 0.5;
-
 class GridPosition extends Vector2 {
+  static gridSize = 0.5;
+
   constructor(x, y) {
     if (x.isVector3) {
-      super(Math.round(x.x / gridSize), Math.round(x.z / gridSize));
+      super(
+        Math.round(x.x / GridPosition.gridSize),
+        Math.round(x.z / GridPosition.gridSize)
+      );
     } else {
       super(Math.round(x), Math.round(y));
     }
   }
 
   toVector3() {
-    return new Vector3(this.x * gridSize, 0.3, this.y * gridSize);
-  }
-
-  static toGridPosition(v) {
-    return new GridPosition(
-      Math.round(v.x / gridSize),
-      Math.round(v.z / gridSize)
+    return new Vector3(
+      this.x * GridPosition.gridSize,
+      0.3,
+      this.y * GridPosition.gridSize
     );
   }
 
@@ -355,7 +355,10 @@ export class TowerDefense extends GameState {
     this.camera.lookAt(new Vector3());
 
     const grid = (x, y) => {
-      const geo = new THREE.PlaneGeometry(gridSize, gridSize);
+      const geo = new THREE.PlaneGeometry(
+        GridPosition.gridSize,
+        GridPosition.gridSize
+      );
       geo.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(
         geo,
@@ -363,8 +366,10 @@ export class TowerDefense extends GameState {
           color: (x + y) % 2 === 0 ? "lightgray" : "grey",
         })
       );
+      mesh.gridPos = new GridPosition(x, y);
       this.add(mesh);
-      mesh.position.copy(new Vector3(x * gridSize, 0, y * gridSize));
+      mesh.position.copy(mesh.gridPos.toVector3());
+      mesh.position.y = 0;
       return mesh;
     };
 
