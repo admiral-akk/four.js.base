@@ -396,8 +396,21 @@ export class TowerDefense extends GameState {
         if (highlightedTower) {
           const towerScreenSpace = gridPos.toVector3().project(this.camera);
           this.towerUi.style.display = "block";
-          this.towerUi.style.top = `${(1 - towerScreenSpace.y) * 50}%`;
-          this.towerUi.style.right = `${(1 - towerScreenSpace.x) * 50}%`;
+
+          this.towerUi.style.bottom = null;
+          this.towerUi.style.top = null;
+          this.towerUi.style.right = null;
+          this.towerUi.style.left = null;
+          if (towerScreenSpace.y > 0) {
+            this.towerUi.style.top = `${(1 - towerScreenSpace.y) * 50}%`;
+          } else {
+            this.towerUi.style.bottom = `${(towerScreenSpace.y + 1) * 50}%`;
+          }
+          if (towerScreenSpace.x > 0) {
+            this.towerUi.style.right = `${(1 - towerScreenSpace.x) * 50}%`;
+          } else {
+            this.towerUi.style.left = `${(towerScreenSpace.x + 1) * 50}%`;
+          }
         } else {
           this.towerUi.style.display = "none";
         }
