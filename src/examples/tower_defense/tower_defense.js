@@ -21,7 +21,7 @@ export class TowerDefense extends GameState {
     this.game = new TowerDefenseGame();
     const effects = this.game.init();
     this.updateRender(effects);
-    this.buildingConstructor = null;
+    this.buildingConfig = null;
     this.camera.position.copy(new Vector3(4, 4, 4));
     this.camera.lookAt(new Vector3());
 
@@ -93,7 +93,15 @@ export class TowerDefense extends GameState {
       data: {
         command: {
           type: "selectBuilding",
-          buildingConstructor: Tower,
+          buildingConfig: {
+            cost: 2,
+            attack: {
+              cooldown: 40,
+              damage: 1,
+              range: 2,
+              projectileSpeed: 0.02,
+            },
+          },
         },
       },
       parent: this.buildMenu,
@@ -177,10 +185,10 @@ export class TowerDefense extends GameState {
       const command = ui.clicked[0].data.command;
       switch (command.type) {
         case "selectBuilding":
-          this.buildingConstructor =
-            this.buildingConstructor === command.buildingConstructor
+          this.buildingConfig =
+            this.buildingConfig === command.buildingConfig
               ? null
-              : command.buildingConstructor;
+              : command.buildingConfig;
           break;
         default:
           break;
@@ -188,11 +196,12 @@ export class TowerDefense extends GameState {
       return [command];
     }
     const hit = object.hover.get(this.ground);
-    if (hit && released && this.buildingConstructor) {
+    if (hit && released && this.buildingConfig) {
       return [
         {
           type: TowerDefenseGame.commands.build,
-          entity: new this.buildingConstructor(hit.point),
+          gridPos: new GridPosition(hit.point),
+          config: this.buildingConfig,
         },
       ];
     }
@@ -323,9 +332,7 @@ export class TowerDefense extends GameState {
       }
 
       if (child.data.command.type === "selectBuilding") {
-        if (
-          this.buildingConstructor === child.data.command.buildingConstructor
-        ) {
+        if (this.buildingConfig === child.data.command.buildingConfig) {
           child.classList.add("selected");
         } else {
           child.classList.remove("selected");
@@ -347,7 +354,7 @@ export class TowerDefense extends GameState {
 
     const { object } = state;
     const hit = object.hover.get(this.ground);
-    if (hit && this.buildingConstructor) {
+    if (hit && this.buildingConfig) {
       const gridPos = new GridPosition(hit.point);
       this.hint.position.copy(gridPos.toVector3());
       const legalPos = this.game.legalBuild(gridPos);

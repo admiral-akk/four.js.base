@@ -13,16 +13,26 @@ export class Enemy extends Entity {
 }
 
 export class Tower extends Entity {
-  constructor(position) {
+  constructor(
+    gridPos,
+    config = {
+      cost: 2,
+      attack: {
+        cooldown: 40,
+        damage: 1,
+        range: 2,
+        projectileSpeed: 0.02,
+      },
+    }
+  ) {
     super();
     this.name = "tower";
-    this.gridPos = position ? new GridPosition(position) : null;
-    this.position = this.gridPos?.toVector3();
-    this.range = 2;
-    this.cooldown = 40;
-    this.cost = 2;
     this.nextAttackTick = 0;
-    this.damage = 1;
+    for (const [key, value] of Object.entries(config)) {
+      this[key] = value;
+    }
+    this.gridPos = gridPos;
+    this.position = this.gridPos.toVector3();
   }
 }
 
@@ -41,7 +51,6 @@ export class Projectile extends Entity {
     this.position = tower.position.clone();
     this.target = target;
     this.tower = tower;
-    this.speed = 0.02;
   }
 }
 
@@ -227,6 +236,21 @@ export class TowerDefenseGame {
     effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
   }
 
+  build(gridPos, config, effects) {
+    if (!this.legalBuild(gridPos).result) {
+      return;
+    }
+    if (this.state.gold < config.cost) {
+      return;
+    }
+    const tower = new Tower(gridPos, config);
+    this.towers.push(tower);
+
+    this.updateNavigation();
+    this.state.gold -= config.cost;
+    effects.push({ effect: TowerDefenseGame.effects.spawn, entity: tower });
+  }
+
   handle(commands) {
     const effects = [];
     for (let i = 0; i < commands.length; i++) {
@@ -239,29 +263,7 @@ export class TowerDefenseGame {
           this.spawnEnemy(command.enemyConstructor, effects);
           break;
         case TowerDefenseGame.commands.build:
-          const { entity } = command;
-          const pos = entity.gridPos;
-          switch (entity.name) {
-            case "tower":
-              if (!this.legalBuild(pos).result) {
-                continue;
-              }
-              if (this.state.gold < entity.cost) {
-                continue;
-              }
-              this.towers.push(entity);
-
-              this.updateNavigation();
-              this.state.gold -= entity.cost;
-              effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
-              break;
-            case "enemy":
-              this.enemies.push(entity);
-              effects.push({ effect: TowerDefenseGame.effects.spawn, entity });
-              break;
-            default:
-              break;
-          }
+          this.build(command.gridPos, command.config, effects);
           break;
         default:
           break;
@@ -278,17 +280,18 @@ export class TowerDefenseGame {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const projectile = this.projectiles[i];
       const delta = projectile.target.position.clone().sub(projectile.position);
+      const { damage, projectileSpeed } = projectile.tower.attack;
 
-      if (delta.length() <= projectile.speed) {
+      if (delta.length() <= projectileSpeed) {
         this.projectiles.splice(i, 1);
-        projectile.target.health -= projectile.tower.damage;
+        projectile.target.health -= damage;
         effects.push({
           effect: TowerDefenseGame.effects.died,
           entity: projectile,
         });
       } else {
         projectile.position.add(
-          delta.normalize().multiplyScalar(projectile.speed)
+          delta.normalize().multiplyScalar(projectileSpeed)
         );
         effects.push({
           effect: TowerDefenseGame.effects.moved,
@@ -303,12 +306,12 @@ export class TowerDefenseGame {
         continue;
       }
       const target = this.enemies.find(
-        (e) => e.position.distanceTo(tower.position) <= tower.range
+        (e) => e.position.distanceTo(tower.position) <= tower.attack.range
       );
       if (target) {
         const projectile = new Projectile({ target, tower });
         this.projectiles.push(projectile);
-        tower.nextAttackTick = this.tick + tower.cooldown;
+        tower.nextAttackTick = this.tick + tower.attack.cooldown;
         effects.push({
           effect: TowerDefenseGame.effects.spawn,
           entity: projectile,
