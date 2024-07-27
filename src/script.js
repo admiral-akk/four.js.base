@@ -7,7 +7,7 @@ import { generateLoadingManager } from "./engine/loader.js";
 import { InputManager } from "./engine/input.js";
 import GUI from "lil-gui";
 import { GameEngine } from "./engine/engine.js";
-import { MainMenu } from "./examples/tower_defense/towerdefense.js";
+import { MainMenu } from "./examples/tower_defense/main_menu.js";
 
 const initialState = MainMenu;
 

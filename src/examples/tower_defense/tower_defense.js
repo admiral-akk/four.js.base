@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { Vector3 } from "three";
 import { Entity } from "../../engine/entity.js";
 import { GameState } from "../../engine/engine.js";
+import { GameOverMenu } from "./game_over_menu.js";
 import { KeyedMap, KeyedSet } from "../../utils/helper.js";
 
 const gridSize = 0.5;
@@ -54,67 +55,6 @@ class GridPosition {
   }
 }
 
-export class MainMenu extends GameState {
-  constructor({ ui, window }) {
-    super({
-      ui,
-      window,
-      cameraConfig: {
-        isPerspective: true,
-        fov: 75,
-      },
-    });
-  }
-
-  init() {
-    this.ui.createElement({
-      classNames: "column-c",
-      style: {
-        position: "absolute",
-        top: "10%",
-        right: "10%",
-        height: "10%",
-        width: "80%",
-      },
-      children: [
-        {
-          text: "My First Tower Defense",
-        },
-      ],
-    });
-
-    this.start = this.ui.createElement({
-      classNames: "interactive column-c",
-      style: {
-        position: "absolute",
-        top: "80%",
-        right: "40%",
-        height: "10%",
-        width: "20%",
-      },
-      children: [
-        {
-          text: "Start Game",
-        },
-      ],
-    });
-  }
-
-  cleanup() {}
-  pause() {}
-  resume() {}
-
-  update(engine) {
-    const { ui } = engine.input.getState();
-    if (ui.clicked.find((v) => v === this.start) !== undefined) {
-      engine.replaceState(TowerDefense);
-    }
-  }
-  render(renderer) {
-    renderer.render(this, this.camera);
-  }
-}
-
 class Enemy extends Entity {
   constructor(position) {
     super();
@@ -149,94 +89,6 @@ class Projectile extends Entity {
     this.speed = 0.02;
   }
 }
-
-export class GameOverMenu extends GameState {
-  constructor({ ui, window }) {
-    super({
-      ui,
-      window,
-      cameraConfig: {
-        isPerspective: true,
-        fov: 75,
-      },
-    });
-  }
-
-  init() {
-    this.ui.createElement({
-      classNames: "column-c",
-      style: {
-        position: "absolute",
-        top: "20%",
-        right: "40%",
-        height: "50%",
-        width: "20%",
-      },
-      children: [
-        {
-          classNames: "interactive column-c",
-          style: {
-            height: "90%",
-            width: "30%",
-          },
-          data: {
-            command: {
-              type: "newGame",
-            },
-          },
-          children: [
-            {
-              text: "New Game",
-            },
-          ],
-        },
-        {
-          classNames: "interactive column-c",
-          style: {
-            height: "90%",
-            width: "30%",
-          },
-          data: {
-            command: {
-              type: "mainMenu",
-            },
-          },
-          children: [
-            {
-              text: "Main Menu",
-            },
-          ],
-        },
-      ],
-    });
-  }
-
-  cleanup() {}
-  pause() {}
-  resume() {}
-
-  update(engine) {
-    const { ui } = engine.input.getState();
-    const command = ui.clicked.find((v) => v.data?.command)?.data?.command;
-    if (command) {
-      console.log(command);
-      switch (command.type) {
-        case "mainMenu":
-          engine.popState();
-          engine.replaceState(MainMenu);
-          break;
-        case "newGame":
-          engine.popState();
-          engine.replaceState(TowerDefense);
-          break;
-        default:
-          break;
-      }
-    }
-  }
-  render(renderer) {}
-}
-
 // need a notion of:
 // tower
 // lives
@@ -514,7 +366,7 @@ class TowerDefenseGame {
   }
 }
 
-class TowerDefense extends GameState {
+export class TowerDefense extends GameState {
   constructor({ ui, window }) {
     super({
       ui,
