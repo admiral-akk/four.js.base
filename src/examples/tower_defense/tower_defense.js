@@ -30,6 +30,14 @@ class Tower extends Entity {
   }
 }
 
+class Goal extends Entity {
+  constructor(gridPos) {
+    super();
+    this.name = "goal";
+    this.gridPos = gridPos;
+  }
+}
+
 class Projectile extends Entity {
   constructor({ target, tower }) {
     super();
@@ -79,18 +87,24 @@ class TowerDefenseGame {
       new GridPosition(-bound, -bound),
       new GridPosition(bound, bound),
     ];
-    this.goal = new GridPosition(0, 0);
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
     this.tick = 0;
     this.navigator = new Navigator();
+  }
+
+  init() {
+    const effects = [];
+    this.goal = new Goal(new GridPosition(0, 0));
     this.updateNavigation();
+    effects.push({ effect: "spawn", entity: this.goal });
+    return effects;
   }
 
   updateNavigation() {
     this.navigator.update(
-      this.goal,
+      this.goal.gridPos,
       this.towers.map((t) => t.gridPos),
       (p) => this.inbounds(p, 1)
     );
@@ -120,14 +134,16 @@ class TowerDefenseGame {
       return false;
     }
 
-    if (this.goal.equals(gridPos)) {
+    if (this.goal.gridPos.equals(gridPos)) {
       return false;
     }
 
     const testNavigator = new Navigator();
     const testTower = Array.from(this.towers.map((t) => t.gridPos));
     testTower.push(gridPos);
-    testNavigator.update(this.goal, testTower, (p) => this.inbounds(p, 1));
+    testNavigator.update(this.goal.gridPos, testTower, (p) =>
+      this.inbounds(p, 1)
+    );
 
     if (
       !testNavigator.has(
@@ -270,7 +286,7 @@ class TowerDefenseGame {
         if (delta.length() > distanceToMove) {
           enemy.position.add(delta.normalize().multiplyScalar(distanceToMove));
           distanceToMove = 0;
-        } else if (this.goal.equals(enemy.nextPosition)) {
+        } else if (this.goal.gridPos.equals(enemy.nextPosition)) {
           distanceToMove = 0;
           this.enemies.splice(i, 1);
           this.state.lives--;
@@ -313,6 +329,8 @@ export class TowerDefense extends GameState {
 
   init() {
     this.game = new TowerDefenseGame();
+    const effects = this.game.init();
+    this.updateRender(effects);
     this.buildingConstructor = null;
     this.camera.position.copy(new Vector3(4, 4, 4));
     this.camera.lookAt(new Vector3());
@@ -484,6 +502,21 @@ export class TowerDefense extends GameState {
         case "spawn":
           const { entity } = effect;
           switch (entity.name) {
+            case "goal":
+              const makeGoal = () => {
+                const geo = new THREE.CylinderGeometry(0.2, 0.2, 0.2);
+                const material = new THREE.MeshBasicMaterial({
+                  color: "yellow",
+                });
+                const mesh = new THREE.Mesh(geo, material);
+                this.add(mesh);
+                mesh.position.copy(entity.gridPos.toVector3());
+                mesh.entity = entity;
+                mesh.position.y = 0;
+                return mesh;
+              };
+              makeGoal();
+              break;
             case "tower":
               this.gold.innerText = `Gold: ${this.game.state.gold}`;
               const makeTower = () => {
@@ -495,6 +528,7 @@ export class TowerDefense extends GameState {
                 this.add(mesh);
                 mesh.position.copy(entity.position);
                 mesh.entity = entity;
+                mesh.position.y = 0;
                 return mesh;
               };
               makeTower();
