@@ -4,17 +4,17 @@ import { Entity } from "../../engine/entity.js";
 import { GameState } from "../../engine/engine.js";
 import { GameOverMenu } from "./game_over_menu.js";
 import { KeyedMap, KeyedSet } from "../../utils/helper.js";
+import { Vector2 } from "three";
 
 const gridSize = 0.5;
 
-class GridPosition {
+class GridPosition extends Vector2 {
   constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  clone() {
-    return new GridPosition(this.x, this.y);
+    if (x.isVector3) {
+      super(Math.round(x.x / gridSize), Math.round(x.z / gridSize));
+    } else {
+      super(Math.round(x), Math.round(y));
+    }
   }
 
   toVector3() {
@@ -38,18 +38,6 @@ class GridPosition {
     ];
   }
 
-  dist_max(other) {
-    return Math.max(Math.abs(other.x - this.x), Math.abs(other.y - this.y));
-  }
-
-  dist(other) {
-    return Math.abs(other.x - this.x) + Math.abs(other.y - this.y);
-  }
-
-  equals(other) {
-    return this.dist(other) === 0;
-  }
-
   key() {
     return this.x + "-" + this.y;
   }
@@ -69,8 +57,8 @@ class Tower extends Entity {
   constructor(position) {
     super();
     this.name = "tower";
-    this.pos = position ? GridPosition.toGridPosition(position) : null;
-    this.position = this.pos?.toVector3();
+    this.gridPos = position ? new GridPosition(position) : null;
+    this.position = this.gridPos?.toVector3();
     this.range = 2;
     this.cooldown = 40;
     this.cost = 2;
@@ -89,11 +77,6 @@ class Projectile extends Entity {
     this.speed = 0.02;
   }
 }
-// need a notion of:
-// tower
-// lives
-// enemy
-// attack
 
 class Navigator extends KeyedMap {
   update(goalPos, towersPos, inbounds) {
@@ -145,7 +128,7 @@ class TowerDefenseGame {
   updateNavigation() {
     this.navigator.update(
       this.goal,
-      this.towers.map((t) => t.pos),
+      this.towers.map((t) => t.gridPos),
       (p) => this.inbounds(p, 1)
     );
   }
@@ -161,26 +144,26 @@ class TowerDefenseGame {
     );
   }
 
-  legalBuild(pos) {
-    if (!this.inbounds(pos)) {
+  legalBuild(gridPos) {
+    if (!this.inbounds(gridPos)) {
       return false;
     }
 
     const occupied = this.towers.find(
-      (t) => t.pos.dist(GridPosition.toGridPosition(pos)) <= 1
+      (t) => t.gridPos.manhattanDistanceTo(gridPos) < 1
     );
 
     if (occupied) {
       return false;
     }
 
-    if (this.goal.equals(pos)) {
+    if (this.goal.equals(gridPos)) {
       return false;
     }
 
     const testNavigator = new Navigator();
-    const testTower = Array.from(this.towers.map((t) => t.pos));
-    testTower.push(pos);
+    const testTower = Array.from(this.towers.map((t) => t.gridPos));
+    testTower.push(gridPos);
     testNavigator.update(this.goal, testTower, (p) => this.inbounds(p, 1));
 
     if (
@@ -192,19 +175,6 @@ class TowerDefenseGame {
     }
 
     return true;
-  }
-
-  path(start, end) {
-    const path = [start];
-    while (!path[path.length - 1].equals(end)) {
-      const last = path[path.length - 1];
-      if (last.x !== end.x) {
-        path.push(new GridPosition(last.x + Math.sign(end.x - last.x), last.y));
-      } else {
-        path.push(new GridPosition(last.x, last.y + Math.sign(end.y - last.y)));
-      }
-    }
-    return path;
   }
 
   handle(commands) {
@@ -236,7 +206,7 @@ class TowerDefenseGame {
           break;
         case "create":
           const { entity } = command;
-          const pos = entity.pos;
+          const pos = entity.gridPos;
           switch (entity.name) {
             case "tower":
               if (!this.legalBuild(pos)) {
@@ -647,12 +617,12 @@ export class TowerDefense extends GameState {
     const { object } = state;
     const hit = object.hover.get(this.ground);
     if (hit) {
-      const pos = GridPosition.toGridPosition(hit.point);
-      const legalPos = this.game.legalBuild(pos);
+      const gridPos = new GridPosition(hit.point);
+      const legalPos = this.game.legalBuild(gridPos);
       if (legalPos) {
         this.hint.visible = true;
         this.hint.material.opacity = 0.5;
-        this.hint.position.copy(pos.toVector3());
+        this.hint.position.copy(gridPos.toVector3());
       } else {
         this.hint.visible = false;
       }
