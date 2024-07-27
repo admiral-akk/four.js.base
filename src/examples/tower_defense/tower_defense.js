@@ -123,19 +123,19 @@ class TowerDefenseGame {
 
   legalBuild(gridPos) {
     if (!this.inbounds(gridPos)) {
-      return false;
+      return {
+        result: false,
+        reason: "outOfBounds",
+      };
     }
 
-    const occupied = this.towers.find(
-      (t) => t.gridPos.manhattanDistanceTo(gridPos) < 1
-    );
+    const occupied = this.towers.find((t) => t.gridPos.equals(gridPos));
 
-    if (occupied) {
-      return false;
-    }
-
-    if (this.goal.gridPos.equals(gridPos)) {
-      return false;
+    if (occupied || this.goal.gridPos.equals(gridPos)) {
+      return {
+        result: false,
+        reason: "occupied",
+      };
     }
 
     const testNavigator = new Navigator();
@@ -150,10 +150,16 @@ class TowerDefenseGame {
         new GridPosition(this.bounds[0].x - 1, this.bounds[0].y - 1)
       )
     ) {
-      return;
+      return {
+        result: false,
+        reason: "blocksPath",
+      };
     }
 
-    return true;
+    return {
+      result: true,
+      reason: "legal",
+    };
   }
 
   handle(commands) {
@@ -188,7 +194,7 @@ class TowerDefenseGame {
           const pos = entity.gridPos;
           switch (entity.name) {
             case "tower":
-              if (!this.legalBuild(pos)) {
+              if (!this.legalBuild(pos).result) {
                 continue;
               }
               if (this.state.gold < entity.cost) {
@@ -371,7 +377,7 @@ export class TowerDefense extends GameState {
     };
 
     const makeHint = () => {
-      const geo = new THREE.SphereGeometry(0.2);
+      const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
       const material = new THREE.MeshBasicMaterial({ color: "grey" });
       const mesh = new THREE.Mesh(geo, material);
       material.transparent = true;
@@ -618,10 +624,10 @@ export class TowerDefense extends GameState {
 
     const { object } = state;
     const hit = object.hover.get(this.ground);
-    if (hit) {
+    if (hit && this.buildingConstructor) {
       const gridPos = new GridPosition(hit.point);
       const legalPos = this.game.legalBuild(gridPos);
-      if (legalPos) {
+      if (legalPos.result) {
         this.hint.visible = true;
         this.hint.material.opacity = 0.5;
         this.hint.position.copy(gridPos.toVector3());

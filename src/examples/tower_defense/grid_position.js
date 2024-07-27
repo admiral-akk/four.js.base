@@ -17,7 +17,7 @@ export class GridPosition extends Vector2 {
   toVector3() {
     return new Vector3(
       this.x * GridPosition.gridSize,
-      0.3,
+      0,
       this.y * GridPosition.gridSize
     );
   }
