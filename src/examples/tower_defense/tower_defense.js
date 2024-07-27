@@ -626,13 +626,26 @@ export class TowerDefense extends GameState {
     const hit = object.hover.get(this.ground);
     if (hit && this.buildingConstructor) {
       const gridPos = new GridPosition(hit.point);
+      this.hint.position.copy(gridPos.toVector3());
       const legalPos = this.game.legalBuild(gridPos);
+
       if (legalPos.result) {
         this.hint.visible = true;
+        this.hint.material.color = new THREE.Color("#1b680c");
         this.hint.material.opacity = 0.5;
-        this.hint.position.copy(gridPos.toVector3());
       } else {
-        this.hint.visible = false;
+        switch (legalPos.reason) {
+          case "blocksPath":
+          case "insufficientFunds":
+            this.hint.visible = true;
+            this.hint.material.color = new THREE.Color("#cd0808");
+            this.hint.material.opacity = 0.5;
+            break;
+          case "occupied":
+          case "outOfBounds":
+          default:
+            this.hint.visible = false;
+        }
       }
     } else {
       this.hint.visible = false;
