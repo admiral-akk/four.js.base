@@ -296,8 +296,33 @@ export class TowerDefense extends GameState {
     }
   }
 
+  updateUi(state) {
+    const { hover } = state.ui;
+    const { children } = this.buildMenu;
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (hover.indexOf(child) >= 0) {
+        child.classList.add("hovered");
+      } else {
+        child.classList.remove("hovered");
+      }
+
+      if (child.data.command.type === "selectBuilding") {
+        if (
+          this.buildingConstructor === child.data.command.buildingConstructor
+        ) {
+          child.classList.add("selected");
+        } else {
+          child.classList.remove("selected");
+        }
+      }
+    }
+  }
+
   update(engine) {
     const state = engine.input.getState();
+    this.updateUi(state);
     const commands = this.generateCommands(state);
     let effects = this.game.handle(commands);
 
@@ -338,6 +363,8 @@ export class TowerDefense extends GameState {
     if (effects.find((v) => v.effect === "gameover")) {
       engine.pushState(GameOverMenu);
     }
+
+    this.updateUi(state);
   }
 
   render(renderer) {

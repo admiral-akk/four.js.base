@@ -54,7 +54,6 @@ class InputManager {
       case "mousedown":
       case "mouseup":
       case "mouseleave":
-      case "mouseout":
       case "mouseenter":
         return this.history.ui;
       case "blur":
