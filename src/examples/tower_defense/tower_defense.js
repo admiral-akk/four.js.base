@@ -4,6 +4,9 @@ import { GameState } from "../../engine/engine.js";
 import { GameOverMenu } from "./game_over_menu.js";
 import { TowerDefenseGame } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
+import { KeyedMap } from "../../utils/helper.js";
+
+const entityMap = new KeyedMap();
 
 class EntityMesh extends THREE.Mesh {
   constructor(scene, { geo, mat, entity }) {
@@ -11,6 +14,16 @@ class EntityMesh extends THREE.Mesh {
     scene.add(this);
     this.position.copy(entity.position);
     this.entity = entity;
+    entityMap.set(entity, this);
+  }
+
+  updatePosition() {
+    this.position.copy(this.entity.position);
+  }
+
+  destroy(scene) {
+    scene.remove(this);
+    entityMap.delete(this.entity);
   }
 }
 
@@ -19,6 +32,7 @@ class EnemyMesh extends EntityMesh {
   static mat = new THREE.MeshBasicMaterial({
     color: "green",
   });
+
   constructor(scene, entity) {
     super(scene, { entity, geo: EnemyMesh.geo, mat: EnemyMesh.mat });
   }
@@ -306,29 +320,10 @@ export class TowerDefense extends GameState {
           break;
         case TowerDefenseGame.effects.reachedFlag:
         case TowerDefenseGame.effects.died:
-          {
-            const matching = [];
-            this.traverse((child) => {
-              if (child.entity === effect.entity) {
-                matching.push(child);
-              }
-            });
-            matching.forEach((v) => {
-              this.remove(v);
-            });
-          }
-          break;
+          entityMap.get(effect.entity)?.destroy(this);
           break;
         case TowerDefenseGame.effects.moved:
-          const matching = [];
-          this.traverse((child) => {
-            if (child.entity === effect.entity) {
-              matching.push(child);
-            }
-          });
-          matching.forEach((v) => {
-            v.position.copy(v.entity.position);
-          });
+          entityMap.get(effect.entity)?.updatePosition();
           break;
         case TowerDefenseGame.effects.gameOver:
           this.lives.innerText = `Lives left: ${this.game.state.lives}`;
