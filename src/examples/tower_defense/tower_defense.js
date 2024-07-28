@@ -363,13 +363,7 @@ export class TowerDefense extends GameState {
     }
   }
 
-  update(engine) {
-    const state = engine.input.getState();
-    this.updateUi(state);
-    const commands = this.generateCommands(state);
-    const effects = this.game.handle(commands);
-    this.applyEffects(effects, engine);
-
+  updateHint(state) {
     const { object } = state;
     const hit = object.hover.get(this.ground);
     if (hit) {
@@ -423,6 +417,15 @@ export class TowerDefense extends GameState {
     } else {
       this.hint.visible = false;
     }
+  }
+
+  update(engine) {
+    const state = engine.input.getState();
+    this.updateUi(state);
+    const commands = this.generateCommands(state);
+    const effects = this.game.handle(commands);
+    this.applyEffects(effects, engine);
+    this.updateHint(state);
 
     this.updateUi(state);
   }
