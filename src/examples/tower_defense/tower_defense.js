@@ -5,6 +5,58 @@ import { GameOverMenu } from "./game_over_menu.js";
 import { TowerDefenseGame } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
 
+class EntityMesh extends THREE.Mesh {
+  constructor(scene, { geo, mat, entity }) {
+    super(geo, mat);
+    scene.add(this);
+    this.position.copy(entity.position);
+    this.entity = entity;
+  }
+}
+
+class EnemyMesh extends EntityMesh {
+  static geo = new THREE.ConeGeometry(0.2, 0.3);
+  static mat = new THREE.MeshBasicMaterial({
+    color: "green",
+  });
+  constructor(scene, entity) {
+    super(scene, { entity, geo: EnemyMesh.geo, mat: EnemyMesh.mat });
+  }
+}
+
+class GoalMesh extends EntityMesh {
+  static geo = new THREE.CylinderGeometry(0.2, 0.2, 0.2);
+  static mat = new THREE.MeshBasicMaterial({
+    color: "yellow",
+  });
+  constructor(scene, entity) {
+    super(scene, { entity, geo: GoalMesh.geo, mat: GoalMesh.mat });
+    this.position.y = 0;
+  }
+}
+
+class TowerMesh extends EntityMesh {
+  static geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+  static mat = new THREE.MeshBasicMaterial({
+    color: "red",
+  });
+  constructor(scene, entity) {
+    super(scene, { entity, geo: TowerMesh.geo, mat: TowerMesh.mat });
+    this.position.y = 0;
+  }
+}
+
+class ProjectileMesh extends EntityMesh {
+  static geo = new THREE.SphereGeometry(0.05);
+  static mat = new THREE.MeshBasicMaterial({
+    color: "yellow",
+  });
+  constructor(scene, entity) {
+    super(scene, { entity, geo: ProjectileMesh.geo, mat: ProjectileMesh.mat });
+    this.position.y = 0;
+  }
+}
+
 export class TowerDefense extends GameState {
   constructor({ ui, window }) {
     super({
@@ -234,63 +286,17 @@ export class TowerDefense extends GameState {
           const { entity } = effect;
           switch (entity.name) {
             case "goal":
-              const makeGoal = () => {
-                const geo = new THREE.CylinderGeometry(0.2, 0.2, 0.2);
-                const material = new THREE.MeshBasicMaterial({
-                  color: "yellow",
-                });
-                const mesh = new THREE.Mesh(geo, material);
-                this.add(mesh);
-                mesh.position.copy(entity.gridPos.toVector3());
-                mesh.entity = entity;
-                mesh.position.y = 0;
-                return mesh;
-              };
-              makeGoal();
+              new GoalMesh(this, entity);
               break;
             case "tower":
               this.gold.innerText = `Gold: ${this.game.state.gold}`;
-              const makeTower = () => {
-                const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-                const material = new THREE.MeshBasicMaterial({
-                  color: "red",
-                });
-                const mesh = new THREE.Mesh(geo, material);
-                this.add(mesh);
-                mesh.position.copy(entity.position);
-                mesh.entity = entity;
-                mesh.position.y = 0;
-                return mesh;
-              };
-              makeTower();
+              new TowerMesh(this, entity);
               break;
             case "enemy":
-              const makeEnemy = () => {
-                const geo = new THREE.ConeGeometry(0.2, 0.3);
-                const material = new THREE.MeshBasicMaterial({
-                  color: "green",
-                });
-                const mesh = new THREE.Mesh(geo, material);
-                this.add(mesh);
-                mesh.position.copy(entity.position);
-                mesh.entity = entity;
-                return mesh;
-              };
-              makeEnemy();
+              new EnemyMesh(this, entity);
               break;
             case "projectile":
-              const makeProjectile = () => {
-                const geo = new THREE.SphereGeometry(0.05);
-                const material = new THREE.MeshBasicMaterial({
-                  color: "yellow",
-                });
-                const mesh = new THREE.Mesh(geo, material);
-                this.add(mesh);
-                mesh.position.copy(entity.position);
-                mesh.entity = entity;
-                return mesh;
-              };
-              makeProjectile();
+              new ProjectileMesh(this, entity);
               break;
             default:
               break;

@@ -48,6 +48,7 @@ export class Goal extends Entity {
     super();
     this.name = "goal";
     this.gridPos = gridPos;
+    this.position = gridPos.toVector3();
   }
 }
 
