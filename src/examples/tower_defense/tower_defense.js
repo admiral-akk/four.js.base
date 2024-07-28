@@ -17,13 +17,47 @@ class EntityMesh extends THREE.Mesh {
     entityMap.set(entity, this);
   }
 
-  updatePosition() {
+  update() {
     this.position.copy(this.entity.position);
   }
 
   destroy(scene) {
     scene.remove(this);
     entityMap.delete(this.entity);
+  }
+}
+
+class HealthBar extends THREE.Group {
+  static greenGeo = new THREE.PlaneGeometry(0.3, 0.05).translate(0.15, 0, 0);
+  static redGeo = new THREE.PlaneGeometry(0.3, 0.05).translate(-0.15, 0, 0);
+  static redMat = new THREE.MeshBasicMaterial({
+    color: "red",
+  });
+  static greenMat = new THREE.MeshBasicMaterial({
+    color: "green",
+  });
+  constructor(scene, enemy) {
+    super();
+    const red = new THREE.Mesh(HealthBar.redGeo, HealthBar.redMat);
+    const green = new THREE.Mesh(HealthBar.greenGeo, HealthBar.greenMat);
+    this.rotation.copy(scene.camera.rotation);
+    this.add(red);
+    this.add(green);
+    enemy.add(this);
+    green.position.x = -0.15;
+    red.position.x = 0.15;
+    this.position.y = 0.3;
+    this.red = red;
+    this.green = green;
+    this.enemy = enemy;
+    this.update();
+  }
+
+  update() {
+    const { health, config } = this.enemy.entity;
+    const healthPercent = health / config.health;
+    this.red.scale.set(1 - healthPercent, 1, 1);
+    this.green.scale.set(healthPercent, 1, 1);
   }
 }
 
@@ -35,6 +69,12 @@ class EnemyMesh extends EntityMesh {
 
   constructor(scene, entity) {
     super(scene, { entity, geo: EnemyMesh.geo, mat: EnemyMesh.mat });
+    this.healthBar = new HealthBar(scene, this);
+  }
+
+  update() {
+    super.update();
+    this.healthBar.update();
   }
 }
 
@@ -323,12 +363,15 @@ export class TowerDefense extends GameState {
               break;
           }
           break;
+        case TowerDefenseGame.effects.hit:
+          entityMap.get(effect.entity)?.update();
+          break;
         case TowerDefenseGame.effects.reachedFlag:
         case TowerDefenseGame.effects.died:
           entityMap.get(effect.entity)?.destroy(this);
           break;
         case TowerDefenseGame.effects.moved:
-          entityMap.get(effect.entity)?.updatePosition();
+          entityMap.get(effect.entity)?.update();
           break;
         case TowerDefenseGame.effects.gameOver:
           engine.pushState(GameOverMenu);

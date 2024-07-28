@@ -16,6 +16,7 @@ export class Enemy extends Entity {
     for (const [key, value] of Object.entries(config)) {
       this[key] = value;
     }
+    this.config = config;
   }
 }
 
@@ -103,6 +104,7 @@ export class TowerDefenseGame {
     "moved",
     "reachedFlag",
     "livesChanged",
+    "hit",
     "goldChanged",
     "gameOver",
     "changedPhase",
@@ -308,6 +310,10 @@ export class TowerDefenseGame {
       if (delta.length() <= projectileSpeed) {
         this.projectiles.splice(i, 1);
         projectile.target.health -= damage;
+        effects.push({
+          effect: TowerDefenseGame.effects.hit,
+          entity: projectile.target,
+        });
         effects.push({
           effect: TowerDefenseGame.effects.died,
           entity: projectile,
