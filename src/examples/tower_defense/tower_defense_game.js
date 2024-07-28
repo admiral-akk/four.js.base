@@ -98,6 +98,7 @@ export class TowerDefenseGame {
     "moved",
     "reachedFlag",
     "livesChanged",
+    "goldChanged",
     "gameOver",
     "changedPhase",
   ]);
@@ -288,7 +289,7 @@ export class TowerDefenseGame {
   }
 
   step() {
-    const lives = this.state.lives;
+    const { lives, gold } = this.state;
     const effects = [];
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -391,6 +392,14 @@ export class TowerDefenseGame {
       effects.push({
         effect: TowerDefenseGame.effects.livesChanged,
         lives: this.state.lives,
+      });
+    }
+
+    // then check gold
+    if (this.state.gold != gold) {
+      effects.push({
+        effect: TowerDefenseGame.effects.goldChanged,
+        gold: this.state.gold,
       });
     }
 

@@ -282,6 +282,9 @@ export class TowerDefense extends GameState {
     for (let i = 0; i < effects.length; i++) {
       const effect = effects[i];
       switch (effect.effect) {
+        case TowerDefenseGame.effects.goldChanged:
+          this.gold.innerText = `Gold: ${this.game.state.gold}`;
+          break;
         case TowerDefenseGame.effects.spawn:
           const { entity } = effect;
           switch (entity.name) {
@@ -289,7 +292,6 @@ export class TowerDefense extends GameState {
               new GoalMesh(this, entity);
               break;
             case "tower":
-              this.gold.innerText = `Gold: ${this.game.state.gold}`;
               new TowerMesh(this, entity);
               break;
             case "enemy":
@@ -302,10 +304,8 @@ export class TowerDefense extends GameState {
               break;
           }
           break;
-        case TowerDefenseGame.effects.died:
-          this.gold.innerText = `Gold: ${this.game.state.gold}`;
-          this.lives.innerText = `Lives left: ${this.game.state.lives}`;
         case TowerDefenseGame.effects.reachedFlag:
+        case TowerDefenseGame.effects.died:
           {
             const matching = [];
             this.traverse((child) => {
@@ -317,6 +317,7 @@ export class TowerDefense extends GameState {
               this.remove(v);
             });
           }
+          break;
           break;
         case TowerDefenseGame.effects.moved:
           const matching = [];
