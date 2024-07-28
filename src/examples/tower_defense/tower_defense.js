@@ -178,11 +178,7 @@ export class TowerDefense extends GameState {
         },
       },
       parent: this.buildMenu,
-      children: [
-        {
-          text: "Spawn Enemy",
-        },
-      ],
+      children: ["Spawn Enemy"],
     });
     this.spawn = this.ui.createElement({
       classNames: "interactive column-c",
@@ -196,11 +192,7 @@ export class TowerDefense extends GameState {
         },
       },
       parent: this.buildMenu,
-      children: [
-        {
-          text: "Start Fight",
-        },
-      ],
+      children: ["Start Fight"],
     });
   }
 
@@ -303,8 +295,6 @@ export class TowerDefense extends GameState {
             default:
               break;
           }
-          break;
-        case "attack":
           break;
         case TowerDefenseGame.effects.died:
           this.gold.innerText = `Gold: ${this.game.state.gold}`;
@@ -415,14 +405,14 @@ export class TowerDefense extends GameState {
           this.towerUi.style.right = null;
           this.towerUi.style.left = null;
           if (towerScreenSpace.y > 0.5) {
-            this.towerUi.style.top = `${(1 - towerScreenSpace.y) * 50}%`;
+            this.towerUi.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
           } else {
-            this.towerUi.style.bottom = `${(towerScreenSpace.y + 1) * 50}%`;
+            this.towerUi.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
           }
           if (towerScreenSpace.x > 0.5) {
-            this.towerUi.style.right = `${(1 - towerScreenSpace.x) * 50}%`;
+            this.towerUi.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
           } else {
-            this.towerUi.style.left = `${(towerScreenSpace.x + 1) * 50}%`;
+            this.towerUi.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
           }
         } else {
           this.towerUi.style.display = "none";
