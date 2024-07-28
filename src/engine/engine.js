@@ -1,5 +1,44 @@
 import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
 
+const addUiHelpers = (div) => {
+  div.createElement = (params) => {
+    if (typeof params === "string" || params instanceof String) {
+      const element = document.createElement("div");
+      element.className = "f-s";
+      element.innerText = params;
+      element.isCustom = true;
+      div.appendChild(element);
+      return element;
+    }
+
+    const {
+      type = "div",
+      style = {},
+      parent = div,
+      classNames = "",
+      text = "",
+      data = null,
+      children = [],
+    } = params;
+
+    const element = document.createElement(type);
+    element.className = classNames;
+    for (const [key, value] of Object.entries(style)) {
+      element.style[key] = value;
+    }
+    element.isCustom = true;
+    if (data) {
+      element.data = data;
+    }
+    element.innerText = text;
+    parent.appendChild(element);
+    children.map((c) => {
+      element.appendChild(div.createElement(c));
+    });
+    return element;
+  };
+};
+
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class GameEngine {
   constructor(input, time, loader, renderer, window) {
@@ -29,43 +68,7 @@ export class GameEngine {
     div.className = "ui";
     div.style.zIndex = `${this.states.length + 1}`;
     this.ui.appendChild(div);
-
-    div.createElement = (params) => {
-      if (typeof params === "string" || params instanceof String) {
-        const element = document.createElement("div");
-        element.className = "f-s";
-        element.innerText = params;
-        element.isCustom = true;
-        div.appendChild(element);
-        return element;
-      }
-
-      const {
-        type = "div",
-        style = {},
-        parent = div,
-        classNames = "",
-        text = "",
-        data = null,
-        children = [],
-      } = params;
-
-      const element = document.createElement(type);
-      element.className = classNames;
-      for (const [key, value] of Object.entries(style)) {
-        element.style[key] = value;
-      }
-      element.isCustom = true;
-      if (data) {
-        element.data = data;
-      }
-      element.innerText = text;
-      parent.appendChild(element);
-      children.map((c) => {
-        element.appendChild(div.createElement(c));
-      });
-      return element;
-    };
+    addUiHelpers(div);
     return div;
   }
 
