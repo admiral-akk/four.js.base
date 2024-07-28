@@ -91,7 +91,12 @@ export class Navigator extends KeyedMap {
 
 export class TowerDefenseGame {
   static phases = makeEnum(["fight", "build"]);
-  static commands = makeEnum(["build", "startFightPhase", "spawnEnemy"]);
+  static commands = makeEnum([
+    "build",
+    "startFightPhase",
+    "spawnEnemy",
+    "step",
+  ]);
   static effects = makeEnum([
     "spawn",
     "died",
@@ -279,6 +284,9 @@ export class TowerDefenseGame {
           break;
         case TowerDefenseGame.commands.build:
           this.build(command.gridPos, command.config, effects);
+          break;
+        case TowerDefenseGame.commands.step:
+          effects.push(...this.step());
           break;
         default:
           break;

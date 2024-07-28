@@ -90,7 +90,7 @@ export class TowerDefense extends GameState {
   init() {
     this.game = new TowerDefenseGame();
     const effects = this.game.init();
-    this.updateRender(effects);
+    this.applyEffects(effects);
     this.buildingConfig = null;
     this.camera.position.copy(new Vector3(4, 4, 4));
     this.camera.lookAt(new Vector3());
@@ -269,6 +269,7 @@ export class TowerDefense extends GameState {
   generateCommands(state) {
     const { mouse, object, ui } = state;
     const { released } = mouse;
+    const commands = [];
     if (ui.clicked.length > 0) {
       const command = ui.clicked[0].data.command;
       switch (command.type) {
@@ -281,22 +282,22 @@ export class TowerDefense extends GameState {
         default:
           break;
       }
-      return [command];
-    }
-    const hit = object.hover.get(this.ground);
-    if (hit && released && this.buildingConfig) {
-      return [
-        {
+      commands.push(command);
+    } else {
+      const hit = object.hover.get(this.ground);
+      if (hit && released && this.buildingConfig) {
+        commands.push({
           type: TowerDefenseGame.commands.build,
           gridPos: new GridPosition(hit.point),
           config: this.buildingConfig,
-        },
-      ];
+        });
+      }
     }
-    return [];
+    commands.push({ type: TowerDefenseGame.commands.step });
+    return commands;
   }
 
-  updateRender(effects) {
+  applyEffects(effects, engine) {
     for (let i = 0; i < effects.length; i++) {
       const effect = effects[i];
       switch (effect.effect) {
@@ -330,8 +331,7 @@ export class TowerDefense extends GameState {
           entityMap.get(effect.entity)?.updatePosition();
           break;
         case TowerDefenseGame.effects.gameOver:
-          this.lives.innerText = `Lives left: ${this.game.state.lives}`;
-          break;
+          engine.pushState(GameOverMenu);
         case TowerDefenseGame.effects.livesChanged:
           this.lives.innerText = `Lives left: ${this.game.state.lives}`;
           break;
@@ -367,12 +367,8 @@ export class TowerDefense extends GameState {
     const state = engine.input.getState();
     this.updateUi(state);
     const commands = this.generateCommands(state);
-    let effects = this.game.handle(commands);
-
-    if (commands.find((c) => c.type === "step") || true) {
-      effects = effects.concat(this.game.step());
-    }
-    this.updateRender(effects);
+    const effects = this.game.handle(commands);
+    this.applyEffects(effects, engine);
 
     const { object } = state;
     const hit = object.hover.get(this.ground);
@@ -426,10 +422,6 @@ export class TowerDefense extends GameState {
       }
     } else {
       this.hint.visible = false;
-    }
-
-    if (effects.find((v) => v.effect === TowerDefenseGame.effects.gameOver)) {
-      engine.pushState(GameOverMenu);
     }
 
     this.updateUi(state);
