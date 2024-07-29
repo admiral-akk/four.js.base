@@ -68,8 +68,18 @@ class EnemyMesh extends EntityMesh {
   });
 
   constructor(scene, entity) {
-    super(scene, { entity, geo: EnemyMesh.geo, mat: EnemyMesh.mat });
+    super(scene, {
+      entity,
+      geo: EnemyMesh.geo,
+      mat: new THREE.MeshBasicMaterial({
+        color: "green",
+      }),
+    });
     this.healthBar = new HealthBar(scene, this);
+
+    this.material.opacity = 0;
+    this.material.transparent = true;
+    scene.tl.to(this.material, { opacity: 1 }, scene.tl.time());
   }
 
   update() {
@@ -86,6 +96,8 @@ class GoalMesh extends EntityMesh {
   constructor(scene, entity) {
     super(scene, { entity, geo: GoalMesh.geo, mat: GoalMesh.mat });
     this.position.y = 0;
+    this.scale.set(0, 0, 0);
+    scene.tl.to(this.scale, { x: 1, y: 1, z: 1 }, scene.tl.time());
   }
 }
 
@@ -97,6 +109,9 @@ class TowerMesh extends EntityMesh {
   constructor(scene, entity) {
     super(scene, { entity, geo: TowerMesh.geo, mat: TowerMesh.mat });
     this.position.y = 0;
+
+    this.scale.set(0, 0, 0);
+    scene.tl.to(this.scale, { x: 1, y: 1, z: 1 }, scene.tl.time());
   }
 }
 
