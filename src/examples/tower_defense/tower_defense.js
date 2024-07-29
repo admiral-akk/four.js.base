@@ -156,6 +156,8 @@ export class TowerDefense extends GameState {
       this.add(mesh);
       mesh.position.copy(mesh.gridPos.toVector3());
       mesh.position.y = 0;
+      mesh.scale.set(0, 0, 0);
+      this.tl.to(mesh.scale, { x: 1, y: 1, z: 1, duration: 0.4 }, "<0.01");
       return mesh;
     };
 
@@ -226,6 +228,8 @@ export class TowerDefense extends GameState {
         width: "80%",
       },
     });
+    this.buildMenu.style.top = "200%";
+    this.tl.to(this.buildMenu, { top: "80%" });
 
     this.build = this.ui.createElement({
       classNames: "interactive column-c",
@@ -264,6 +268,9 @@ export class TowerDefense extends GameState {
       }),
     });
 
+    this.gold.parentNode.style.right = "-100%";
+    this.tl.to(this.gold.parentNode, { right: "10%" });
+
     this.lives = this.ui.createElement({
       text: `Lives left: ${this.game.state.lives}`,
       parent: this.ui.createElement({
@@ -277,6 +284,8 @@ export class TowerDefense extends GameState {
         },
       }),
     });
+    this.lives.parentNode.style.right = "200%";
+    this.tl.to(this.lives.parentNode, { right: "80%" });
     this.spawn = this.ui.createElement({
       classNames: "interactive column-c",
       style: {
@@ -295,7 +304,7 @@ export class TowerDefense extends GameState {
       parent: this.buildMenu,
       children: ["Spawn Enemy"],
     });
-    this.spawn = this.ui.createElement({
+    this.startFight = this.ui.createElement({
       classNames: "interactive column-c",
       style: {
         height: "90%",
@@ -353,7 +362,7 @@ export class TowerDefense extends GameState {
           const { entity } = effect;
           switch (entity.name) {
             case "goal":
-              new GoalMesh(this, entity);
+              this.tl.then(() => new GoalMesh(this, entity));
               break;
             case "tower":
               new TowerMesh(this, entity);

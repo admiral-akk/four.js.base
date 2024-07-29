@@ -5,6 +5,7 @@ import {
   AudioListener,
   Audio,
 } from "three";
+import { gsap } from "gsap";
 import { AudioManager } from "./audio.js";
 
 const addUiHelpers = (div) => {
@@ -148,6 +149,7 @@ export class GameState extends Scene {
   constructor({ ui, window, cameraConfig }) {
     super();
     this.ui = ui;
+    this.tl = gsap.timeline();
     const { aspect } = window.sizes;
     let camera = null;
     if (cameraConfig.isPerspective) {
