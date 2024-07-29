@@ -246,7 +246,7 @@ export class TowerDefense extends GameState {
               cooldown: 40,
               damage: 1,
               range: 2,
-              projectileSpeed: 0.02,
+              projectileSpeed: 0.05,
             },
           },
         },

@@ -274,6 +274,7 @@ export class TowerDefenseGame {
   }
 
   handle(commands) {
+    const { lives, gold } = this.state;
     const effects = [];
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
@@ -295,11 +296,35 @@ export class TowerDefenseGame {
       }
     }
 
+    // then check lives
+    if (this.state.lives <= 0) {
+      effects.push({ effect: TowerDefenseGame.effects.gameOver });
+    } else if (this.state.lives != lives) {
+      effects.push({
+        effect: TowerDefenseGame.effects.livesChanged,
+        lives: this.state.lives,
+      });
+    }
+
+    // then check gold
+    if (this.state.gold != gold) {
+      effects.push({
+        effect: TowerDefenseGame.effects.goldChanged,
+        gold: this.state.gold,
+      });
+    }
+
+    // check phase change
+    if (this.phase === TowerDefenseGame.phases.fight) {
+      if (this.enemies.length === 0) {
+        this.setPhase(TowerDefenseGame.phases.build, effects);
+      }
+    }
+
     return effects;
   }
 
   step() {
-    const { lives, gold } = this.state;
     const effects = [];
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -398,32 +423,6 @@ export class TowerDefenseGame {
         entity: enemy,
       });
     }
-
-    // then check lives
-    if (this.state.lives <= 0) {
-      effects.push({ effect: TowerDefenseGame.effects.gameOver });
-    } else if (this.state.lives != lives) {
-      effects.push({
-        effect: TowerDefenseGame.effects.livesChanged,
-        lives: this.state.lives,
-      });
-    }
-
-    // then check gold
-    if (this.state.gold != gold) {
-      effects.push({
-        effect: TowerDefenseGame.effects.goldChanged,
-        gold: this.state.gold,
-      });
-    }
-
-    // check phase change
-    if (this.phase === TowerDefenseGame.phases.fight) {
-      if (this.enemies.length === 0) {
-        this.setPhase(TowerDefenseGame.phases.build, effects);
-      }
-    }
-
     this.tick++;
     return effects;
   }

@@ -14,11 +14,11 @@ export class MainMenu extends GameState {
   }
 
   init() {
-    this.ui.createElement({
+    const title = this.ui.createElement({
       classNames: "column-c",
       style: {
         position: "absolute",
-        top: "10%",
+        top: "-90%",
         right: "10%",
         height: "10%",
         width: "80%",
@@ -30,11 +30,12 @@ export class MainMenu extends GameState {
       ],
     });
 
+    this.tl.to(title, { top: "10%" });
     this.start = this.ui.createElement({
       classNames: "interactive column-c",
       style: {
         position: "absolute",
-        top: "80%",
+        top: "180%",
         right: "40%",
         height: "10%",
         width: "20%",
@@ -45,6 +46,7 @@ export class MainMenu extends GameState {
         },
       ],
     });
+    this.tl.to(this.start, { top: "80%" });
   }
 
   update(engine) {
