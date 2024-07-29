@@ -123,6 +123,11 @@ export class TowerDefense extends GameState {
     });
   }
 
+  // things to load
+  manifest() {
+    return ["./audio/laser5.ogg"];
+  }
+
   cleanup() {
     [...entityMap.keys()].forEach((k) => entityMap.get(k)?.destroy(this));
   }
@@ -358,6 +363,7 @@ export class TowerDefense extends GameState {
               break;
             case "projectile":
               new ProjectileMesh(this, entity);
+              engine.playSound("./audio/laser5.ogg");
               break;
             default:
               break;

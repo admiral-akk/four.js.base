@@ -1,4 +1,11 @@
-import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
+import {
+  Scene,
+  PerspectiveCamera,
+  OrthographicCamera,
+  AudioListener,
+  Audio,
+} from "three";
+import { AudioManager } from "./audio.js";
 
 const addUiHelpers = (div) => {
   div.createElement = (params) => {
@@ -49,6 +56,13 @@ export class GameEngine {
     this.loader = loader;
     this.renderer = renderer;
     this.window = window;
+    this.listener = new AudioManager(this.loader);
+    this.listener.setMasterVolume(0.05);
+    this.listener.load("./audio/Mission Plausible.ogg");
+  }
+
+  playSound(path) {
+    this.listener.play(path);
   }
 
   init(stateConstructor) {
@@ -88,6 +102,8 @@ export class GameEngine {
       window: this.window,
     });
     state.init();
+    state.manifest().forEach((path) => this.loader.load(path));
+    state.camera.add(this.listener);
     this.states.push(state);
   }
 
@@ -98,6 +114,8 @@ export class GameEngine {
       window: this.window,
     });
     state.init();
+    state.manifest().forEach((path) => this.loader.load(path));
+    state.camera.add(this.listener);
     this.states.push(state);
   }
 
@@ -146,6 +164,11 @@ export class GameState extends Scene {
     }
     this.add(camera);
     this.camera = camera;
+  }
+
+  // things to load
+  manifest() {
+    return [];
   }
 
   cleanup() {}

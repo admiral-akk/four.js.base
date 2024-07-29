@@ -78,10 +78,7 @@ function generateLoadingManager(
         break;
 
       case "audio":
-        loadingManager.audioLoader.load(path, (buffer) => {
-          reference.value = buffer;
-          reference.callbacks.forEach((c) => c(buffer));
-        });
+        loadingManager.audioLoader.load(path);
         break;
 
       case "model":
