@@ -11,6 +11,7 @@ export class AudioManager extends AudioListener {
 
   play(path) {
     const sound = this.buffers.get(path)?.value;
+    console.log(path);
     if (!sound) {
       this.load(path);
       return;
@@ -39,10 +40,11 @@ export class AudioManager extends AudioListener {
     return audio;
   }
 
-  load(path) {
+  load({path, min}) {
     if (this.buffers.get(path)) {
       return;
     }
+    console.log(path);
     const reference = this.buffers.set(path);
     this.audioLoader.load(path, (buffer) => {
       reference.value = buffer;

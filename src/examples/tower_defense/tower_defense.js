@@ -140,7 +140,7 @@ export class TowerDefense extends GameState {
 
   // things to load
   manifest() {
-    return ["./audio/laser5.ogg"];
+    return ["./audio/click1.ogg"];
   }
 
   cleanup() {
@@ -335,7 +335,7 @@ export class TowerDefense extends GameState {
     });
   }
 
-  generateCommands(state) {
+  generateCommands(state, engine) {
     const { mouse, object, ui } = state;
     const { released } = mouse;
     const commands = [];
@@ -347,6 +347,7 @@ export class TowerDefense extends GameState {
             this.buildingConfig === command.buildingConfig
               ? null
               : command.buildingConfig;
+          engine.playSound("./audio/click1.ogg");
           break;
         default:
           break;
@@ -387,7 +388,7 @@ export class TowerDefense extends GameState {
               break;
             case "projectile":
               new ProjectileMesh(this, entity);
-              engine.playSound("./audio/laser5.ogg");
+              engine.playSound("./audio/click1.ogg");
               break;
             default:
               break;
@@ -495,7 +496,7 @@ export class TowerDefense extends GameState {
   update(engine) {
     const state = engine.input.getState();
     this.updateUi(state);
-    const commands = this.generateCommands(state);
+    const commands = this.generateCommands(state, engine);
     const effects = this.game.handle(commands);
     this.applyEffects(effects, engine);
     this.updateHint(state);

@@ -49,9 +49,15 @@ export class MainMenu extends GameState {
     this.tl.to(this.start, { top: "80%" });
   }
 
+  // things to load
+  manifest() {
+    return ["./audio/click1.ogg"];
+  }
+
   update(engine) {
     const { ui } = engine.input.getState();
     if (ui.clicked.find((v) => v === this.start) !== undefined) {
+      engine.playSound("./audio/click1.ogg");
       this.tl.to(".column-c", { top: "-100%" });
       this.tl.eventCallback("onComplete", () => {
         engine.replaceState(TowerDefense);
