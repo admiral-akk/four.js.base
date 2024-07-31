@@ -1,5 +1,10 @@
 import { Entity } from "../../engine/entity.js";
-import { KeyedMap, KeyedSet, makeEnum } from "../../utils/helper.js";
+import {
+  KeyedMap,
+  KeyedSet,
+  makeEnum,
+  makeEnumMap,
+} from "../../utils/helper.js";
 import { GridPosition } from "./grid_position.js";
 
 export class Enemy extends Entity {
@@ -20,25 +25,72 @@ export class Enemy extends Entity {
   }
 }
 
+export class Ability {
+  constructor(config) {
+    for (const [key, value] of Object.entries(config)) {
+      this[key] = value;
+    }
+    this.config = config;
+  }
+}
+
+export class Attack extends Ability {
+  constructor(config) {
+    super(config);
+  }
+}
+
+export class RangedAttack extends Attack {
+  constructor(config) {
+    super(config);
+  }
+}
+
+export class MeleeAttack extends Attack {
+  constructor(config) {
+    super(config);
+  }
+}
+
+const abilityTypes = makeEnumMap([
+  ["meleeAttack", MeleeAttack],
+  ["rangedAttack", RangedAttack],
+]);
+
+function makeAbility(config) {
+  return new abilityTypes[config.type](config);
+}
+
 export class Tower extends Entity {
   constructor(
     gridPos,
     config = {
       cost: 2,
-      attack: {
-        cooldown: 40,
-        damage: 1,
-        range: 2,
-        projectileSpeed: 0.02,
-      },
+      abilityOptions: [
+        {
+          type: "meleeAttack",
+          cooldown: 40,
+          damage: 1,
+          range: 2,
+          projectileSpeed: 0.02,
+        },
+        {
+          type: "rangedAttack",
+          cooldown: 15,
+          damage: 1,
+          range: 1,
+        },
+      ],
     }
   ) {
     super();
     this.name = "tower";
+    this.config = config;
     this.nextAttackTick = 0;
-    for (const [key, value] of Object.entries(config)) {
-      this[key] = value;
-    }
+    this.abilityOptions = Array.from(
+      config.abilityOptions.map((v) => makeAbility(v))
+    );
+    this.activeAbility = this.abilityOptions[0];
     this.gridPos = gridPos;
     this.position = this.gridPos.toVector3();
   }
@@ -58,6 +110,7 @@ export class Projectile extends Entity {
     super();
     this.name = "projectile";
     this.position = tower.position.clone();
+    this.projectileSpeed = tower.activeAbility.projectileSpeed;
     this.target = target;
     this.tower = tower;
   }
@@ -330,7 +383,7 @@ export class TowerDefenseGame {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const projectile = this.projectiles[i];
       const delta = projectile.target.position.clone().sub(projectile.position);
-      const { damage, projectileSpeed } = projectile.tower.attack;
+      const { damage, projectileSpeed } = projectile.tower.activeAbility;
 
       if (delta.length() <= projectileSpeed) {
         this.projectiles.splice(i, 1);
@@ -360,12 +413,13 @@ export class TowerDefenseGame {
         continue;
       }
       const target = this.enemies.find(
-        (e) => e.position.distanceTo(tower.position) <= tower.attack.range
+        (e) =>
+          e.position.distanceTo(tower.position) <= tower.activeAbility.range
       );
       if (target) {
         const projectile = new Projectile({ target, tower });
         this.projectiles.push(projectile);
-        tower.nextAttackTick = this.tick + tower.attack.cooldown;
+        tower.nextAttackTick = this.tick + tower.activeAbility.cooldown;
         effects.push({
           effect: TowerDefenseGame.effects.spawn,
           entity: projectile,

@@ -7,6 +7,14 @@ export function makeEnum(arr) {
   return Object.freeze(obj);
 }
 
+export function makeEnumMap(arr) {
+  let obj = Object.create(null);
+  for (let val of arr) {
+    obj[val[0]] = val[1];
+  }
+  return Object.freeze(obj);
+}
+
 export class KeyedMap extends Map {
   set(keyedValue, value) {
     const key = keyedValue.key ? keyedValue.key() : keyedValue;

@@ -257,12 +257,21 @@ export class TowerDefense extends GameState {
           type: "selectBuilding",
           buildingConfig: {
             cost: 2,
-            attack: {
-              cooldown: 40,
-              damage: 1,
-              range: 2,
-              projectileSpeed: 0.05,
-            },
+            abilityOptions: [
+              {
+                type: "meleeAttack",
+                cooldown: 40,
+                damage: 1,
+                range: 2,
+                projectileSpeed: 0.02,
+              },
+              {
+                type: "rangedAttack",
+                cooldown: 15,
+                damage: 1,
+                range: 1,
+              },
+            ],
           },
         },
       },
