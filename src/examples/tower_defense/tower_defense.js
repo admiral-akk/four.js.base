@@ -206,7 +206,7 @@ export class TowerDefense extends GameState {
     this.hint = makeHint();
 
     this.towerUi = this.ui.createElement({
-      classNames: "column-c",
+      classNames: "interactive column-c",
       style: {
         position: "absolute",
         height: "10%",
@@ -454,7 +454,7 @@ export class TowerDefense extends GameState {
   }
 
   updateHint(state) {
-    const { object } = state;
+    const { object, ui } = state;
     const hit = object.hover.get(this.ground);
     if (hit) {
       const gridPos = new GridPosition(hit.point);
@@ -482,9 +482,20 @@ export class TowerDefense extends GameState {
         const highlightedTower = this.game.towers.find((t) =>
           t.gridPos.equals(gridPos)
         );
-        if (highlightedTower) {
+        if (this.towerUi.style.opacity > 0) {
+          console.log(this.towerUi.style);
+          if (ui.hover.find((v) => v === this.towerUi) || highlightedTower) {
+            this.towerUi.style.opacity = 1;
+          } else {
+            this.towerUi.style.opacity = Math.max(
+              0,
+              this.towerUi.style.opacity - 0.02
+            );
+          }
+        } else if (highlightedTower) {
           const towerScreenSpace = gridPos.toVector3().project(this.camera);
           this.towerUi.style.display = "block";
+          this.towerUi.style.opacity = 1;
 
           this.towerUi.style.bottom = null;
           this.towerUi.style.top = null;
