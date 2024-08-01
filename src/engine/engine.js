@@ -50,6 +50,7 @@ const addUiHelpers = (div) => {
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class GameEngine {
   constructor(input, time, loader, renderer, window) {
+    gsap.globalTimeline.timeScale(10);
     this.ui = document.querySelector("div.uiContainer");
     this.states = [];
     this.input = input;
@@ -62,7 +63,7 @@ export class GameEngine {
   }
 
   playSound(path) {
-    this.listener.play(path);
+    this.listener.play({ path });
   }
 
   init(stateConstructor) {
@@ -102,7 +103,7 @@ export class GameEngine {
       window: this.window,
     });
     state.init();
-    state.manifest().forEach((path) => this.listener.load(path));
+    state.manifest().forEach((path) => this.listener.load({ path }));
     state.camera.add(this.listener);
     this.states.push(state);
   }
@@ -114,7 +115,7 @@ export class GameEngine {
       window: this.window,
     });
     state.init();
-    state.manifest().forEach((path) => this.listener.load(path));
+    state.manifest().forEach((path) => this.listener.load({ path }));
     state.camera.add(this.listener);
     this.states.push(state);
   }

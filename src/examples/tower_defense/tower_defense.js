@@ -140,7 +140,7 @@ export class TowerDefense extends GameState {
 
   // things to load
   manifest() {
-    return ["./audio/click1.ogg"];
+    return ["./audio/click1.ogg", "./audio/swish.wav"];
   }
 
   cleanup() {
@@ -259,14 +259,14 @@ export class TowerDefense extends GameState {
             cost: 2,
             abilityOptions: [
               {
-                type: "meleeAttack",
+                type: "rangedAttack",
                 cooldown: 40,
                 damage: 1,
                 range: 2,
-                projectileSpeed: 0.02,
+                projectileSpeed: 0.1,
               },
               {
-                type: "rangedAttack",
+                type: "meleeAttack",
                 cooldown: 15,
                 damage: 1,
                 range: 1,
@@ -405,6 +405,13 @@ export class TowerDefense extends GameState {
           break;
         case TowerDefenseGame.effects.hit:
           entityMap.get(effect.entity)?.update();
+          switch (effect.attack.type) {
+            case "meleeAttack":
+              engine.playSound("./audio/swish.wav");
+              break;
+            default:
+              break;
+          }
           break;
         case TowerDefenseGame.effects.reachedFlag:
         case TowerDefenseGame.effects.died:

@@ -1,51 +1,82 @@
 import { AudioLoader, AudioListener, Audio } from "three";
 
+export class RegisteredAudio extends Audio {
+  constructor(listener) {
+    super(listener);
+    this.manager = listener;
+  }
+
+  onEnded() {
+    super.onEnded();
+    this.manager.clearFinished(this);
+  }
+}
+
 export class AudioManager extends AudioListener {
   constructor(loadingManager) {
     super();
     this.audioLoader = new AudioLoader(loadingManager);
     this.buffers = new Map();
-    this.audioPool = [];
-    this.playingCount = new Map();
+    this.currentlyPlaying = [];
+    this.lastPlayed = new Map();
+    this.lastDetune = new Map();
   }
 
-  play(path) {
-    const sound = this.buffers.get(path)?.value;
-    console.log(path);
-    if (!sound) {
-      this.load(path);
+  clearFinished(audio) {
+    const index = this.currentlyPlaying.findIndex((a) => a === audio);
+    if (index >= 0) {
+      this.currentlyPlaying.splice(index, 1);
+    }
+  }
+
+  play({ path }) {
+    const reference = this.buffers.get(path);
+    if (!reference.value) {
       return;
     }
-    if (!this.playingCount.get(path)) {
-      this.playingCount.set(path, []);
-    }
-    const currentlyPlaying = this.playingCount.get(path);
-    for (let i = currentlyPlaying.length - 1; i >= 0; i--) {
-      const audio = currentlyPlaying[i];
-      console.log(audio);
-      if (!audio.isPlaying) {
-        currentlyPlaying.splice(i, 1);
-      }
+
+    const { value, max, minInterval } = reference;
+    const time = Date.now();
+    const lastPlayed = this.lastPlayed.get(path);
+
+    const currentlyPlayingCount = this.currentlyPlaying.filter(
+      (a) => a.buffer === value
+    ).length;
+
+    if (currentlyPlayingCount >= max) {
+      return;
     }
 
-    for (let i = 0; i < currentlyPlaying.length - 1; i++) {
-      currentlyPlaying[i].stop();
+    if (lastPlayed && time - lastPlayed < minInterval) {
+      return;
     }
-    currentlyPlaying.splice(0, currentlyPlaying.length - 3);
-    const audio = new Audio(this);
-    audio.setBuffer(sound);
+
+    let lastDetune = this.lastDetune.get(path) ?? 0;
+
+    const detunes = [-100, -50, 0, 50, 100];
+    detunes.splice(
+      detunes.findIndex((i) => i === lastDetune),
+      1
+    );
+    const detune = detunes[Math.floor(Math.random() * 4)];
+    this.lastDetune.set(path, detune);
+
+    this.lastPlayed.set(path, time);
+    const audio = new RegisteredAudio(this);
+    audio.setBuffer(value);
+    audio.detune = detune;
     audio.setLoop(false);
     audio.play();
-    currentlyPlaying.push(audio);
+    audio.onEnded();
     return audio;
   }
 
-  load({path, min}) {
+  load({ path, max = 2, minInterval = 100 }) {
+    console.log(path);
     if (this.buffers.get(path)) {
       return;
     }
-    console.log(path);
-    const reference = this.buffers.set(path);
+    const reference = { max, minInterval };
     this.audioLoader.load(path, (buffer) => {
       reference.value = buffer;
     });

@@ -68,14 +68,14 @@ export class Tower extends Entity {
       cost: 2,
       abilityOptions: [
         {
-          type: "meleeAttack",
+          type: "rangedAttack",
           cooldown: 40,
           damage: 1,
           range: 2,
-          projectileSpeed: 0.02,
+          projectileSpeed: 0.1,
         },
         {
-          type: "rangedAttack",
+          type: "meleeAttack",
           cooldown: 15,
           damage: 1,
           range: 1,
@@ -90,7 +90,7 @@ export class Tower extends Entity {
     this.abilityOptions = Array.from(
       config.abilityOptions.map((v) => makeAbility(v))
     );
-    this.activeAbility = this.abilityOptions[0];
+    this.activeAbility = this.abilityOptions[1];
     this.gridPos = gridPos;
     this.position = this.gridPos.toVector3();
   }
@@ -417,13 +417,28 @@ export class TowerDefenseGame {
           e.position.distanceTo(tower.position) <= tower.activeAbility.range
       );
       if (target) {
-        const projectile = new Projectile({ target, tower });
-        this.projectiles.push(projectile);
         tower.nextAttackTick = this.tick + tower.activeAbility.cooldown;
-        effects.push({
-          effect: TowerDefenseGame.effects.spawn,
-          entity: projectile,
-        });
+        switch (tower.activeAbility.type) {
+          case "rangedAttack":
+            const projectile = new Projectile({ target, tower });
+            this.projectiles.push(projectile);
+            tower.nextAttackTick = this.tick + tower.activeAbility.cooldown;
+            effects.push({
+              effect: TowerDefenseGame.effects.spawn,
+              entity: projectile,
+            });
+            break;
+          case "meleeAttack":
+            target.health -= tower.activeAbility.damage;
+            effects.push({
+              effect: TowerDefenseGame.effects.hit,
+              attack: tower.activeAbility,
+              entity: target,
+            });
+            break;
+          default:
+            break;
+        }
       }
     }
 
