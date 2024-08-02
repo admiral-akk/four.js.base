@@ -143,6 +143,55 @@ export class TowerDefenseInput {
       return mesh;
     };
     this.ground = makeGround(100, 100);
+    this.towerUi = this.ui.createElement({
+      classNames: "interactive column-c",
+      id: "towerUi",
+      style: {
+        position: "absolute",
+        height: "10%",
+        width: "10%",
+        display: "none",
+      },
+      children: [
+        {
+          classNames: "row-c",
+          children: ["Tower"],
+        },
+        {
+          classNames: "row-c",
+          children: ["Range", "2"],
+        },
+        {
+          classNames: "row-c",
+          children: ["Damage", "1"],
+        },
+        {
+          classNames: "row-c",
+          children: ["Attack Speed", "40"],
+        },
+        {
+          classNames: "row-c",
+          children: [
+            {
+              classNames: "interactive column-c",
+              id: "ability1",
+              style: {
+                width: "40%",
+              },
+              children: ["Ability 1"],
+            },
+            {
+              classNames: "interactive column-c",
+              id: "ability2",
+              style: {
+                width: "40%",
+              },
+              children: ["Ability 2"],
+            },
+          ],
+        },
+      ],
+    });
   }
 }
 
@@ -214,56 +263,6 @@ export class TowerDefense extends GameState {
     };
 
     this.hint = makeHint();
-
-    this.towerUi = this.ui.createElement({
-      classNames: "interactive column-c",
-      id: "towerUi",
-      style: {
-        position: "absolute",
-        height: "10%",
-        width: "10%",
-        display: "none",
-      },
-      children: [
-        {
-          classNames: "row-c",
-          children: ["Tower"],
-        },
-        {
-          classNames: "row-c",
-          children: ["Range", "2"],
-        },
-        {
-          classNames: "row-c",
-          children: ["Damage", "1"],
-        },
-        {
-          classNames: "row-c",
-          children: ["Attack Speed", "40"],
-        },
-        {
-          classNames: "row-c",
-          children: [
-            {
-              classNames: "interactive column-c",
-              id: "ability1",
-              style: {
-                width: "40%",
-              },
-              children: ["Ability 1"],
-            },
-            {
-              classNames: "interactive column-c",
-              id: "ability2",
-              style: {
-                width: "40%",
-              },
-              children: ["Ability 2"],
-            },
-          ],
-        },
-      ],
-    });
 
     this.buildMenu = this.ui.createElement({
       classNames: "row-c",
@@ -514,43 +513,54 @@ export class TowerDefense extends GameState {
         const highlightedTower = this.game.towers.find((t) =>
           t.gridPos.equals(gridPos)
         );
-        if (this.towerUi.style.opacity > 0) {
-          console.log(this.towerUi.style);
-          if (ui.hover.find((v) => v === this.towerUi) || highlightedTower) {
-            this.towerUi.style.opacity = 1;
+        if (this.input.towerUi.style.opacity > 0) {
+          console.log(this.input.towerUi.style);
+          if (
+            ui.hover.find((v) => v === this.input.towerUi) ||
+            highlightedTower
+          ) {
+            this.input.towerUi.style.opacity = 1;
           } else {
-            this.towerUi.style.opacity = Math.max(
+            this.input.towerUi.style.opacity = Math.max(
               0,
-              this.towerUi.style.opacity - 0.02
+              this.input.towerUi.style.opacity - 0.02
             );
           }
         } else if (highlightedTower) {
-          this.towerUi.classList.add("interactive");
+          this.input.towerUi.classList.add("interactive");
           const towerScreenSpace = gridPos.toVector3().project(this.camera);
-          this.towerUi.style.display = "block";
-          this.towerUi.style.opacity = 1;
+          this.input.towerUi.style.display = "block";
+          this.input.towerUi.style.opacity = 1;
 
-          this.towerUi.style.bottom = null;
-          this.towerUi.style.top = null;
-          this.towerUi.style.right = null;
-          this.towerUi.style.left = null;
+          this.input.towerUi.style.bottom = null;
+          this.input.towerUi.style.top = null;
+          this.input.towerUi.style.right = null;
+          this.input.towerUi.style.left = null;
           if (towerScreenSpace.y > 0.5) {
-            this.towerUi.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
+            this.input.towerUi.style.top = `${
+              (1.025 - towerScreenSpace.y) * 50
+            }%`;
           } else {
-            this.towerUi.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
+            this.input.towerUi.style.bottom = `${
+              (towerScreenSpace.y + 1.025) * 50
+            }%`;
           }
           if (towerScreenSpace.x > 0.5) {
-            this.towerUi.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
+            this.input.towerUi.style.right = `${
+              (1.025 - towerScreenSpace.x) * 50
+            }%`;
           } else {
-            this.towerUi.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
+            this.input.towerUi.style.left = `${
+              (towerScreenSpace.x + 1.025) * 50
+            }%`;
           }
         } else {
-          this.towerUi.style.display = "none";
-          this.towerUi.classList.remove("interactive");
+          this.input.towerUi.style.display = "none";
+          this.input.towerUi.classList.remove("interactive");
         }
       }
     } else {
-      this.towerUi.classList.remove("interactive");
+      this.input.towerUi.classList.remove("interactive");
       this.hint.visible = false;
     }
   }
