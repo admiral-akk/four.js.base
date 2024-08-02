@@ -94,6 +94,10 @@ export class Tower extends Entity {
     this.gridPos = gridPos;
     this.position = this.gridPos.toVector3();
   }
+
+  setAbility(index) {
+    this.activeAbility = this.abilityOptions?.[index] ?? this.activeAbility;
+  }
 }
 
 export class Goal extends Entity {
@@ -150,6 +154,7 @@ export class TowerDefenseGame {
     "startFightPhase",
     "spawnEnemy",
     "step",
+    "setAbility",
   ]);
   static effects = makeEnum([
     "spawn",
@@ -348,6 +353,9 @@ export class TowerDefenseGame {
         case TowerDefenseGame.commands.step:
           effects.push(...this.step());
           break;
+        case TowerDefenseGame.commands.setAbility:
+          this.getTower(command.gridPos)?.setAbility(command.index);
+          break;
         default:
           break;
       }
@@ -394,6 +402,7 @@ export class TowerDefenseGame {
         projectile.target.health -= damage;
         effects.push({
           effect: TowerDefenseGame.effects.hit,
+          attack: projectile.tower.activeAbility,
           entity: projectile.target,
         });
         effects.push({
@@ -426,7 +435,6 @@ export class TowerDefenseGame {
           case "rangedAttack":
             const projectile = new Projectile({ target, tower });
             this.projectiles.push(projectile);
-            tower.nextAttackTick = this.tick + tower.activeAbility.cooldown;
             effects.push({
               effect: TowerDefenseGame.effects.spawn,
               entity: projectile,

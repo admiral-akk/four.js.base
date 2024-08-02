@@ -234,8 +234,9 @@ export class TowerDefenseInput {
 
     const hit = object.hover.get(this.ground);
     const hitGrid = hit ? new GridPosition(hit.point) : null;
-    const clickedCommand = ui.clicked?.[0]?.data?.command;
     this.state.hitTarget = hitGrid;
+    const clickedCommand = ui.clicked.filter((v) => !!v.data?.command)?.[0]
+      ?.data?.command;
 
     switch (this.state.type) {
       case TowerDefenseInput.states.free:
@@ -276,7 +277,15 @@ export class TowerDefenseInput {
     }
 
     if (clickedCommand) {
+      switch (clickedCommand.type) {
+        case TowerDefenseGame.commands.setAbility:
+          clickedCommand.gridPos = this.state.selectedUnit.gridPos;
+          break;
+        default:
+          break;
+      }
       commands.push(clickedCommand);
+      console.log(clickedCommand);
     }
     commands.push({ type: TowerDefenseGame.commands.step });
     return commands;
@@ -415,6 +424,12 @@ export class TowerDefenseInput {
               style: {
                 width: "40%",
               },
+              data: {
+                command: {
+                  type: TowerDefenseGame.commands.setAbility,
+                  index: 0,
+                },
+              },
               children: ["Ability 1"],
             },
             {
@@ -422,6 +437,12 @@ export class TowerDefenseInput {
               id: "ability2",
               style: {
                 width: "40%",
+              },
+              data: {
+                command: {
+                  type: TowerDefenseGame.commands.setAbility,
+                  index: 1,
+                },
               },
               children: ["Ability 2"],
             },
