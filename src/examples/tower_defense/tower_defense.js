@@ -135,6 +135,7 @@ export class TowerDefenseInput {
       type: TowerDefenseInput.states.free,
       selectedUnit: null,
       selectedBuild: null,
+      hitTarget: null,
     };
   }
 
@@ -203,6 +204,7 @@ export class TowerDefenseInput {
     const hit = object.hover.get(this.ground);
     const hitGrid = hit ? new GridPosition(hit.point) : null;
     const clickedCommand = ui.clicked?.[0]?.data?.command;
+    this.state.hitTarget = hitGrid;
 
     switch (this.state.type) {
       case TowerDefenseInput.states.free:
@@ -214,8 +216,6 @@ export class TowerDefenseInput {
           engine.playSound("./audio/click1.ogg");
         }
         const towerAt = game.getTower(hitGrid);
-        console.log(hitGrid);
-        console.log(towerAt);
         if (hitGrid && towerAt && released) {
           this.state.type = TowerDefenseInput.states.selectedUnit;
           this.state.selectedBuild = null;
@@ -548,12 +548,10 @@ export class TowerDefense extends GameState {
     }
   }
 
-  updateHint(state) {
-    const { object } = state;
-    const hit = object.hover.get(this.input.ground);
-    if (hit) {
-      const gridPos = new GridPosition(hit.point);
-      if (this.buildingConfig) {
+  updateHint() {
+    const gridPos = this.input.state.hitTarget;
+    if (gridPos) {
+      if (this.input.state.type === TowerDefenseInput.states.build) {
         this.hint.position.copy(gridPos.toVector3());
         const legalPos = this.game.legalBuild(gridPos);
 
