@@ -20,6 +20,7 @@ Credits
 - Sokoban Puzzles: https://sokoban-jd.blogspot.com/p/all-my-sokoban-collections.html
 - Sokoban Solver: https://github.com/KnightofLuna/sokoban-solver
 - Color generator: https://uicolors.app/create
+- Palette generator: https://www.radix-ui.com/colors/custom
 
 Learning Resources
 

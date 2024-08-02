@@ -126,6 +126,26 @@ class ProjectileMesh extends EntityMesh {
   }
 }
 
+export class TowerDefenseInput {
+  constructor({ ui }) {
+    this.ui = ui;
+    this.selectedUnit = null;
+  }
+
+  init(scene) {
+    const makeGround = (height, width) => {
+      const geo = new THREE.PlaneGeometry(width, height);
+      geo.rotateX(-Math.PI / 2);
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+      scene.add(mesh);
+      mesh.visible = false;
+      mesh.layers.enable(1);
+      return mesh;
+    };
+    this.ground = makeGround(100, 100);
+  }
+}
+
 export class TowerDefense extends GameState {
   constructor({ ui, window }) {
     super({
@@ -151,6 +171,8 @@ export class TowerDefense extends GameState {
     this.game = new TowerDefenseGame();
     const effects = this.game.init();
     this.applyEffects(effects);
+    this.input = new TowerDefenseInput({ ui: this.ui });
+    this.input.init(this);
     this.buildingConfig = null;
     this.camera.position.copy(new Vector3(4, 4, 4));
     this.camera.lookAt(new Vector3());
@@ -181,17 +203,6 @@ export class TowerDefense extends GameState {
         grid(x - 0.5, y - 0.5);
       }
     }
-
-    const makeGround = (height, width) => {
-      const geo = new THREE.PlaneGeometry(width, height);
-      geo.rotateX(-Math.PI / 2);
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
-      this.add(mesh);
-      mesh.visible = false;
-      mesh.layers.enable(1);
-      return mesh;
-    };
-
     const makeHint = () => {
       const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
       const material = new THREE.MeshBasicMaterial({ color: "grey" });
@@ -202,11 +213,11 @@ export class TowerDefense extends GameState {
       return mesh;
     };
 
-    this.ground = makeGround(100, 100);
     this.hint = makeHint();
 
     this.towerUi = this.ui.createElement({
       classNames: "interactive column-c",
+      id: "towerUi",
       style: {
         position: "absolute",
         height: "10%",
@@ -229,6 +240,27 @@ export class TowerDefense extends GameState {
         {
           classNames: "row-c",
           children: ["Attack Speed", "40"],
+        },
+        {
+          classNames: "row-c",
+          children: [
+            {
+              classNames: "interactive column-c",
+              id: "ability1",
+              style: {
+                width: "40%",
+              },
+              children: ["Ability 1"],
+            },
+            {
+              classNames: "interactive column-c",
+              id: "ability2",
+              style: {
+                width: "40%",
+              },
+              children: ["Ability 2"],
+            },
+          ],
         },
       ],
     });
@@ -363,7 +395,7 @@ export class TowerDefense extends GameState {
       }
       commands.push(command);
     } else {
-      const hit = object.hover.get(this.ground);
+      const hit = object.hover.get(this.input.ground);
       if (hit && released && this.buildingConfig) {
         commands.push({
           type: TowerDefenseGame.commands.build,
@@ -455,7 +487,7 @@ export class TowerDefense extends GameState {
 
   updateHint(state) {
     const { object, ui } = state;
-    const hit = object.hover.get(this.ground);
+    const hit = object.hover.get(this.input.ground);
     if (hit) {
       const gridPos = new GridPosition(hit.point);
       if (this.buildingConfig) {
@@ -493,6 +525,7 @@ export class TowerDefense extends GameState {
             );
           }
         } else if (highlightedTower) {
+          this.towerUi.classList.add("interactive");
           const towerScreenSpace = gridPos.toVector3().project(this.camera);
           this.towerUi.style.display = "block";
           this.towerUi.style.opacity = 1;
@@ -513,9 +546,11 @@ export class TowerDefense extends GameState {
           }
         } else {
           this.towerUi.style.display = "none";
+          this.towerUi.classList.remove("interactive");
         }
       }
     } else {
+      this.towerUi.classList.remove("interactive");
       this.hint.visible = false;
     }
   }

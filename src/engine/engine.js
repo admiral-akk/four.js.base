@@ -1,10 +1,4 @@
-import {
-  Scene,
-  PerspectiveCamera,
-  OrthographicCamera,
-  AudioListener,
-  Audio,
-} from "three";
+import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
 import { gsap } from "gsap";
 import { AudioManager } from "./audio.js";
 
@@ -21,6 +15,7 @@ const addUiHelpers = (div) => {
 
     const {
       type = "div",
+      id = null,
       style = {},
       parent = div,
       classNames = "",
@@ -37,6 +32,9 @@ const addUiHelpers = (div) => {
     element.isCustom = true;
     if (data) {
       element.data = data;
+    }
+    if (id) {
+      element.id = id;
     }
     element.innerText = text;
     parent.appendChild(element);
