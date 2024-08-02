@@ -205,6 +205,10 @@ export class TowerDefenseGame {
     );
   }
 
+  getTower(gridPos) {
+    return this.towers.find((t) => t.gridPos.equals(gridPos));
+  }
+
   inbounds(pos, relaxation = 0) {
     const min = this.bounds[0];
     const max = this.bounds[1];

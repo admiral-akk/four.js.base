@@ -4,7 +4,7 @@ import { GameState } from "../../engine/engine.js";
 import { GameOverMenu } from "./game_over_menu.js";
 import { TowerDefenseGame } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
-import { KeyedMap } from "../../utils/helper.js";
+import { KeyedMap, makeEnum } from "../../utils/helper.js";
 
 const entityMap = new KeyedMap();
 
@@ -127,14 +127,52 @@ class ProjectileMesh extends EntityMesh {
 }
 
 export class TowerDefenseInput {
+  static states = makeEnum(["free", "build", "selectedUnit"]);
+
   constructor({ ui }) {
     this.ui = ui;
-    this.selectedUnit = null;
-    this.selectedBuild = null;
+    this.state = {
+      type: TowerDefenseInput.states.free,
+      selectedUnit: null,
+      selectedBuild: null,
+    };
   }
 
-  updateUi(state) {
+  updateTooltipPosition(camera) {
+    switch (this.state.type) {
+      case TowerDefenseInput.states.selectedUnit:
+        const towerScreenSpace = this.state.selectedUnit.gridPos
+          .toVector3()
+          .project(camera);
+        this.towerUi.style.display = "block";
+        this.towerUi.classList.add("interactive");
+        this.towerUi.style.opacity = 1;
+
+        this.towerUi.style.bottom = null;
+        this.towerUi.style.top = null;
+        this.towerUi.style.right = null;
+        this.towerUi.style.left = null;
+        if (towerScreenSpace.y > 0.5) {
+          this.towerUi.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
+        } else {
+          this.towerUi.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
+        }
+        if (towerScreenSpace.x > 0.5) {
+          this.towerUi.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
+        } else {
+          this.towerUi.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
+        }
+        break;
+      default:
+        this.towerUi.style.display = "none";
+        this.towerUi.classList.remove("interactive");
+        break;
+    }
+  }
+
+  updateUi(scene, state) {
     const { hover } = state.ui;
+    const { camera } = scene;
     const { children } = document.getElementById("bottomMenu");
 
     for (let i = 0; i < children.length; i++) {
@@ -146,42 +184,68 @@ export class TowerDefenseInput {
       }
 
       if (child.data.command.type === "selectBuilding") {
-        if (this.selectedBuild === child.data.command.buildingConfig) {
+        if (this.state.selectedBuild === child.data.command.buildingConfig) {
           child.classList.add("selected");
         } else {
           child.classList.remove("selected");
         }
       }
     }
+
+    this.updateTooltipPosition(camera);
   }
 
-  generateCommands(state, engine) {
+  generateCommands(state, engine, game) {
     const { mouse, object, ui } = state;
     const { released } = mouse;
     const commands = [];
-    if (ui.clicked.length > 0 && ui.clicked[0]?.data?.command) {
-      const command = ui.clicked[0].data.command;
-      switch (command.type) {
-        case "selectBuilding":
-          this.selectedBuild =
-            this.selectedBuild === command.buildingConfig
-              ? null
-              : command.buildingConfig;
+
+    const hit = object.hover.get(this.ground);
+    const hitGrid = hit ? new GridPosition(hit.point) : null;
+    const clickedCommand = ui.clicked?.[0]?.data?.command;
+
+    switch (this.state.type) {
+      case TowerDefenseInput.states.free:
+      case TowerDefenseInput.states.selectedUnit:
+        if (clickedCommand?.type === "selectBuilding") {
+          this.state.type = TowerDefenseInput.states.build;
+          this.state.selectedUnit = null;
+          this.state.selectedBuild = clickedCommand.buildingConfig;
+          engine.playSound("./audio/click1.ogg");
+        }
+        const towerAt = game.getTower(hitGrid);
+        console.log(hitGrid);
+        console.log(towerAt);
+        if (hitGrid && towerAt && released) {
+          this.state.type = TowerDefenseInput.states.selectedUnit;
+          this.state.selectedBuild = null;
+          this.state.selectedUnit = towerAt;
+        } else if (released) {
+          this.state.type = TowerDefenseInput.states.free;
+          this.state.selectedUnit = null;
+        }
+        break;
+      case TowerDefenseInput.states.build:
+        if (clickedCommand?.type === "selectBuilding") {
+          this.state.type = TowerDefenseInput.states.free;
+          this.state.selectedBuild = null;
           engine.playSound("./audio/click1.ogg");
           break;
-        default:
-          break;
-      }
-      commands.push(command);
-    } else {
-      const hit = object.hover.get(this.ground);
-      if (hit && released && this.selectedBuild) {
-        commands.push({
-          type: TowerDefenseGame.commands.build,
-          gridPos: new GridPosition(hit.point),
-          config: this.selectedBuild,
-        });
-      }
+        }
+        if (hit && released) {
+          commands.push({
+            type: TowerDefenseGame.commands.build,
+            gridPos: hitGrid,
+            config: this.state.selectedBuild,
+          });
+        }
+        break;
+      default:
+        break;
+    }
+
+    if (clickedCommand) {
+      commands.push(clickedCommand);
     }
     commands.push({ type: TowerDefenseGame.commands.step });
     return commands;
@@ -397,6 +461,7 @@ export class TowerDefense extends GameState {
 
     this.tl.fromTo("#bottomMenu", { top: "200%" }, { top: "80%" });
     this.gold = this.ui.createElement({
+      id: "gold",
       text: `Gold: ${this.game.state.gold}`,
       parent: this.ui.createElement({
         classNames: "row-c",
@@ -409,9 +474,10 @@ export class TowerDefense extends GameState {
         },
       }),
     });
-    this.tl.fromTo(this.gold.parentNode, { right: "-100%" }, { right: "10%" });
+    this.tl.fromTo("#gold", { right: "-100%" }, { right: "10%" });
 
     this.lives = this.ui.createElement({
+      id: "lives",
       text: `Lives left: ${this.game.state.lives}`,
       parent: this.ui.createElement({
         classNames: "row-c",
@@ -424,7 +490,7 @@ export class TowerDefense extends GameState {
         },
       }),
     });
-    this.tl.fromTo(this.lives.parentNode, { right: "200%" }, { right: "80%" });
+    this.tl.fromTo("#lives", { right: "200%" }, { right: "80%" });
   }
 
   applyEffects(effects, engine) {
@@ -483,7 +549,7 @@ export class TowerDefense extends GameState {
   }
 
   updateHint(state) {
-    const { object, ui } = state;
+    const { object } = state;
     const hit = object.hover.get(this.input.ground);
     if (hit) {
       const gridPos = new GridPosition(hit.point);
@@ -508,67 +574,18 @@ export class TowerDefense extends GameState {
         }
       } else {
         this.hint.visible = false;
-        const highlightedTower = this.game.towers.find((t) =>
-          t.gridPos.equals(gridPos)
-        );
-        if (this.input.towerUi.style.opacity > 0) {
-          console.log(this.input.towerUi.style);
-          if (
-            ui.hover.find((v) => v === this.input.towerUi) ||
-            highlightedTower
-          ) {
-            this.input.towerUi.style.opacity = 1;
-          } else {
-            this.input.towerUi.style.opacity = Math.max(
-              0,
-              this.input.towerUi.style.opacity - 0.02
-            );
-          }
-        } else if (highlightedTower) {
-          this.input.towerUi.classList.add("interactive");
-          const towerScreenSpace = gridPos.toVector3().project(this.camera);
-          this.input.towerUi.style.display = "block";
-          this.input.towerUi.style.opacity = 1;
-
-          this.input.towerUi.style.bottom = null;
-          this.input.towerUi.style.top = null;
-          this.input.towerUi.style.right = null;
-          this.input.towerUi.style.left = null;
-          if (towerScreenSpace.y > 0.5) {
-            this.input.towerUi.style.top = `${
-              (1.025 - towerScreenSpace.y) * 50
-            }%`;
-          } else {
-            this.input.towerUi.style.bottom = `${
-              (towerScreenSpace.y + 1.025) * 50
-            }%`;
-          }
-          if (towerScreenSpace.x > 0.5) {
-            this.input.towerUi.style.right = `${
-              (1.025 - towerScreenSpace.x) * 50
-            }%`;
-          } else {
-            this.input.towerUi.style.left = `${
-              (towerScreenSpace.x + 1.025) * 50
-            }%`;
-          }
-        } else {
-          this.input.towerUi.style.display = "none";
-          this.input.towerUi.classList.remove("interactive");
-        }
       }
     } else {
-      this.input.towerUi.classList.remove("interactive");
       this.hint.visible = false;
     }
   }
 
   update(engine) {
     const state = engine.input.getState();
-    const commands = this.input.generateCommands(state, engine);
+    const commands = this.input.generateCommands(state, engine, this.game);
     const effects = this.game.handle(commands);
     this.applyEffects(effects, engine);
     this.updateHint(state);
-    this.input.updateUi(state);
+    this.input.updateUi(this, state);
   }
 }
