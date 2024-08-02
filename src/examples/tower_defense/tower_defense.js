@@ -130,6 +130,61 @@ export class TowerDefenseInput {
   constructor({ ui }) {
     this.ui = ui;
     this.selectedUnit = null;
+    this.selectedBuild = null;
+  }
+
+  updateUi(state) {
+    const { hover } = state.ui;
+    const { children } = document.getElementById("bottomMenu");
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (hover.indexOf(child) >= 0) {
+        child.classList.add("hovered");
+      } else {
+        child.classList.remove("hovered");
+      }
+
+      if (child.data.command.type === "selectBuilding") {
+        if (this.selectedBuild === child.data.command.buildingConfig) {
+          child.classList.add("selected");
+        } else {
+          child.classList.remove("selected");
+        }
+      }
+    }
+  }
+
+  generateCommands(state, engine) {
+    const { mouse, object, ui } = state;
+    const { released } = mouse;
+    const commands = [];
+    if (ui.clicked.length > 0 && ui.clicked[0]?.data?.command) {
+      const command = ui.clicked[0].data.command;
+      switch (command.type) {
+        case "selectBuilding":
+          this.selectedBuild =
+            this.selectedBuild === command.buildingConfig
+              ? null
+              : command.buildingConfig;
+          engine.playSound("./audio/click1.ogg");
+          break;
+        default:
+          break;
+      }
+      commands.push(command);
+    } else {
+      const hit = object.hover.get(this.ground);
+      if (hit && released && this.selectedBuild) {
+        commands.push({
+          type: TowerDefenseGame.commands.build,
+          gridPos: new GridPosition(hit.point),
+          config: this.selectedBuild,
+        });
+      }
+    }
+    commands.push({ type: TowerDefenseGame.commands.step });
+    return commands;
   }
 
   init(scene) {
@@ -354,9 +409,7 @@ export class TowerDefense extends GameState {
         },
       }),
     });
-
-    this.gold.parentNode.style.right = "-100%";
-    this.tl.to(this.gold.parentNode, { right: "10%" });
+    this.tl.fromTo(this.gold.parentNode, { right: "-100%" }, { right: "10%" });
 
     this.lives = this.ui.createElement({
       text: `Lives left: ${this.game.state.lives}`,
@@ -371,40 +424,7 @@ export class TowerDefense extends GameState {
         },
       }),
     });
-    this.lives.parentNode.style.right = "200%";
-    this.tl.to(this.lives.parentNode, { right: "80%" });
-  }
-
-  generateCommands(state, engine) {
-    const { mouse, object, ui } = state;
-    const { released } = mouse;
-    const commands = [];
-    if (ui.clicked.length > 0) {
-      const command = ui.clicked[0].data.command;
-      switch (command.type) {
-        case "selectBuilding":
-          this.buildingConfig =
-            this.buildingConfig === command.buildingConfig
-              ? null
-              : command.buildingConfig;
-          engine.playSound("./audio/click1.ogg");
-          break;
-        default:
-          break;
-      }
-      commands.push(command);
-    } else {
-      const hit = object.hover.get(this.input.ground);
-      if (hit && released && this.buildingConfig) {
-        commands.push({
-          type: TowerDefenseGame.commands.build,
-          gridPos: new GridPosition(hit.point),
-          config: this.buildingConfig,
-        });
-      }
-    }
-    commands.push({ type: TowerDefenseGame.commands.step });
-    return commands;
+    this.tl.fromTo(this.lives.parentNode, { right: "200%" }, { right: "80%" });
   }
 
   applyEffects(effects, engine) {
@@ -458,28 +478,6 @@ export class TowerDefense extends GameState {
           break;
         default:
           break;
-      }
-    }
-  }
-
-  updateUi(state) {
-    const { hover } = state.ui;
-    const { children } = document.getElementById("bottomMenu");
-
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      if (hover.indexOf(child) >= 0) {
-        child.classList.add("hovered");
-      } else {
-        child.classList.remove("hovered");
-      }
-
-      if (child.data.command.type === "selectBuilding") {
-        if (this.buildingConfig === child.data.command.buildingConfig) {
-          child.classList.add("selected");
-        } else {
-          child.classList.remove("selected");
-        }
       }
     }
   }
@@ -567,12 +565,10 @@ export class TowerDefense extends GameState {
 
   update(engine) {
     const state = engine.input.getState();
-    this.updateUi(state);
-    const commands = this.generateCommands(state, engine);
+    const commands = this.input.generateCommands(state, engine);
     const effects = this.game.handle(commands);
     this.applyEffects(effects, engine);
     this.updateHint(state);
-
-    this.updateUi(state);
+    this.input.updateUi(state);
   }
 }
