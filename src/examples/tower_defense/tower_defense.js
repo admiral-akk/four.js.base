@@ -143,6 +143,82 @@ export class TowerDefenseInput {
       return mesh;
     };
     this.ground = makeGround(100, 100);
+
+    this.ui.createElement({
+      classNames: "row-c",
+      id: "bottomMenu",
+      style: {
+        position: "absolute",
+        top: "80%",
+        right: "10%",
+        height: "10%",
+        width: "80%",
+      },
+      children: [
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            aspectRatio: 1,
+          },
+          data: {
+            command: {
+              type: "selectBuilding",
+              buildingConfig: {
+                cost: 2,
+                abilityOptions: [
+                  {
+                    type: "rangedAttack",
+                    cooldown: 40,
+                    damage: 1,
+                    range: 2,
+                    projectileSpeed: 0.1,
+                  },
+                  {
+                    type: "meleeAttack",
+                    cooldown: 15,
+                    damage: 1,
+                    range: 1,
+                  },
+                ],
+              },
+            },
+          },
+          children: ["Build1"],
+        },
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            width: "30%",
+          },
+          data: {
+            command: {
+              type: TowerDefenseGame.commands.spawnEnemy,
+              config: {
+                health: 2,
+                speed: 0.01,
+              },
+            },
+          },
+          children: ["Spawn Enemy"],
+        },
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            width: "30%",
+          },
+          data: {
+            command: {
+              type: TowerDefenseGame.commands.startFightPhase,
+            },
+          },
+          children: ["Start Fight"],
+        },
+      ],
+    });
+
     this.towerUi = this.ui.createElement({
       classNames: "interactive column-c",
       id: "towerUi",
@@ -264,84 +340,7 @@ export class TowerDefense extends GameState {
 
     this.hint = makeHint();
 
-    this.buildMenu = this.ui.createElement({
-      classNames: "row-c",
-      style: {
-        position: "absolute",
-        top: "80%",
-        right: "10%",
-        height: "10%",
-        width: "80%",
-      },
-      children: [
-        {
-          classNames: "interactive column-c",
-          style: {
-            height: "90%",
-            aspectRatio: 1,
-          },
-          data: {
-            command: {
-              type: "selectBuilding",
-              buildingConfig: {
-                cost: 2,
-                abilityOptions: [
-                  {
-                    type: "rangedAttack",
-                    cooldown: 40,
-                    damage: 1,
-                    range: 2,
-                    projectileSpeed: 0.1,
-                  },
-                  {
-                    type: "meleeAttack",
-                    cooldown: 15,
-                    damage: 1,
-                    range: 1,
-                  },
-                ],
-              },
-            },
-          },
-          parent: this.buildMenu,
-          children: ["Build1"],
-        },
-        {
-          classNames: "interactive column-c",
-          style: {
-            height: "90%",
-            width: "30%",
-          },
-          data: {
-            command: {
-              type: TowerDefenseGame.commands.spawnEnemy,
-              config: {
-                health: 2,
-                speed: 0.01,
-              },
-            },
-          },
-          parent: this.buildMenu,
-          children: ["Spawn Enemy"],
-        },
-        {
-          classNames: "interactive column-c",
-          style: {
-            height: "90%",
-            width: "30%",
-          },
-          data: {
-            command: {
-              type: TowerDefenseGame.commands.startFightPhase,
-            },
-          },
-          parent: this.buildMenu,
-          children: ["Start Fight"],
-        },
-      ],
-    });
-    this.buildMenu.style.top = "200%";
-    this.tl.to(this.buildMenu, { top: "80%" });
+    this.tl.fromTo("#bottomMenu", { top: "200%" }, { top: "80%" });
     this.gold = this.ui.createElement({
       text: `Gold: ${this.game.state.gold}`,
       parent: this.ui.createElement({
@@ -465,7 +464,7 @@ export class TowerDefense extends GameState {
 
   updateUi(state) {
     const { hover } = state.ui;
-    const { children } = this.buildMenu;
+    const { children } = document.getElementById("bottomMenu");
 
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
