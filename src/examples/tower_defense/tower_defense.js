@@ -273,42 +273,75 @@ export class TowerDefense extends GameState {
         height: "10%",
         width: "80%",
       },
+      children: [
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            aspectRatio: 1,
+          },
+          data: {
+            command: {
+              type: "selectBuilding",
+              buildingConfig: {
+                cost: 2,
+                abilityOptions: [
+                  {
+                    type: "rangedAttack",
+                    cooldown: 40,
+                    damage: 1,
+                    range: 2,
+                    projectileSpeed: 0.1,
+                  },
+                  {
+                    type: "meleeAttack",
+                    cooldown: 15,
+                    damage: 1,
+                    range: 1,
+                  },
+                ],
+              },
+            },
+          },
+          parent: this.buildMenu,
+          children: ["Build1"],
+        },
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            width: "30%",
+          },
+          data: {
+            command: {
+              type: TowerDefenseGame.commands.spawnEnemy,
+              config: {
+                health: 2,
+                speed: 0.01,
+              },
+            },
+          },
+          parent: this.buildMenu,
+          children: ["Spawn Enemy"],
+        },
+        {
+          classNames: "interactive column-c",
+          style: {
+            height: "90%",
+            width: "30%",
+          },
+          data: {
+            command: {
+              type: TowerDefenseGame.commands.startFightPhase,
+            },
+          },
+          parent: this.buildMenu,
+          children: ["Start Fight"],
+        },
+      ],
     });
     this.buildMenu.style.top = "200%";
     this.tl.to(this.buildMenu, { top: "80%" });
-
-    this.build = this.ui.createElement({
-      classNames: "interactive column-c",
-      style: {
-        height: "90%",
-        aspectRatio: 1,
-      },
-      data: {
-        command: {
-          type: "selectBuilding",
-          buildingConfig: {
-            cost: 2,
-            abilityOptions: [
-              {
-                type: "rangedAttack",
-                cooldown: 40,
-                damage: 1,
-                range: 2,
-                projectileSpeed: 0.1,
-              },
-              {
-                type: "meleeAttack",
-                cooldown: 15,
-                damage: 1,
-                range: 1,
-              },
-            ],
-          },
-        },
-      },
-      parent: this.buildMenu,
-      children: ["Build1"],
-    });
     this.gold = this.ui.createElement({
       text: `Gold: ${this.game.state.gold}`,
       parent: this.ui.createElement({
@@ -341,38 +374,6 @@ export class TowerDefense extends GameState {
     });
     this.lives.parentNode.style.right = "200%";
     this.tl.to(this.lives.parentNode, { right: "80%" });
-    this.spawn = this.ui.createElement({
-      classNames: "interactive column-c",
-      style: {
-        height: "90%",
-        width: "30%",
-      },
-      data: {
-        command: {
-          type: TowerDefenseGame.commands.spawnEnemy,
-          config: {
-            health: 2,
-            speed: 0.01,
-          },
-        },
-      },
-      parent: this.buildMenu,
-      children: ["Spawn Enemy"],
-    });
-    this.startFight = this.ui.createElement({
-      classNames: "interactive column-c",
-      style: {
-        height: "90%",
-        width: "30%",
-      },
-      data: {
-        command: {
-          type: TowerDefenseGame.commands.startFightPhase,
-        },
-      },
-      parent: this.buildMenu,
-      children: ["Start Fight"],
-    });
   }
 
   generateCommands(state, engine) {
