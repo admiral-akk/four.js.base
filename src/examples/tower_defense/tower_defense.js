@@ -171,9 +171,39 @@ export class TowerDefenseInput {
     }
   }
 
+  updateHint(game) {
+    const gridPos = this.state.hitTarget;
+    if (gridPos) {
+      if (this.state.type === TowerDefenseInput.states.build) {
+        this.hint.position.copy(gridPos.toVector3());
+        const legalPos = game.legalBuild(gridPos);
+
+        if (legalPos.result) {
+          this.hint.visible = true;
+          this.hint.material.color = new THREE.Color("#1b680c");
+          this.hint.material.opacity = 0.5;
+        } else {
+          switch (legalPos.reason) {
+            case TowerDefenseGame.buildReason.blocksPath:
+              this.hint.visible = true;
+              this.hint.material.color = new THREE.Color("#cd0808");
+              this.hint.material.opacity = 0.5;
+              break;
+            default:
+              this.hint.visible = false;
+          }
+        }
+      } else {
+        this.hint.visible = false;
+      }
+    } else {
+      this.hint.visible = false;
+    }
+  }
+
   updateUi(scene, state) {
     const { hover } = state.ui;
-    const { camera } = scene;
+    const { camera, game } = scene;
     const { children } = document.getElementById("bottomMenu");
 
     for (let i = 0; i < children.length; i++) {
@@ -194,6 +224,7 @@ export class TowerDefenseInput {
     }
 
     this.updateTooltipPosition(camera);
+    this.updateHint(game);
   }
 
   generateCommands(state, engine, game) {
@@ -263,6 +294,17 @@ export class TowerDefenseInput {
     };
     this.ground = makeGround(100, 100);
 
+    const makeHint = () => {
+      const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+      const material = new THREE.MeshBasicMaterial({ color: "grey" });
+      const mesh = new THREE.Mesh(geo, material);
+      material.transparent = true;
+      material.opacity = 0;
+      scene.add(mesh);
+      return mesh;
+    };
+
+    this.hint = makeHint();
     this.ui.createElement({
       classNames: "row-c",
       id: "bottomMenu",
@@ -447,17 +489,6 @@ export class TowerDefense extends GameState {
         grid(x - 0.5, y - 0.5);
       }
     }
-    const makeHint = () => {
-      const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-      const material = new THREE.MeshBasicMaterial({ color: "grey" });
-      const mesh = new THREE.Mesh(geo, material);
-      material.transparent = true;
-      material.opacity = 0;
-      this.add(mesh);
-      return mesh;
-    };
-
-    this.hint = makeHint();
 
     this.tl.fromTo("#bottomMenu", { top: "200%" }, { top: "80%" });
     this.gold = this.ui.createElement({
@@ -548,42 +579,11 @@ export class TowerDefense extends GameState {
     }
   }
 
-  updateHint() {
-    const gridPos = this.input.state.hitTarget;
-    if (gridPos) {
-      if (this.input.state.type === TowerDefenseInput.states.build) {
-        this.hint.position.copy(gridPos.toVector3());
-        const legalPos = this.game.legalBuild(gridPos);
-
-        if (legalPos.result) {
-          this.hint.visible = true;
-          this.hint.material.color = new THREE.Color("#1b680c");
-          this.hint.material.opacity = 0.5;
-        } else {
-          switch (legalPos.reason) {
-            case TowerDefenseGame.buildReason.blocksPath:
-              this.hint.visible = true;
-              this.hint.material.color = new THREE.Color("#cd0808");
-              this.hint.material.opacity = 0.5;
-              break;
-            default:
-              this.hint.visible = false;
-          }
-        }
-      } else {
-        this.hint.visible = false;
-      }
-    } else {
-      this.hint.visible = false;
-    }
-  }
-
   update(engine) {
     const state = engine.input.getState();
     const commands = this.input.generateCommands(state, engine, this.game);
     const effects = this.game.handle(commands);
     this.applyEffects(effects, engine);
-    this.updateHint(state);
     this.input.updateUi(this, state);
   }
 }
