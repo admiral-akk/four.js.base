@@ -95,6 +95,10 @@ export class Tower extends Entity {
     this.position = this.gridPos.toVector3();
   }
 
+  getActiveIndex() {
+    return this.abilityOptions.findIndex((a) => a === this.activeAbility);
+  }
+
   setAbility(index) {
     this.activeAbility = this.abilityOptions?.[index] ?? this.activeAbility;
   }

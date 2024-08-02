@@ -142,7 +142,8 @@ export class TowerDefenseInput {
   updateTooltipPosition(camera) {
     switch (this.state.type) {
       case TowerDefenseInput.states.selectedUnit:
-        const towerScreenSpace = this.state.selectedUnit.gridPos
+        const { selectedUnit } = this.state;
+        const towerScreenSpace = selectedUnit.gridPos
           .toVector3()
           .project(camera);
         this.towerUi.style.display = "block";
@@ -163,6 +164,17 @@ export class TowerDefenseInput {
         } else {
           this.towerUi.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
         }
+
+        const { children } = document.getElementById("abilitySelect");
+
+        for (let i = 0; i < children.length; i++) {
+          if (selectedUnit.getActiveIndex() === i) {
+            children[i].classList.add("selected");
+          } else {
+            children[i].classList.remove("selected");
+          }
+        }
+
         break;
       default:
         this.towerUi.style.display = "none";
@@ -241,11 +253,19 @@ export class TowerDefenseInput {
     switch (this.state.type) {
       case TowerDefenseInput.states.free:
       case TowerDefenseInput.states.selectedUnit:
-        if (clickedCommand?.type === "selectBuilding") {
-          this.state.type = TowerDefenseInput.states.build;
-          this.state.selectedUnit = null;
-          this.state.selectedBuild = clickedCommand.buildingConfig;
-          engine.playSound("./audio/click1.ogg");
+        switch (clickedCommand?.type) {
+          case "selectBuilding":
+            this.state.type = TowerDefenseInput.states.build;
+            this.state.selectedUnit = null;
+            this.state.selectedBuild = clickedCommand.buildingConfig;
+            engine.playSound("./audio/click1.ogg");
+            break;
+          case TowerDefenseGame.commands.setAbility:
+            clickedCommand.gridPos = this.state.selectedUnit.gridPos;
+            engine.playSound("./audio/click1.ogg");
+            break;
+          default:
+            break;
         }
         const towerAt = game.getTower(hitGrid);
         if (hitGrid && towerAt && released) {
@@ -277,15 +297,7 @@ export class TowerDefenseInput {
     }
 
     if (clickedCommand) {
-      switch (clickedCommand.type) {
-        case TowerDefenseGame.commands.setAbility:
-          clickedCommand.gridPos = this.state.selectedUnit.gridPos;
-          break;
-        default:
-          break;
-      }
       commands.push(clickedCommand);
-      console.log(clickedCommand);
     }
     commands.push({ type: TowerDefenseGame.commands.step });
     return commands;
@@ -417,6 +429,7 @@ export class TowerDefenseInput {
         },
         {
           classNames: "row-c",
+          id: "abilitySelect",
           children: [
             {
               classNames: "interactive column-c",
