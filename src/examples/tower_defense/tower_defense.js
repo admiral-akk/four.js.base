@@ -16,9 +16,9 @@ const inputIds = makeEnum([
   "livesText",
 ]);
 
-class EntityMesh extends THREE.Mesh {
-  constructor(scene, { geo, mat, entity }) {
-    super(geo, mat);
+class EntityMesh extends THREE.Group {
+  constructor(scene, { entity }) {
+    super();
     scene.add(this);
     this.position.copy(entity.position);
     this.entity = entity;
@@ -78,16 +78,19 @@ class EnemyMesh extends EntityMesh {
   constructor(scene, entity) {
     super(scene, {
       entity,
-      geo: EnemyMesh.geo,
-      mat: new THREE.MeshBasicMaterial({
-        color: "green",
-      }),
     });
+    const body = new THREE.Mesh(
+      EnemyMesh.geo,
+      new THREE.MeshBasicMaterial({
+        color: "green",
+      })
+    );
+    this.add(body);
     this.healthBar = new HealthBar(scene, this);
 
-    this.material.opacity = 0;
-    this.material.transparent = true;
-    scene.tl.to(this.material, { opacity: 1 }, scene.tl.time());
+    body.material.opacity = 0;
+    body.material.transparent = true;
+    scene.tl.to(body.material, { opacity: 1 }, scene.tl.time());
   }
 
   update() {
@@ -102,21 +105,58 @@ class GoalMesh extends EntityMesh {
     color: "yellow",
   });
   constructor(scene, entity) {
-    super(scene, { entity, geo: GoalMesh.geo, mat: GoalMesh.mat });
+    super(scene, { entity });
+    const body = new THREE.Mesh(GoalMesh.geo, GoalMesh.mat);
+    this.add(body);
     this.position.y = 0;
     this.scale.set(0, 0, 0);
     scene.tl.to(this.scale, { x: 1, y: 1, z: 1 }, scene.tl.time());
   }
 }
 
+class SpearMesh extends THREE.Group {
+  static shaft = new THREE.BoxGeometry(0.04, 0.3, 0.04).translate(0, 0.15, 0);
+  static shaftMat = new THREE.MeshBasicMaterial({
+    color: "brown",
+  });
+  static tip = new THREE.ConeGeometry(0.06, 0.1, 4).translate(0, 0.05, 0);
+  static tipMat = new THREE.MeshBasicMaterial({
+    color: "silver",
+  });
+  constructor() {
+    super();
+    const shaft = new THREE.Mesh(SpearMesh.shaft, SpearMesh.shaftMat);
+    const tip = new THREE.Mesh(SpearMesh.tip, SpearMesh.tipMat);
+    shaft.add(tip);
+    tip.position.y = 0.3;
+    this.add(shaft);
+  }
+}
+
 class TowerMesh extends EntityMesh {
-  static geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+  static body = new THREE.BoxGeometry(0.15, 0.25, 0.15).translate(0, 0.125, 0);
+  static head = new THREE.SphereGeometry(0.07).translate(0, 0.07 / 2, 0);
   static mat = new THREE.MeshBasicMaterial({
     color: "red",
   });
+  static mat2 = new THREE.MeshBasicMaterial({
+    color: "orange",
+  });
+
   constructor(scene, entity) {
-    super(scene, { entity, geo: TowerMesh.geo, mat: TowerMesh.mat });
+    super(scene, { entity });
     this.position.y = 0;
+    const body = new THREE.Mesh(TowerMesh.body, TowerMesh.mat);
+    this.add(body);
+    body.position.y = 0;
+
+    const m = new THREE.Mesh(TowerMesh.head, TowerMesh.mat2);
+    body.add(m);
+    m.position.y = 0.25;
+
+    const spear = new SpearMesh();
+    body.add(spear);
+    spear.position.set(0, 0.05, 0.2);
 
     this.scale.set(0, 0, 0);
     scene.tl.to(this.scale, { x: 1, y: 1, z: 1 }, scene.tl.time());
