@@ -41,15 +41,18 @@ body {
 /* font sizing */
 div {
   font-size: 2cqi;
+  text-align: center;
   container: ui;
 }
 
 .f-s {
   font-size: 1cqi;
+  text-align: center;
 }
 
 .f-l {
   font-size: 3cqi;
+  text-align: center;
 }
 
 /* c for container */

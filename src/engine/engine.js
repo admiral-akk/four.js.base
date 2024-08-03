@@ -2,30 +2,45 @@ import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
 import { gsap } from "gsap";
 import { AudioManager } from "./audio.js";
 
-const addUiHelpers = (div) => {
-  div.createElement = (params) => {
-    if (typeof params === "string" || params instanceof String) {
-      const element = document.createElement("div");
-      element.className = "f-s";
-      element.innerText = params;
-      element.isCustom = true;
-      div.appendChild(element);
-      return element;
+function addAlignment(style, alignment) {
+  if (alignment.height) {
+    style.height = `${alignment.height * 100}%`;
+  }
+  if (alignment.width) {
+    style.width = `${alignment.width * 100}%`;
+  }
+  if (style.position === "absolute") {
+    if (alignment.rightOffset) {
+      style.right = `${100 * alignment.rightOffset}%`;
+    } else {
+      style.right = `${50 * (1 - alignment.width)}%`;
     }
+    if (alignment.topOffset) {
+      style.top = `${100 * alignment.topOffset}%`;
+    } else {
+      style.top = `${50 * (1 - alignment.height)}%`;
+    }
+  }
+}
 
-    const {
-      type = "div",
-      id = null,
-      style = {},
-      parent = div,
-      classNames = "",
-      text = "",
-      data = null,
-      children = [],
-    } = params;
-
+function addUiHelpers(div, tl) {
+  div.createElement = ({
+    type = "div",
+    id = null,
+    alignment = {},
+    style = {},
+    parent = div,
+    classNames = "",
+    text = "",
+    data = null,
+    children = [],
+  }) => {
     const element = document.createElement(type);
     element.className = classNames;
+    if (parent === div) {
+      element.style.position = "absolute";
+    }
+    addAlignment(element.style, alignment);
     for (const [key, value] of Object.entries(style)) {
       element.style[key] = value;
     }
@@ -37,13 +52,27 @@ const addUiHelpers = (div) => {
       element.id = id;
     }
     element.innerText = text;
+
+    if (typeof parent === "string" || parent instanceof String) {
+      parent = document.getElementById(parent);
+    }
     parent.appendChild(element);
     children.map((c) => {
-      element.appendChild(div.createElement(c));
+      let child = c;
+      if (typeof c === "string" || c instanceof String) {
+        child = {
+          className: "f-s",
+          text: c,
+          parent: element,
+        };
+      } else {
+        child.parent = element;
+      }
+      element.appendChild(div.createElement(child));
     });
     return element;
   };
-};
+}
 
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class GameEngine {
@@ -99,6 +128,11 @@ export class GameEngine {
     const state = new stateConstructor({
       ui: this.makeContainer(),
       window: this.window,
+      tl: gsap.timeline(),
+      cameraConfig: {
+        isPerspective: false,
+        width: 10,
+      },
     });
     state.init();
     state.manifest().forEach((path) => this.listener.load({ path }));
@@ -111,6 +145,11 @@ export class GameEngine {
     const state = new stateConstructor({
       ui: this.makeContainer(),
       window: this.window,
+      tl: gsap.timeline(),
+      cameraConfig: {
+        isPerspective: false,
+        width: 10,
+      },
     });
     state.init();
     state.manifest().forEach((path) => this.listener.load({ path }));
@@ -144,10 +183,10 @@ export class GameEngine {
 }
 
 export class GameState extends Scene {
-  constructor({ ui, window, cameraConfig }) {
+  constructor({ ui, window, cameraConfig, tl }) {
     super();
     this.ui = ui;
-    this.tl = gsap.timeline();
+    this.tl = tl;
     const { aspect } = window.sizes;
     let camera = null;
     if (cameraConfig.isPerspective) {

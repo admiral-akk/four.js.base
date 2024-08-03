@@ -3,17 +3,6 @@ import { MainMenu } from "./main_menu.js";
 import { GameState } from "../../engine/engine.js";
 
 export class GameOverMenu extends GameState {
-  constructor({ ui, window }) {
-    super({
-      ui,
-      window,
-      cameraConfig: {
-        isPerspective: true,
-        fov: 75,
-      },
-    });
-  }
-
   init() {
     this.ui.createElement({
       classNames: "column-c",

@@ -2,49 +2,26 @@ import { TowerDefense } from "./tower_defense.js";
 import { GameState } from "../../engine/engine.js";
 
 export class MainMenu extends GameState {
-  constructor({ ui, window }) {
-    super({
-      ui,
-      window,
-      cameraConfig: {
-        isPerspective: true,
-        fov: 75,
-      },
-    });
-  }
-
   init() {
     const title = this.ui.createElement({
       classNames: "column-c",
-      style: {
-        position: "absolute",
-        top: "-90%",
-        right: "10%",
-        height: "10%",
-        width: "80%",
+      alignment: {
+        topOffset: -0.9,
+        width: 0.8,
+        height: 0.1,
       },
-      children: [
-        {
-          text: "My First Tower Defense",
-        },
-      ],
+      children: ["My First Tower Defense"],
     });
 
     this.tl.to(title, { top: "10%" });
     this.start = this.ui.createElement({
       classNames: "interactive column-c",
-      style: {
-        position: "absolute",
-        top: "180%",
-        right: "40%",
-        height: "10%",
-        width: "20%",
+      alignment: {
+        topOffset: 1.8,
+        width: 0.2,
+        height: 0.1,
       },
-      children: [
-        {
-          text: "Start Game",
-        },
-      ],
+      children: ["Start Game"],
     });
     this.tl.to(this.start, { top: "80%" });
   }

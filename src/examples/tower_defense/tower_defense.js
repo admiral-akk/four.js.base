@@ -12,8 +12,8 @@ const inputIds = makeEnum([
   "tooltip",
   "abilitySelect",
   "bottomMenu",
-  "gold",
-  "lives",
+  "goldText",
+  "livesText",
 ]);
 
 class EntityMesh extends THREE.Mesh {
@@ -341,21 +341,37 @@ export class TowerDefenseInput {
     };
 
     this.hint = makeHint();
+
+    this.ui.createElement({
+      classNames: "interactive column-c",
+      alignment: {
+        topOffset: 0.05,
+        width: 0.15,
+        height: 0.1,
+      },
+      data: {
+        command: {
+          type: TowerDefenseGame.commands.startFightPhase,
+        },
+      },
+      text: "Start Fight",
+    });
+
     this.ui.createElement({
       classNames: "row-c",
       id: inputIds.bottomMenu,
-      style: {
-        position: "absolute",
-        top: "80%",
-        right: "15%",
-        height: "15%",
-        width: "80%",
+      alignment: {
+        topOffset: 0.8,
+        width: 0.8,
+        height: 0.15,
       },
       children: [
         {
           classNames: "interactive column-c",
+          alignment: {
+            height: 0.9,
+          },
           style: {
-            height: "90%",
             aspectRatio: 1,
           },
           data: {
@@ -381,13 +397,13 @@ export class TowerDefenseInput {
               },
             },
           },
-          children: ["Build1"],
+          text: "Build1",
         },
         {
           classNames: "interactive column-c",
-          style: {
-            height: "90%",
-            width: "30%",
+          alignment: {
+            height: 0.9,
+            width: 0.3,
           },
           data: {
             command: {
@@ -398,20 +414,7 @@ export class TowerDefenseInput {
               },
             },
           },
-          children: ["Spawn Enemy"],
-        },
-        {
-          classNames: "interactive column-c",
-          style: {
-            height: "90%",
-            width: "30%",
-          },
-          data: {
-            command: {
-              type: TowerDefenseGame.commands.startFightPhase,
-            },
-          },
-          children: ["Start Fight"],
+          text: "Spawn Enemy",
         },
       ],
     });
@@ -419,10 +422,11 @@ export class TowerDefenseInput {
     this.towerUi = this.ui.createElement({
       classNames: "interactive column-c",
       id: inputIds.tooltip,
+      alignment: {
+        height: 0.1,
+        width: 0.1,
+      },
       style: {
-        position: "absolute",
-        height: "10%",
-        width: "10%",
         display: "none",
       },
       children: [
@@ -436,8 +440,11 @@ export class TowerDefenseInput {
           children: [
             {
               classNames: "interactive column-c",
+              alignment: {
+                width: 0.4,
+              },
               style: {
-                width: "40%",
+                aspectRatio: 1,
               },
               data: {
                 command: {
@@ -449,8 +456,11 @@ export class TowerDefenseInput {
             },
             {
               classNames: "interactive column-c",
+              alignment: {
+                width: 0.4,
+              },
               style: {
-                width: "40%",
+                aspectRatio: 1,
               },
               data: {
                 command: {
@@ -468,17 +478,6 @@ export class TowerDefenseInput {
 }
 
 export class TowerDefense extends GameState {
-  constructor({ ui, window }) {
-    super({
-      ui,
-      window,
-      cameraConfig: {
-        isPerspective: false,
-        width: 10,
-      },
-    });
-  }
-
   // things to load
   manifest() {
     return ["./audio/click1.ogg", "./audio/swish.wav"];
@@ -526,37 +525,37 @@ export class TowerDefense extends GameState {
     }
 
     this.tl.fromTo("#bottomMenu", { top: "200%" }, { top: "80%" });
-    this.ui.createElement({
-      id: inputIds.gold,
-      text: `Gold: ${this.game.state.gold}`,
-      parent: this.ui.createElement({
-        classNames: "row-c",
-        style: {
-          position: "absolute",
-          top: "10%",
-          right: "10%",
-          height: "10%",
-          width: "10%",
-        },
-      }),
-    });
-    this.tl.fromTo(`#${inputIds.gold}`, { right: "-100%" }, { right: "10%" });
 
     this.ui.createElement({
-      id: inputIds.lives,
-      text: `Lives left: ${this.game.state.lives}`,
-      parent: this.ui.createElement({
-        classNames: "row-c",
-        style: {
-          position: "absolute",
-          top: "10%",
-          right: "80%",
-          height: "10%",
-          width: "10%",
+      classNames: "row-c",
+      alignment: {
+        topOffset: 0.1,
+        rightOffset: 0.1,
+        width: 0.1,
+        height: 0.1,
+      },
+      children: [
+        {
+          id: inputIds.goldText,
+          text: `Gold: ${this.game.state.gold}`,
         },
-      }),
+      ],
     });
-    this.tl.fromTo(`#${inputIds.lives}`, { right: "200%" }, { right: "80%" });
+    this.ui.createElement({
+      classNames: "row-c",
+      alignment: {
+        topOffset: 0.1,
+        rightOffset: 0.8,
+        width: 0.1,
+        height: 0.1,
+      },
+      children: [
+        {
+          id: inputIds.livesText,
+          text: `Lives left: ${this.game.state.lives}`,
+        },
+      ],
+    });
   }
 
   applyEffects(effects, engine) {
@@ -565,7 +564,7 @@ export class TowerDefense extends GameState {
       switch (effect.effect) {
         case TowerDefenseGame.effects.goldChanged:
           document.getElementById(
-            inputIds.gold
+            inputIds.goldText
           ).innerText = `Gold: ${this.game.state.gold}`;
           break;
         case TowerDefenseGame.effects.spawn:
@@ -609,7 +608,7 @@ export class TowerDefense extends GameState {
           engine.pushState(GameOverMenu);
         case TowerDefenseGame.effects.livesChanged:
           document.getElementById(
-            inputIds.lives
+            inputIds.livesText
           ).innerText = `Lives left: ${this.game.state.lives}`;
           break;
         default:
