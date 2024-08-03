@@ -8,6 +8,14 @@ import { KeyedMap, makeEnum } from "../../utils/helper.js";
 
 const entityMap = new KeyedMap();
 
+const inputIds = makeEnum([
+  "tooltip",
+  "abilitySelect",
+  "bottomMenu",
+  "gold",
+  "lives",
+]);
+
 class EntityMesh extends THREE.Mesh {
   constructor(scene, { geo, mat, entity }) {
     super(geo, mat);
@@ -140,32 +148,33 @@ export class TowerDefenseInput {
   }
 
   updateTooltipPosition(camera) {
+    const tooltip = document.getElementById(inputIds.tooltip);
     switch (this.state.type) {
       case TowerDefenseInput.states.selectedUnit:
         const { selectedUnit } = this.state;
         const towerScreenSpace = selectedUnit.gridPos
           .toVector3()
           .project(camera);
-        this.towerUi.style.display = "block";
-        this.towerUi.classList.add("interactive");
-        this.towerUi.style.opacity = 1;
+        tooltip.style.display = "block";
+        tooltip.classList.add("interactive");
+        tooltip.style.opacity = 1;
 
-        this.towerUi.style.bottom = null;
-        this.towerUi.style.top = null;
-        this.towerUi.style.right = null;
-        this.towerUi.style.left = null;
+        tooltip.style.bottom = null;
+        tooltip.style.top = null;
+        tooltip.style.right = null;
+        tooltip.style.left = null;
         if (towerScreenSpace.y > 0.5) {
-          this.towerUi.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
+          tooltip.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
         } else {
-          this.towerUi.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
+          tooltip.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
         }
         if (towerScreenSpace.x > 0.5) {
-          this.towerUi.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
+          tooltip.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
         } else {
-          this.towerUi.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
+          tooltip.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
         }
 
-        const { children } = document.getElementById("abilitySelect");
+        const { children } = document.getElementById(inputIds.abilitySelect);
 
         for (let i = 0; i < children.length; i++) {
           if (selectedUnit.getActiveIndex() === i) {
@@ -173,12 +182,18 @@ export class TowerDefenseInput {
           } else {
             children[i].classList.remove("selected");
           }
+
+          const { damage, range, cooldown } = selectedUnit.abilityOptions[i];
+
+          children[
+            i
+          ].children[0].innerText = `Damage: ${damage}\nRange: ${range}\nCooldown: ${cooldown}`;
         }
 
         break;
       default:
-        this.towerUi.style.display = "none";
-        this.towerUi.classList.remove("interactive");
+        tooltip.style.display = "none";
+        tooltip.classList.remove("interactive");
         break;
     }
   }
@@ -328,12 +343,12 @@ export class TowerDefenseInput {
     this.hint = makeHint();
     this.ui.createElement({
       classNames: "row-c",
-      id: "bottomMenu",
+      id: inputIds.bottomMenu,
       style: {
         position: "absolute",
         top: "80%",
-        right: "10%",
-        height: "10%",
+        right: "15%",
+        height: "15%",
         width: "80%",
       },
       children: [
@@ -403,7 +418,7 @@ export class TowerDefenseInput {
 
     this.towerUi = this.ui.createElement({
       classNames: "interactive column-c",
-      id: "towerUi",
+      id: inputIds.tooltip,
       style: {
         position: "absolute",
         height: "10%",
@@ -417,23 +432,10 @@ export class TowerDefenseInput {
         },
         {
           classNames: "row-c",
-          children: ["Range", "2"],
-        },
-        {
-          classNames: "row-c",
-          children: ["Damage", "1"],
-        },
-        {
-          classNames: "row-c",
-          children: ["Attack Speed", "40"],
-        },
-        {
-          classNames: "row-c",
-          id: "abilitySelect",
+          id: inputIds.abilitySelect,
           children: [
             {
               classNames: "interactive column-c",
-              id: "ability1",
               style: {
                 width: "40%",
               },
@@ -447,7 +449,6 @@ export class TowerDefenseInput {
             },
             {
               classNames: "interactive column-c",
-              id: "ability2",
               style: {
                 width: "40%",
               },
@@ -525,8 +526,8 @@ export class TowerDefense extends GameState {
     }
 
     this.tl.fromTo("#bottomMenu", { top: "200%" }, { top: "80%" });
-    this.gold = this.ui.createElement({
-      id: "gold",
+    this.ui.createElement({
+      id: inputIds.gold,
       text: `Gold: ${this.game.state.gold}`,
       parent: this.ui.createElement({
         classNames: "row-c",
@@ -539,10 +540,10 @@ export class TowerDefense extends GameState {
         },
       }),
     });
-    this.tl.fromTo("#gold", { right: "-100%" }, { right: "10%" });
+    this.tl.fromTo(`#${inputIds.gold}`, { right: "-100%" }, { right: "10%" });
 
-    this.lives = this.ui.createElement({
-      id: "lives",
+    this.ui.createElement({
+      id: inputIds.lives,
       text: `Lives left: ${this.game.state.lives}`,
       parent: this.ui.createElement({
         classNames: "row-c",
@@ -555,7 +556,7 @@ export class TowerDefense extends GameState {
         },
       }),
     });
-    this.tl.fromTo("#lives", { right: "200%" }, { right: "80%" });
+    this.tl.fromTo(`#${inputIds.lives}`, { right: "200%" }, { right: "80%" });
   }
 
   applyEffects(effects, engine) {
@@ -563,7 +564,9 @@ export class TowerDefense extends GameState {
       const effect = effects[i];
       switch (effect.effect) {
         case TowerDefenseGame.effects.goldChanged:
-          this.gold.innerText = `Gold: ${this.game.state.gold}`;
+          document.getElementById(
+            inputIds.gold
+          ).innerText = `Gold: ${this.game.state.gold}`;
           break;
         case TowerDefenseGame.effects.spawn:
           const { entity } = effect;
@@ -605,7 +608,9 @@ export class TowerDefense extends GameState {
         case TowerDefenseGame.effects.gameOver:
           engine.pushState(GameOverMenu);
         case TowerDefenseGame.effects.livesChanged:
-          this.lives.innerText = `Lives left: ${this.game.state.lives}`;
+          document.getElementById(
+            inputIds.lives
+          ).innerText = `Lives left: ${this.game.state.lives}`;
           break;
         default:
           break;

@@ -215,7 +215,7 @@ export class TowerDefenseGame {
   }
 
   getTower(gridPos) {
-    return this.towers.find((t) => t.gridPos.equals(gridPos));
+    return this.towers.find((t) => gridPos?.equals(t.gridPos));
   }
 
   inbounds(pos, relaxation = 0) {
