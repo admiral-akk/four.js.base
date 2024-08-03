@@ -1,6 +1,9 @@
 import { TowerDefense } from "./tower_defense.js";
 import { MainMenu } from "./main_menu.js";
 import { GameState } from "../../engine/engine.js";
+import { makeEnum } from "../../utils/helper.js";
+
+const commands = makeEnum(["newGame", "mainMenu"]);
 
 export class GameOverMenu extends GameState {
   init() {
@@ -15,15 +18,13 @@ export class GameOverMenu extends GameState {
       },
       children: [
         {
-          classNames: "interactive column-c",
+          classNames: "targetable column-c",
           style: {
             height: "90%",
             width: "30%",
           },
-          data: {
-            command: {
-              type: "newGame",
-            },
+          command: {
+            type: commands.newGame,
           },
           children: [
             {
@@ -32,15 +33,13 @@ export class GameOverMenu extends GameState {
           ],
         },
         {
-          classNames: "interactive column-c",
+          classNames: "targetable column-c",
           style: {
             height: "90%",
             width: "30%",
           },
-          data: {
-            command: {
-              type: "mainMenu",
-            },
+          command: {
+            type: commands.mainMenu,
           },
           children: [
             {
@@ -53,16 +52,14 @@ export class GameOverMenu extends GameState {
   }
 
   update(engine) {
-    const { ui } = engine.input.getState();
-    const command = ui.clicked.find((v) => v.data?.command)?.data?.command;
-    if (command) {
-      console.log(command);
+    const { commands } = engine.input.getState().ui;
+    for (let command in commands) {
       switch (command.type) {
-        case "mainMenu":
+        case commands.mainMenu:
           engine.popState();
           engine.replaceState(MainMenu);
           break;
-        case "newGame":
+        case commands.newGame:
           engine.popState();
           engine.replaceState(TowerDefense);
           break;

@@ -156,7 +156,7 @@ export class TowerDefenseInput {
           .toVector3()
           .project(camera);
         tooltip.style.display = "block";
-        tooltip.classList.add("interactive");
+        tooltip.classList.add("targetable");
         tooltip.style.opacity = 1;
 
         tooltip.style.bottom = null;
@@ -193,7 +193,7 @@ export class TowerDefenseInput {
         break;
       default:
         tooltip.style.display = "none";
-        tooltip.classList.remove("interactive");
+        tooltip.classList.remove("targetable");
         break;
     }
   }
@@ -241,8 +241,8 @@ export class TowerDefenseInput {
         child.classList.remove("hovered");
       }
 
-      if (child.data.command.type === "selectBuilding") {
-        if (this.state.selectedBuild === child.data.command.buildingConfig) {
+      if (child.command.type === "selectBuilding") {
+        if (this.state.selectedBuild === child.command.buildingConfig) {
           child.classList.add("selected");
         } else {
           child.classList.remove("selected");
@@ -262,8 +262,7 @@ export class TowerDefenseInput {
     const hit = object.hover.get(this.ground);
     const hitGrid = hit ? new GridPosition(hit.point) : null;
     this.state.hitTarget = hitGrid;
-    const clickedCommand = ui.clicked.filter((v) => !!v.data?.command)?.[0]
-      ?.data?.command;
+    const clickedCommand = ui.commands?.[0];
 
     switch (this.state.type) {
       case TowerDefenseInput.states.free:
@@ -343,16 +342,14 @@ export class TowerDefenseInput {
     this.hint = makeHint();
 
     this.ui.createElement({
-      classNames: "interactive column-c",
+      classNames: "targetable column-c",
       alignment: {
         topOffset: 0.05,
         width: 0.15,
         height: 0.1,
       },
-      data: {
-        command: {
-          type: TowerDefenseGame.commands.startFightPhase,
-        },
+      command: {
+        type: TowerDefenseGame.commands.startFightPhase,
       },
       text: "Start Fight",
     });
@@ -367,51 +364,47 @@ export class TowerDefenseInput {
       },
       children: [
         {
-          classNames: "interactive column-c",
+          classNames: "targetable column-c",
           alignment: {
             height: 0.9,
           },
           style: {
             aspectRatio: 1,
           },
-          data: {
-            command: {
-              type: "selectBuilding",
-              buildingConfig: {
-                cost: 2,
-                abilityOptions: [
-                  {
-                    type: "rangedAttack",
-                    cooldown: 40,
-                    damage: 1,
-                    range: 2,
-                    projectileSpeed: 0.1,
-                  },
-                  {
-                    type: "meleeAttack",
-                    cooldown: 15,
-                    damage: 1,
-                    range: 1,
-                  },
-                ],
-              },
+          command: {
+            type: "selectBuilding",
+            buildingConfig: {
+              cost: 2,
+              abilityOptions: [
+                {
+                  type: "rangedAttack",
+                  cooldown: 40,
+                  damage: 1,
+                  range: 2,
+                  projectileSpeed: 0.1,
+                },
+                {
+                  type: "meleeAttack",
+                  cooldown: 15,
+                  damage: 1,
+                  range: 1,
+                },
+              ],
             },
           },
           text: "Build1",
         },
         {
-          classNames: "interactive column-c",
+          classNames: "targetable column-c",
           alignment: {
             height: 0.9,
             width: 0.3,
           },
-          data: {
-            command: {
-              type: TowerDefenseGame.commands.spawnEnemy,
-              config: {
-                health: 2,
-                speed: 0.01,
-              },
+          command: {
+            type: TowerDefenseGame.commands.spawnEnemy,
+            config: {
+              health: 2,
+              speed: 0.01,
             },
           },
           text: "Spawn Enemy",
@@ -420,7 +413,7 @@ export class TowerDefenseInput {
     });
 
     this.towerUi = this.ui.createElement({
-      classNames: "interactive column-c",
+      classNames: "targetable column-c",
       id: inputIds.tooltip,
       alignment: {
         height: 0.1,
@@ -439,34 +432,30 @@ export class TowerDefenseInput {
           id: inputIds.abilitySelect,
           children: [
             {
-              classNames: "interactive column-c",
+              classNames: "targetable column-c",
               alignment: {
                 width: 0.4,
               },
               style: {
                 aspectRatio: 1,
               },
-              data: {
-                command: {
-                  type: TowerDefenseGame.commands.setAbility,
-                  index: 0,
-                },
+              command: {
+                type: TowerDefenseGame.commands.setAbility,
+                index: 0,
               },
               children: ["Ability 1"],
             },
             {
-              classNames: "interactive column-c",
+              classNames: "targetable column-c",
               alignment: {
                 width: 0.4,
               },
               style: {
                 aspectRatio: 1,
               },
-              data: {
-                command: {
-                  type: TowerDefenseGame.commands.setAbility,
-                  index: 1,
-                },
+              command: {
+                type: TowerDefenseGame.commands.setAbility,
+                index: 1,
               },
               children: ["Ability 2"],
             },

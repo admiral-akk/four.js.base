@@ -72,7 +72,12 @@ div {
 }
 
 /* ui disables pointer events to allow the canvas to accept them */
-.interactive {
+.targetable {
+  pointer-events: auto;
+  background-color: lightgray;
+}
+
+.commandButton {
   pointer-events: auto;
   background-color: lightgray;
 }

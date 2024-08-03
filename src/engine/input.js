@@ -1,7 +1,10 @@
 import * as THREE from "three";
+import { KeyedMap } from "../utils/helper";
 
 const _raycaster = new THREE.Raycaster();
 _raycaster.layers.set(1);
+
+export const commandButton = "commandButton";
 
 class InputManager {
   update(scene, camera) {
@@ -93,7 +96,7 @@ class InputManager {
       ui: new Map(),
       object: new Map(),
     };
-    this.ui = new Set();
+    this.ui = new KeyedMap();
     this.sizes = { width: 1, height: 1 };
     this.listeners = [];
     window.addEventListener("blur", (event) => {
@@ -327,6 +330,7 @@ class InputManager {
       down: [],
       clicked: [],
       hover: [],
+      commands: [],
     };
     const keys = this.history.ui.keys();
 
@@ -348,6 +352,9 @@ class InputManager {
           secondLast.type === "mousedown"
         ) {
           ui.clicked.push(key);
+          if (key.classList.contains(commandButton)) {
+            ui.commands.push(this.ui.get(key).command);
+          }
         }
       }
       {
@@ -412,7 +419,7 @@ class InputManager {
   }
 
   register(element) {
-    this.ui.add(element);
+    this.ui.set(element, element);
     element.onmousedown = (event) => {
       this.storeEvent(element, {
         type: event.type,

@@ -1,5 +1,8 @@
 import { TowerDefense } from "./tower_defense.js";
 import { GameState } from "../../engine/engine.js";
+import { makeEnum } from "../../utils/helper.js";
+
+const commands = makeEnum(["start"]);
 
 export class MainMenu extends GameState {
   init() {
@@ -15,11 +18,14 @@ export class MainMenu extends GameState {
 
     this.tl.to(title, { top: "10%" });
     this.start = this.ui.createElement({
-      classNames: "interactive column-c",
+      classNames: "targetable column-c",
       alignment: {
         topOffset: 1.8,
         width: 0.2,
         height: 0.1,
+      },
+      command: {
+        type: commands.start,
       },
       children: ["Start Game"],
     });
@@ -32,13 +38,19 @@ export class MainMenu extends GameState {
   }
 
   update(engine) {
-    const { ui } = engine.input.getState();
-    if (ui.clicked.find((v) => v === this.start) !== undefined) {
-      engine.playSound("./audio/click1.ogg");
-      this.tl.to(".column-c", { top: "-100%" });
-      this.tl.eventCallback("onComplete", () => {
-        engine.replaceState(TowerDefense);
-      });
+    const { commands } = engine.input.getState().ui;
+    for (let command in commands) {
+      switch (command.type) {
+        case commands.start:
+          engine.playSound("./audio/click1.ogg");
+          this.tl.to(".column-c", { top: "-100%" });
+          this.tl.eventCallback("onComplete", () => {
+            engine.replaceState(TowerDefense);
+          });
+          break;
+        default:
+          break;
+      }
     }
   }
 }

@@ -1,6 +1,7 @@
 import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
 import { gsap } from "gsap";
 import { AudioManager } from "./audio.js";
+import { commandButton } from "./input.js";
 
 function addAlignment(style, alignment) {
   if (alignment.height) {
@@ -23,12 +24,13 @@ function addAlignment(style, alignment) {
   }
 }
 
-function addUiHelpers(div, tl) {
+function addUiHelpers(div) {
   div.createElement = ({
     type = "div",
     id = null,
     alignment = {},
     style = {},
+    command = null,
     parent = div,
     classNames = "",
     text = "",
@@ -37,6 +39,10 @@ function addUiHelpers(div, tl) {
   }) => {
     const element = document.createElement(type);
     element.className = classNames;
+    if (command) {
+      element.command = command;
+      element.classList.add(commandButton);
+    }
     if (parent === div) {
       element.style.position = "absolute";
     }
