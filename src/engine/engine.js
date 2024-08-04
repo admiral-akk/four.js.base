@@ -100,7 +100,6 @@ class TickTracker {
   }
 
   timeToNextTick() {
-    console.log(this.getTime(), this.delta, this.getTime() % this.delta);
     return this.delta - (this.getTime() % this.delta);
   }
 }
@@ -223,7 +222,6 @@ export class GameEngine {
         current.tick(this);
       }
       current.timeToNextTick = this.tickTracker.timeToNextTick() / 1000;
-      console.log(current.timeToNextTick);
       current.resolveCommands(this);
       current.clearCommands();
       this.input.endLoop();

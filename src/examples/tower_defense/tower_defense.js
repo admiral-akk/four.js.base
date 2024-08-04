@@ -188,11 +188,11 @@ class TowerMesh extends EntityMesh {
     tl.fromTo(
       spear.position,
       { x: 0.2, y: 0.15, z: 0 },
-      { x: 0.2, y: 0.05, z: -0.1, duration: 0.2 },
+      { x: 0.2, y: 0.05, z: -0.2, duration: 0.2 },
       tl.time()
     )
-      .to(spear.position, { x: 0.2, y: 0.05, z: 0.2, duration: 0.04 })
-      .to(spear.position, { x: 0.2, y: 0.15, z: 0, duration: 0.1 });
+      .to(spear.position, { x: 0.2, y: 0.05, z: 0.3, duration: 0.04 })
+      .to(spear.position, { x: 0.2, y: 0.15, z: 0, duration: 0.1 }, ">0.04");
 
     // rotation
     tl.fromTo(
