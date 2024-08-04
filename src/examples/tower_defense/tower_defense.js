@@ -25,8 +25,11 @@ class EntityMesh extends THREE.Group {
     entityMap.set(entity, this);
   }
 
-  update() {
-    this.position.copy(this.entity.position);
+  update(scene) {
+    const { tl } = scene;
+    const { x, y, z } = this.entity.position;
+    tl.killTweensOf(this.position);
+    tl.to(this.position, { x, y, z, duration: 60 / 1000 }, tl.time());
   }
 
   destroy(scene) {
@@ -57,14 +60,24 @@ class HealthBar extends THREE.Group {
     this.red = red;
     this.green = green;
     this.enemy = enemy;
-    this.update();
+    this.update(scene);
   }
 
-  update() {
+  update({ tl }) {
     const { health, config } = this.enemy.entity;
     const healthPercent = health / config.health;
-    this.red.scale.set(1 - healthPercent, 1, 1);
-    this.green.scale.set(healthPercent, 1, 1);
+    tl.killTweensOf(this.red.scale);
+    tl.killTweensOf(this.green.scale);
+    tl.to(
+      this.red.scale,
+      { x: 1 - healthPercent, duration: 60 / 1000 },
+      tl.time()
+    );
+    tl.to(
+      this.green.scale,
+      { x: healthPercent, duration: 60 / 1000 },
+      tl.time()
+    );
   }
 }
 
@@ -93,9 +106,9 @@ class EnemyMesh extends EntityMesh {
     scene.tl.to(body.material, { opacity: 1 }, scene.tl.time());
   }
 
-  update() {
-    super.update();
-    this.healthBar.update();
+  update(scene) {
+    super.update(scene);
+    this.healthBar.update(scene);
   }
 }
 
@@ -184,8 +197,8 @@ class TowerMesh extends EntityMesh {
     ).to(spear.rotation, { x: 0, y: 0, z: 0 }, ">0.04");
   }
 
-  update() {
-    super.update();
+  update(scene) {
+    super.update(scene);
     const { currentTarget } = this.entity;
     if (currentTarget) {
       const targetMesh = entityMap.get(currentTarget);
@@ -388,7 +401,6 @@ export class TowerDefenseInput {
     if (clickedCommand) {
       commands.push(clickedCommand);
     }
-    commands.push({ type: TowerDefenseGame.commands.step });
     return commands;
   }
 
@@ -538,6 +550,7 @@ export class TowerDefense extends GameState {
     this.game = new TowerDefenseGame();
     const effects = this.game.init();
     this.applyEffects(effects);
+    this.tickRate = 30;
     this.input = new TowerDefenseInput({ ui: this.ui });
     this.input.init(this);
     this.buildingConfig = null;
@@ -571,7 +584,12 @@ export class TowerDefense extends GameState {
       }
     }
 
-    this.tl.fromTo("#bottomMenu", { top: "200%" }, { top: "80%" });
+    this.tl.fromTo(
+      "#bottomMenu",
+      { top: "200%" },
+      { top: "80%" },
+      this.tl.time()
+    );
 
     this.ui.createElement({
       classNames: "row-c",
@@ -636,7 +654,7 @@ export class TowerDefense extends GameState {
           break;
         case TowerDefenseGame.effects.attacked:
           const tower = entityMap.get(effect.entity);
-          entityMap.get(effect.target)?.update();
+          entityMap.get(effect.target)?.update(this);
           switch (effect.entity.activeAbility.type) {
             case "meleeAttack":
               tower.meleeAttack(this);
@@ -651,7 +669,7 @@ export class TowerDefense extends GameState {
           entityMap.get(effect.entity)?.destroy(this);
           break;
         case TowerDefenseGame.effects.moved:
-          entityMap.get(effect.entity)?.update();
+          entityMap.get(effect.entity)?.update(this);
           break;
         case TowerDefenseGame.effects.gameOver:
           engine.pushState(GameOverMenu);
@@ -666,12 +684,21 @@ export class TowerDefense extends GameState {
     }
   }
 
+  tick(engine) {
+    this.commands.push({ type: TowerDefenseGame.commands.step });
+  }
+
   update(engine) {
     const state = engine.input.getState();
-    const commands = this.input.generateCommands(state, engine, this.game);
-    const effects = this.game.handle(commands);
+    this.commands.push(
+      ...this.input.generateCommands(state, engine, this.game)
+    );
+  }
+
+  resolveCommands(engine) {
+    const state = engine.input.getState();
+    const effects = this.game.handle(this.commands);
     this.applyEffects(effects, engine);
-    entityMap.values().forEach((v) => v.update());
     this.input.updateUi(this, state);
   }
 }

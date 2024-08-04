@@ -80,9 +80,40 @@ function addUiHelpers(div) {
   };
 }
 
+class TickTracker {
+  constructor(tickRate, getTime) {
+    this.tickRate = tickRate;
+    this.getTime = getTime;
+    this.targetTime = getTime();
+  }
+
+  shouldTick() {
+    if (this.getTime() >= this.targetTime) {
+      this.targetTime += 1000 / this.tickRate;
+      return true;
+    }
+    return false;
+  }
+
+  timeToNextTick() {
+    // If we're in a state where getTime() < this.targetTime,
+    // find the next point the frame should hit
+    while (!this.shouldTick()) {}
+
+    return this.targetTime - this.getTime();
+  }
+}
+
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class GameEngine {
-  constructor(input, time, loader, renderer, window) {
+  constructor(
+    input,
+    time,
+    loader,
+    renderer,
+    window,
+    { fps = 60, gameRate = 30 }
+  ) {
     gsap.globalTimeline.timeScale(1);
     this.ui = document.querySelector("div.uiContainer");
     this.states = [];
@@ -93,6 +124,15 @@ export class GameEngine {
     this.window = window;
     this.listener = new AudioManager(this.loader);
     this.listener.setMasterVolume(0.05);
+    this.frameTracker = new TickTracker(fps, () => new Date().getTime());
+    this.tickTracker = new TickTracker(
+      gameRate,
+      () => 1000 * gsap.globalTimeline.time()
+    );
+  }
+
+  timeToNextTick() {
+    return this.frameTracker.timeToNextTick();
   }
 
   playSound(path) {
@@ -178,6 +218,11 @@ export class GameEngine {
     if (current) {
       this.input.update(current, current.camera);
       current.update(this);
+      while (this.tickTracker.shouldTick()) {
+        current.tick(this);
+      }
+      current.resolveCommands(this);
+      current.clearCommands();
       this.input.endLoop();
     }
     this.time.endLoop();
@@ -193,6 +238,7 @@ export class GameState extends Scene {
     super();
     this.ui = ui;
     this.tl = tl;
+    this.commands = [];
     const { aspect } = window.sizes;
     let camera = null;
     if (cameraConfig.isPerspective) {
@@ -219,6 +265,14 @@ export class GameState extends Scene {
   cleanup() {}
   pause() {}
   resume() {}
+
+  tick(engine) {}
+  update(engine) {}
+  resolveCommands(engine) {}
+
+  clearCommands() {
+    this.commands.length = 0;
+  }
 
   render(renderer) {
     renderer.render(this, this.camera);

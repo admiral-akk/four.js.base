@@ -24,6 +24,23 @@ class ScaledRenderTarget extends WebGLRenderTarget {
   }
 }
 
+class TickTracker {
+  constructor(tickRate, getTime) {
+    this.tickRate = tickRate;
+    this.getTime = getTime;
+    this.targetTime = getTime() + 1000 / tickRate;
+
+    const frameData = {
+      targetTime: new Date().getTime(),
+    };
+
+    function getDelay() {
+      frameData.targetTime += 1000 / renderer.fps;
+      return frameData.targetTime - new Date().getTime();
+    }
+  }
+}
+
 class CustomerRenderer extends WebGLRenderer {
   constructor(windowManager) {
     const canvas = document.querySelector("canvas.webgl");
@@ -36,6 +53,7 @@ class CustomerRenderer extends WebGLRenderer {
 
     this.setClearColor("#201919");
     this.setClearAlpha(0);
+    this.fps = 60;
 
     this.shadowMap.enabled = true;
     this.shadowMap.type = PCFSoftShadowMap;

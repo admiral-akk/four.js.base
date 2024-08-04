@@ -37,9 +37,18 @@ export class MainMenu extends GameState {
     return ["./audio/click1.ogg"];
   }
 
+  tick(engine) {}
+
   update(engine) {
-    const { commands } = engine.input.getState().ui;
-    for (let command in commands) {
+    const clickedCommands = engine.input.getState().ui.commands;
+    if (clickedCommands) {
+      this.commands.push(...clickedCommands);
+    }
+  }
+
+  resolveCommands(engine) {
+    this.commands.forEach((command) => {
+      console.log(command.type);
       switch (command.type) {
         case commands.start:
           engine.playSound("./audio/click1.ogg");
@@ -51,6 +60,6 @@ export class MainMenu extends GameState {
         default:
           break;
       }
-    }
+    });
   }
 }

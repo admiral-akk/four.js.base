@@ -51,9 +51,15 @@ export class GameOverMenu extends GameState {
     });
   }
 
+  tick(engine) {}
+
   update(engine) {
-    const { commands } = engine.input.getState().ui;
-    for (let command in commands) {
+    const { clickedCommands } = engine.input.getState().ui;
+    this.commands.push(...clickedCommands);
+  }
+
+  resolveCommands(engine) {
+    for (let command in this.commands) {
       switch (command.type) {
         case commands.mainMenu:
           engine.popState();

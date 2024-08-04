@@ -23,7 +23,19 @@ const windowManager = new WindowManager(16 / 9);
 const input = new InputManager(windowManager, time);
 const renderer = new CustomerRenderer(windowManager);
 
-const engine = new GameEngine(input, time, loader, renderer, windowManager);
+const config = {
+  fps: 60,
+  gameRate: 240,
+};
+
+const engine = new GameEngine(
+  input,
+  time,
+  loader,
+  renderer,
+  windowManager,
+  config
+);
 
 engine.init(initialState);
 
@@ -32,7 +44,9 @@ function raf() {
   engine.update();
   engine.render();
   stats.end();
-  window.requestAnimationFrame(raf);
+  setTimeout(() => {
+    window.requestAnimationFrame(raf);
+  }, engine.timeToNextTick());
 }
 
 window.requestAnimationFrame(raf);
