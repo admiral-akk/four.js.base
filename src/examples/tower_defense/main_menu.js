@@ -48,7 +48,6 @@ export class MainMenu extends GameState {
 
   resolveCommands(engine) {
     this.commands.forEach((command) => {
-      console.log(command.type);
       switch (command.type) {
         case commands.start:
           engine.playSound("./audio/click1.ogg");

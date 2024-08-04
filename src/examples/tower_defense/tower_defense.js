@@ -29,7 +29,11 @@ class EntityMesh extends THREE.Group {
     const { tl } = scene;
     const { x, y, z } = this.entity.position;
     tl.killTweensOf(this.position);
-    tl.to(this.position, { x, y, z, duration: 60 / 1000 }, tl.time());
+    tl.to(
+      this.position,
+      { x, y, z, duration: scene.timeToNextTick },
+      tl.time()
+    );
   }
 
   destroy(scene) {
@@ -63,19 +67,19 @@ class HealthBar extends THREE.Group {
     this.update(scene);
   }
 
-  update({ tl }) {
+  update({ tl, timeToNextTick }) {
     const { health, config } = this.enemy.entity;
     const healthPercent = health / config.health;
     tl.killTweensOf(this.red.scale);
     tl.killTweensOf(this.green.scale);
     tl.to(
       this.red.scale,
-      { x: 1 - healthPercent, duration: 60 / 1000 },
+      { x: 1 - healthPercent, duration: timeToNextTick },
       tl.time()
     );
     tl.to(
       this.green.scale,
-      { x: healthPercent, duration: 60 / 1000 },
+      { x: healthPercent, duration: timeToNextTick },
       tl.time()
     );
   }

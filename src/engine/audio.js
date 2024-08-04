@@ -72,7 +72,6 @@ export class AudioManager extends AudioListener {
   }
 
   load({ path, max = 2, minInterval = 100 }) {
-    console.log(path);
     if (this.buffers.get(path)) {
       return;
     }

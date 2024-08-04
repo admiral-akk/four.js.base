@@ -82,25 +82,26 @@ function addUiHelpers(div) {
 
 class TickTracker {
   constructor(tickRate, getTime) {
-    this.tickRate = tickRate;
     this.getTime = getTime;
     this.targetTime = getTime();
+    this.setTickRate(tickRate);
+  }
+
+  setTickRate(tickRate) {
+    this.delta = 1000 / tickRate;
   }
 
   shouldTick() {
     if (this.getTime() >= this.targetTime) {
-      this.targetTime += 1000 / this.tickRate;
+      this.targetTime += this.delta;
       return true;
     }
     return false;
   }
 
   timeToNextTick() {
-    // If we're in a state where getTime() < this.targetTime,
-    // find the next point the frame should hit
-    while (!this.shouldTick()) {}
-
-    return this.targetTime - this.getTime();
+    console.log(this.getTime(), this.delta, this.getTime() % this.delta);
+    return this.delta - (this.getTime() % this.delta);
   }
 }
 
@@ -221,6 +222,8 @@ export class GameEngine {
       while (this.tickTracker.shouldTick()) {
         current.tick(this);
       }
+      current.timeToNextTick = this.tickTracker.timeToNextTick() / 1000;
+      console.log(current.timeToNextTick);
       current.resolveCommands(this);
       current.clearCommands();
       this.input.endLoop();
@@ -238,6 +241,7 @@ export class GameState extends Scene {
     super();
     this.ui = ui;
     this.tl = tl;
+    this.timeToNextTick = 0.1;
     this.commands = [];
     const { aspect } = window.sizes;
     let camera = null;

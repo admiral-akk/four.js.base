@@ -25,7 +25,7 @@ const renderer = new CustomerRenderer(windowManager);
 
 const config = {
   fps: 60,
-  gameRate: 240,
+  gameRate: 120,
 };
 
 const engine = new GameEngine(
