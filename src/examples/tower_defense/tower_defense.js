@@ -178,6 +178,8 @@ class TowerMesh extends EntityMesh {
 
   meleeAttack({ tl }) {
     const spear = this.weapon;
+    tl.killTweensOf(spear.position);
+    tl.killTweensOf(spear.rotation);
     // position
     tl.fromTo(
       spear.position,
@@ -657,6 +659,7 @@ export class TowerDefense extends GameState {
           entityMap.get(effect.target)?.update(this);
           switch (effect.entity.activeAbility.type) {
             case "meleeAttack":
+              tower.update(this);
               tower.meleeAttack(this);
               engine.playSound("./audio/swish.wav");
               break;
