@@ -93,6 +93,7 @@ export class Tower extends Entity {
     this.activeAbility = this.abilityOptions[1];
     this.gridPos = gridPos;
     this.position = this.gridPos.toVector3();
+    this.currentTarget = null;
   }
 
   getActiveIndex() {
@@ -393,6 +394,14 @@ export class TowerDefenseGame {
     return effects;
   }
 
+  updateTowerTarget() {
+    this.towers.forEach((t) => {
+      t.currentTarget = this.enemies.find(
+        (e) => e.position.distanceTo(t.position) <= t.activeAbility.range
+      );
+    });
+  }
+
   step() {
     const effects = [];
 
@@ -424,15 +433,14 @@ export class TowerDefenseGame {
       }
     }
 
+    this.updateTowerTarget();
+
     for (let i = this.towers.length - 1; i >= 0; i--) {
       const tower = this.towers[i];
       if (tower.nextAttackTick > this.tick) {
         continue;
       }
-      const target = this.enemies.find(
-        (e) =>
-          e.position.distanceTo(tower.position) <= tower.activeAbility.range
-      );
+      const target = tower.currentTarget;
       if (target) {
         tower.nextAttackTick = this.tick + tower.activeAbility.cooldown;
         switch (tower.activeAbility.type) {

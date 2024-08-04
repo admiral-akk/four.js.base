@@ -54,7 +54,6 @@ class HealthBar extends THREE.Group {
     enemy.add(this);
     green.position.x = -0.15;
     red.position.x = 0.15;
-    this.position.y = 0.3;
     this.red = red;
     this.green = green;
     this.enemy = enemy;
@@ -70,7 +69,7 @@ class HealthBar extends THREE.Group {
 }
 
 class EnemyMesh extends EntityMesh {
-  static geo = new THREE.ConeGeometry(0.2, 0.3);
+  static geo = new THREE.ConeGeometry(0.1, 0.2).translate(0, 0.1, 0);
   static mat = new THREE.MeshBasicMaterial({
     color: "green",
   });
@@ -87,6 +86,7 @@ class EnemyMesh extends EntityMesh {
     );
     this.add(body);
     this.healthBar = new HealthBar(scene, this);
+    this.healthBar.position.y = 0.3;
 
     body.material.opacity = 0;
     body.material.transparent = true;
@@ -156,10 +156,23 @@ class TowerMesh extends EntityMesh {
 
     const spear = new SpearMesh();
     body.add(spear);
-    spear.position.set(0, 0.05, 0.2);
+    spear.position.set(0, 0.15, 0.2);
 
+    this.weapon = spear;
     this.scale.set(0, 0, 0);
     scene.tl.to(this.scale, { x: 1, y: 1, z: 1 }, scene.tl.time());
+  }
+
+  update() {
+    const { currentTarget } = this.entity;
+    if (currentTarget) {
+      const targetMesh = entityMap.get(currentTarget);
+      if (targetMesh) {
+        const worldPos = targetMesh.getWorldPosition();
+        worldPos.y = 0;
+        this.lookAt(worldPos);
+      }
+    }
   }
 }
 
