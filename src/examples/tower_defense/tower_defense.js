@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Vector3 } from "three";
 import { GameState } from "../../engine/engine.js";
 import { GameOverMenu } from "./game_over_menu.js";
-import { TowerDefenseGame } from "./tower_defense_game.js";
+import { TowerDefenseGame, baseTowerConfig } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
 import { KeyedMap, makeEnum } from "../../utils/helper.js";
 
@@ -156,19 +156,41 @@ class TowerMesh extends EntityMesh {
 
     const spear = new SpearMesh();
     body.add(spear);
-    spear.position.set(0, 0.15, 0.2);
+    spear.position.set(0.2, 0.15);
 
     this.weapon = spear;
     this.scale.set(0, 0, 0);
     scene.tl.to(this.scale, { x: 1, y: 1, z: 1 }, scene.tl.time());
   }
 
+  meleeAttack({ tl }) {
+    const spear = this.weapon;
+    // position
+    tl.fromTo(
+      spear.position,
+      { x: 0.2, y: 0.15, z: 0 },
+      { x: 0.2, y: 0.05, z: -0.1, duration: 0.2 },
+      tl.time()
+    )
+      .to(spear.position, { x: 0.2, y: 0.05, z: 0.2, duration: 0.04 })
+      .to(spear.position, { x: 0.2, y: 0.15, z: 0, duration: 0.1 });
+
+    // rotation
+    tl.fromTo(
+      spear.rotation,
+      { x: 0, y: 0, z: 0 },
+      { x: Math.PI / 2, y: 0, z: 0, duration: 0.04 },
+      tl.time()
+    ).to(spear.rotation, { x: 0, y: 0, z: 0 }, ">0.04");
+  }
+
   update() {
+    super.update();
     const { currentTarget } = this.entity;
     if (currentTarget) {
       const targetMesh = entityMap.get(currentTarget);
       if (targetMesh) {
-        const worldPos = targetMesh.getWorldPosition();
+        const worldPos = targetMesh.getWorldPosition(new THREE.Vector3());
         worldPos.y = 0;
         this.lookAt(worldPos);
       }
@@ -426,24 +448,7 @@ export class TowerDefenseInput {
           },
           command: {
             type: "selectBuilding",
-            buildingConfig: {
-              cost: 2,
-              abilityOptions: [
-                {
-                  type: "rangedAttack",
-                  cooldown: 40,
-                  damage: 1,
-                  range: 2,
-                  projectileSpeed: 0.1,
-                },
-                {
-                  type: "meleeAttack",
-                  cooldown: 15,
-                  damage: 1,
-                  range: 1,
-                },
-              ],
-            },
+            buildingConfig: baseTowerConfig,
           },
           text: "Build1",
         },
@@ -629,10 +634,12 @@ export class TowerDefense extends GameState {
               break;
           }
           break;
-        case TowerDefenseGame.effects.hit:
-          entityMap.get(effect.entity)?.update();
-          switch (effect.attack.type) {
+        case TowerDefenseGame.effects.attacked:
+          const tower = entityMap.get(effect.entity);
+          entityMap.get(effect.target)?.update();
+          switch (effect.entity.activeAbility.type) {
             case "meleeAttack":
+              tower.meleeAttack(this);
               engine.playSound("./audio/swish.wav");
               break;
             default:
@@ -664,6 +671,7 @@ export class TowerDefense extends GameState {
     const commands = this.input.generateCommands(state, engine, this.game);
     const effects = this.game.handle(commands);
     this.applyEffects(effects, engine);
+    entityMap.values().forEach((v) => v.update());
     this.input.updateUi(this, state);
   }
 }

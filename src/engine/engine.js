@@ -83,7 +83,7 @@ function addUiHelpers(div) {
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class GameEngine {
   constructor(input, time, loader, renderer, window) {
-    gsap.globalTimeline.timeScale(10);
+    gsap.globalTimeline.timeScale(1);
     this.ui = document.querySelector("div.uiContainer");
     this.states = [];
     this.input = input;

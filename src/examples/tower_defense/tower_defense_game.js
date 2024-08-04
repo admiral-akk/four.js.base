@@ -7,6 +7,25 @@ import {
 } from "../../utils/helper.js";
 import { GridPosition } from "./grid_position.js";
 
+export const baseTowerConfig = {
+  cost: 2,
+  abilityOptions: [
+    {
+      type: "rangedAttack",
+      cooldown: 100,
+      damage: 1,
+      range: 2,
+      projectileSpeed: 0.1,
+    },
+    {
+      type: "meleeAttack",
+      cooldown: 40,
+      damage: 1,
+      range: 1,
+    },
+  ],
+};
+
 export class Enemy extends Entity {
   constructor(
     gridPos,
@@ -62,27 +81,7 @@ function makeAbility(config) {
 }
 
 export class Tower extends Entity {
-  constructor(
-    gridPos,
-    config = {
-      cost: 2,
-      abilityOptions: [
-        {
-          type: "rangedAttack",
-          cooldown: 40,
-          damage: 1,
-          range: 2,
-          projectileSpeed: 0.1,
-        },
-        {
-          type: "meleeAttack",
-          cooldown: 15,
-          damage: 1,
-          range: 1,
-        },
-      ],
-    }
-  ) {
+  constructor(gridPos, config = baseTower) {
     super();
     this.name = "tower";
     this.config = config;
@@ -171,6 +170,7 @@ export class TowerDefenseGame {
     "goldChanged",
     "gameOver",
     "changedPhase",
+    "attacked",
   ]);
 
   static buildReason = makeEnum([
@@ -184,7 +184,7 @@ export class TowerDefenseGame {
   constructor() {
     this.state = {
       lives: 10,
-      gold: 10,
+      gold: 20,
     };
     const bound = 7;
     this.bounds = [
@@ -443,6 +443,11 @@ export class TowerDefenseGame {
       const target = tower.currentTarget;
       if (target) {
         tower.nextAttackTick = this.tick + tower.activeAbility.cooldown;
+        effects.push({
+          effect: TowerDefenseGame.effects.attacked,
+          entity: tower,
+          target,
+        });
         switch (tower.activeAbility.type) {
           case "rangedAttack":
             const projectile = new Projectile({ target, tower });
