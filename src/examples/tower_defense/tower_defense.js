@@ -205,7 +205,20 @@ class TowerMesh extends EntityMesh {
 
   update(scene) {
     super.update(scene);
-    const { currentTarget } = this.entity;
+    const { currentTarget, activeAbility } = this.entity;
+    if (!scene.tl.getTweensOf(this.weapon.position).length) {
+      switch (activeAbility.type) {
+        case "rangedAttack":
+          this.weapon.position.set(0.1, 0.25, -0.2);
+          this.weapon.rotation.x = Math.PI / 2;
+          break;
+        default:
+        case "meleeAttack":
+          this.weapon.position.set(0.2, 0.15, 0);
+          this.weapon.rotation.x = 0;
+          break;
+      }
+    }
     if (currentTarget) {
       const targetMesh = entityMap.get(currentTarget);
       if (targetMesh) {
@@ -664,12 +677,16 @@ export class TowerDefense extends GameState {
               break;
           }
           break;
+        case TowerDefenseGame.effects.changedActiveAbility:
+          console.log("Changes");
+          entityMap.get(effect.entity)?.update(this);
+          break;
         case TowerDefenseGame.effects.attacked:
           const tower = entityMap.get(effect.entity);
           entityMap.get(effect.target)?.update(this);
+          tower.update(this);
           switch (effect.entity.activeAbility.type) {
             case "meleeAttack":
-              tower.update(this);
               tower.meleeAttack(this);
               engine.playSound("./audio/swish.wav");
               break;

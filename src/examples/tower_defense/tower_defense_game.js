@@ -166,6 +166,7 @@ export class TowerDefenseGame {
     "moved",
     "reachedFlag",
     "livesChanged",
+    "changedActiveAbility",
     "hit",
     "goldChanged",
     "gameOver",
@@ -359,7 +360,14 @@ export class TowerDefenseGame {
           effects.push(...this.step());
           break;
         case TowerDefenseGame.commands.setAbility:
-          this.getTower(command.gridPos)?.setAbility(command.index);
+          const tower = this.getTower(command.gridPos);
+          if (tower) {
+            tower.setAbility(command.index);
+            effects.push({
+              effect: TowerDefenseGame.effects.changedActiveAbility,
+              entity: tower,
+            });
+          }
           break;
         default:
           break;
