@@ -218,13 +218,19 @@ class TowerMesh extends EntityMesh {
 }
 
 class ProjectileMesh extends EntityMesh {
-  static geo = new THREE.SphereGeometry(0.05);
-  static mat = new THREE.MeshBasicMaterial({
-    color: "yellow",
-  });
   constructor(scene, entity) {
-    super(scene, { entity, geo: ProjectileMesh.geo, mat: ProjectileMesh.mat });
+    super(scene, { entity });
     this.position.y = 0;
+    const spear = new SpearMesh();
+    this.add(spear);
+    spear.rotation.x = Math.PI / 2;
+  }
+
+  update(scene) {
+    super.update(scene);
+    this.lookAt(
+      entityMap.get(this.entity.target)?.getWorldPosition(new THREE.Vector3())
+    );
   }
 }
 
