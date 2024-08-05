@@ -59,7 +59,7 @@ export class GameOverMenu extends GameState {
   }
 
   resolveCommands(engine) {
-    for (let command in this.commands) {
+    this.commands.forEach((command) => {
       switch (command.type) {
         case commands.mainMenu:
           engine.popState();
@@ -72,6 +72,6 @@ export class GameOverMenu extends GameState {
         default:
           break;
       }
-    }
+    });
   }
 }
