@@ -56,6 +56,7 @@ div {
 }
 
 .ability {
+  position: relative;
   aspect-ratio: 1;
 }
 

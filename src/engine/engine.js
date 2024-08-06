@@ -4,19 +4,19 @@ import { AudioManager } from "./audio.js";
 import { commandButton } from "./input.js";
 
 function addAlignment(style, alignment) {
-  if (alignment.height) {
+  if ("height" in alignment) {
     style.height = `${alignment.height * 100}%`;
   }
-  if (alignment.width) {
+  if ("width" in alignment) {
     style.width = `${alignment.width * 100}%`;
   }
   if (style.position === "absolute") {
-    if (alignment.rightOffset) {
+    if ("rightOffset" in alignment) {
       style.right = `${100 * alignment.rightOffset}%`;
     } else {
       style.right = `${50 * (1 - alignment.width)}%`;
     }
-    if (alignment.topOffset) {
+    if ("topOffset" in alignment) {
       style.top = `${100 * alignment.topOffset}%`;
     } else {
       style.top = `${50 * (1 - alignment.height)}%`;
@@ -46,10 +46,10 @@ function addUiHelpers(div) {
     if (parent === div) {
       element.style.position = "absolute";
     }
-    addAlignment(element.style, alignment);
     for (const [key, value] of Object.entries(style)) {
       element.style[key] = value;
     }
+    addAlignment(element.style, alignment);
     element.isCustom = true;
     if (data) {
       element.data = data;

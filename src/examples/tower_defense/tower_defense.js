@@ -296,17 +296,33 @@ export class TowerDefenseInput {
             children[i].classList.remove("selected");
           }
 
-          const { damage, range, cooldown } = selectedUnit.abilityOptions[i];
-
-          children[
-            i
-          ].children[0].innerText = `Damage: ${damage}\nRange: ${range}\nCooldown: ${cooldown}`;
+          const { damage, cooldown } = selectedUnit.abilityOptions[i];
         }
 
         break;
       default:
         tooltip.style.display = "none";
         tooltip.classList.remove("targetable");
+        break;
+    }
+  }
+
+  updateRangeHint() {
+    switch (this.state.type) {
+      case TowerDefenseInput.states.selectedUnit:
+        const { selectedUnit } = this.state;
+
+        const { range } =
+          selectedUnit.abilityOptions[selectedUnit.getActiveIndex()];
+
+        this.rangeHint.position.x = selectedUnit.position.x;
+        this.rangeHint.position.y = 0.01;
+        this.rangeHint.position.z = selectedUnit.position.z;
+        this.rangeHint.scale.set(range, range, range);
+        this.rangeHint.material.opacity = 0.4;
+        break;
+      default:
+        this.rangeHint.material.opacity = 0;
         break;
     }
   }
@@ -365,6 +381,7 @@ export class TowerDefenseInput {
 
     this.updateTooltipPosition(camera);
     this.updateHint(game);
+    this.updateRangeHint();
   }
 
   generateCommands(state, engine, game) {
@@ -453,6 +470,18 @@ export class TowerDefenseInput {
 
     this.hint = makeHint();
 
+    const makeRangeHint = () => {
+      const geo = new THREE.CircleGeometry(1).rotateX(-Math.PI / 2);
+      const material = new THREE.MeshBasicMaterial({ color: "red" });
+      const mesh = new THREE.Mesh(geo, material);
+      material.transparent = true;
+      material.opacity = 0;
+      scene.add(mesh);
+      return mesh;
+    };
+
+    this.rangeHint = makeRangeHint();
+
     this.ui.createElement({
       classNames: "targetable column-c",
       alignment: {
@@ -527,32 +556,71 @@ export class TowerDefenseInput {
           id: inputIds.abilitySelect,
           children: [
             {
-              classNames: "targetable column-c",
+              classNames: "targetable ability",
               alignment: {
                 width: 0.4,
               },
               style: {
                 aspectRatio: 1,
+                backgroundImage: "url(./icons/dart.png)",
+                backgroundSize: "100% 100%",
               },
               command: {
                 type: TowerDefenseGame.commands.setAbility,
                 index: 0,
               },
-              children: ["Ability 1"],
+              children: [
+                {
+                  classNames: "column-c",
+                  alignment: {
+                    height: 0.4,
+                    width: 0.4,
+                    topOffset: -0.1,
+                    rightOffset: -0.1,
+                  },
+                  style: {
+                    aspectRatio: 1,
+                    position: "absolute",
+                    backgroundColor: "transparent",
+                    backgroundImage: "url(./icons/clockwise-rotation.png)",
+                    backgroundSize: "100% 100%",
+                  },
+                  children: ["40"],
+                },
+                {
+                  classNames: "column-c",
+                  alignment: {
+                    height: 0.4,
+                    width: 0.4,
+                    topOffset: -0.1,
+                    rightOffset: 0.7,
+                  },
+                  style: {
+                    aspectRatio: 1,
+                    position: "absolute",
+                    backgroundColor: "transparent",
+                    backgroundImage: "url(./icons/punch-blast.png)",
+                    backgroundSize: "100% 100%",
+                  },
+                  children: ["1"],
+                },
+              ],
             },
             {
-              classNames: "targetable column-c",
+              classNames: "targetable ability",
               alignment: {
                 width: 0.4,
               },
               style: {
                 aspectRatio: 1,
+                backgroundImage: "url(./icons/spear-feather.png)",
+                backgroundSize: "100% 100%",
               },
               command: {
                 type: TowerDefenseGame.commands.setAbility,
                 index: 1,
               },
-              children: ["Ability 2"],
+              children: [],
             },
           ],
         },
