@@ -290,13 +290,17 @@ export class TowerDefenseInput {
         const { children } = document.getElementById(inputIds.abilitySelect);
 
         for (let i = 0; i < children.length; i++) {
+          const child = children[i];
           if (selectedUnit.getActiveIndex() === i) {
-            children[i].classList.add("selected");
+            child.classList.add("selected");
           } else {
-            children[i].classList.remove("selected");
+            child.classList.remove("selected");
           }
 
           const { damage, cooldown } = selectedUnit.abilityOptions[i];
+
+          child.children[0].children[0].innerText = `${cooldown}`;
+          child.children[1].children[0].innerText = `${damage}`;
         }
 
         break;
@@ -540,8 +544,8 @@ export class TowerDefenseInput {
       classNames: "targetable column-c",
       id: inputIds.tooltip,
       alignment: {
-        height: 0.1,
-        width: 0.1,
+        height: 0.2,
+        width: 0.2,
       },
       style: {
         display: "none",
@@ -571,7 +575,7 @@ export class TowerDefenseInput {
               },
               children: [
                 {
-                  classNames: "column-c",
+                  classNames: "column-c stat",
                   alignment: {
                     height: 0.4,
                     width: 0.4,
@@ -585,10 +589,15 @@ export class TowerDefenseInput {
                     backgroundImage: "url(./icons/clockwise-rotation.png)",
                     backgroundSize: "100% 100%",
                   },
-                  children: ["40"],
+                  children: [
+                    {
+                      classNames: "ability-number",
+                      text: "40",
+                    },
+                  ],
                 },
                 {
-                  classNames: "column-c",
+                  classNames: "column-c stat",
                   alignment: {
                     height: 0.4,
                     width: 0.4,
@@ -602,7 +611,12 @@ export class TowerDefenseInput {
                     backgroundImage: "url(./icons/punch-blast.png)",
                     backgroundSize: "100% 100%",
                   },
-                  children: ["1"],
+                  children: [
+                    {
+                      classNames: "ability-number",
+                      text: "40",
+                    },
+                  ],
                 },
               ],
             },
@@ -620,7 +634,52 @@ export class TowerDefenseInput {
                 type: TowerDefenseGame.commands.setAbility,
                 index: 1,
               },
-              children: [],
+              children: [
+                {
+                  classNames: "column-c stat",
+                  alignment: {
+                    height: 0.4,
+                    width: 0.4,
+                    topOffset: -0.1,
+                    rightOffset: -0.1,
+                  },
+                  style: {
+                    aspectRatio: 1,
+                    position: "absolute",
+                    backgroundColor: "transparent",
+                    backgroundImage: "url(./icons/clockwise-rotation.png)",
+                    backgroundSize: "100% 100%",
+                  },
+                  children: [
+                    {
+                      classNames: "ability-number",
+                      text: "40",
+                    },
+                  ],
+                },
+                {
+                  classNames: "column-c stat",
+                  alignment: {
+                    height: 0.4,
+                    width: 0.4,
+                    topOffset: -0.1,
+                    rightOffset: 0.7,
+                  },
+                  style: {
+                    aspectRatio: 1,
+                    position: "absolute",
+                    backgroundColor: "transparent",
+                    backgroundImage: "url(./icons/punch-blast.png)",
+                    backgroundSize: "100% 100%",
+                  },
+                  children: [
+                    {
+                      classNames: "ability-number",
+                      text: "40",
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },

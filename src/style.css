@@ -60,6 +60,17 @@ div {
   aspect-ratio: 1;
 }
 
+.stat {
+  aspect-ratio: 1;
+}
+
+.ability-number {
+  font-size: 1.5cqi;
+  text-align: center;
+  font-weight: bold;
+  color: white;
+}
+
 /* c for container */
 .row-c {
   align-items: center;
