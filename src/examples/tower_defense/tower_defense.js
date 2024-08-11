@@ -698,7 +698,8 @@ export class TowerDefense extends GameState {
     [...entityMap.keys()].forEach((k) => entityMap.get(k)?.destroy(this));
   }
 
-  init() {
+  init(engine) {
+    super.init(engine);
     this.game = new TowerDefenseGame();
     const effects = this.game.init();
     this.applyEffects(effects);

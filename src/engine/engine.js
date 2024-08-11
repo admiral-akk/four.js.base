@@ -2,6 +2,7 @@ import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
 import { gsap } from "gsap";
 import { AudioManager } from "./audio.js";
 import { commandButton } from "./input.js";
+import { StateMachine } from "../utils/stateMachine.js";
 
 function addAlignment(style, alignment) {
   if ("height" in alignment) {
@@ -105,7 +106,7 @@ class TickTracker {
 }
 
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
-export class GameEngine {
+export class GameEngine extends StateMachine {
   constructor(
     input,
     time,
@@ -114,10 +115,10 @@ export class GameEngine {
     window,
     { fps = 60, gameRate = 30 }
   ) {
+    super();
+    this.input = input;
     gsap.globalTimeline.timeScale(1);
     this.ui = document.querySelector("div.uiContainer");
-    this.states = [];
-    this.input = input;
     this.time = time;
     this.loader = loader;
     this.renderer = renderer;
@@ -131,24 +132,24 @@ export class GameEngine {
     );
   }
 
+  stateParams() {
+    return {
+      ui: this.makeContainer(),
+      window: this.window,
+      tl: gsap.timeline(),
+      cameraConfig: {
+        isPerspective: false,
+        width: 10,
+      },
+    };
+  }
+
   timeToNextTick() {
     return this.frameTracker.timeToNextTick();
   }
 
   playSound(path) {
     this.listener.play({ path });
-  }
-
-  init(stateConstructor) {
-    this.pushState(stateConstructor);
-  }
-
-  currentState() {
-    const len = this.states.length;
-    if (len > 0) {
-      return this.states[len - 1];
-    }
-    return null;
   }
 
   makeContainer() {
@@ -160,64 +161,19 @@ export class GameEngine {
     return div;
   }
 
-  cleanupScene(current) {
+  cleanup(current) {
+    super.cleanup(current);
     this.ui.removeChild(current.ui);
-    this.input.cleanupScene(current);
-  }
-
-  replaceState(stateConstructor) {
-    const current = this.currentState();
-    if (current) {
-      this.states.pop().cleanup();
-      this.cleanupScene(current);
-    }
-    const state = new stateConstructor({
-      ui: this.makeContainer(),
-      window: this.window,
-      tl: gsap.timeline(),
-      cameraConfig: {
-        isPerspective: false,
-        width: 10,
-      },
-    });
-    state.init();
-    state.manifest().forEach((path) => this.listener.load({ path }));
-    state.camera.add(this.listener);
-    this.states.push(state);
-  }
-
-  pushState(stateConstructor) {
-    this.currentState()?.pause();
-    const state = new stateConstructor({
-      ui: this.makeContainer(),
-      window: this.window,
-      tl: gsap.timeline(),
-      cameraConfig: {
-        isPerspective: false,
-        width: 10,
-      },
-    });
-    state.init();
-    state.manifest().forEach((path) => this.listener.load({ path }));
-    state.camera.add(this.listener);
-    this.states.push(state);
-  }
-
-  popState() {
-    const current = this.currentState();
-    if (current) {
-      this.states.pop().cleanup();
-      this.cleanupScene(current);
-    }
-    this.currentState()?.resume();
+    this.input.cleanup(current);
   }
 
   update() {
     this.time.tick();
+
     const current = this.currentState();
     if (current) {
       this.input.update(current, current.camera);
-      current.update(this);
+      super.update();
       while (this.tickTracker.shouldTick()) {
         current.tick(this);
       }
@@ -257,6 +213,11 @@ export class GameState extends Scene {
     }
     this.add(camera);
     this.camera = camera;
+  }
+
+  init({ listener }) {
+    this.manifest().forEach((path) => listener.load({ path }));
+    this.camera.add(listener);
   }
 
   // things to load

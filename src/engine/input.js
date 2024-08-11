@@ -25,7 +25,7 @@ class InputManager {
     }
   }
 
-  cleanupScene(scene) {
+  cleanup(scene) {
     scene.traverse((child) => {
       if (this.history.object.has(child)) {
         this.history.object.delete(child);

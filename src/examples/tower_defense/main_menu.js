@@ -5,7 +5,8 @@ import { makeEnum } from "../../utils/helper.js";
 const commands = makeEnum(["start"]);
 
 export class MainMenu extends GameState {
-  init() {
+  init(engine) {
+    super.init(engine);
     const title = this.ui.createElement({
       classNames: "column-c",
       alignment: {
