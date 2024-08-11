@@ -9,8 +9,6 @@ import GUI from "lil-gui";
 import { GameEngine } from "./engine/engine.js";
 import { MainMenu } from "./examples/tower_defense/main_menu.js";
 
-const initialState = MainMenu;
-
 const gui = new GUI();
 
 var stats = new Stats();
@@ -37,7 +35,7 @@ const engine = new GameEngine(
   config
 );
 
-engine.init(initialState);
+engine.pushState(new MainMenu());
 
 function raf() {
   stats.begin();

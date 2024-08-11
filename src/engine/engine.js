@@ -132,18 +132,6 @@ export class GameEngine extends StateMachine {
     );
   }
 
-  stateParams() {
-    return {
-      ui: this.makeContainer(),
-      window: this.window,
-      tl: gsap.timeline(),
-      cameraConfig: {
-        isPerspective: false,
-        width: 10,
-      },
-    };
-  }
-
   timeToNextTick() {
     return this.frameTracker.timeToNextTick();
   }
@@ -191,14 +179,21 @@ export class GameEngine extends StateMachine {
 }
 
 export class GameState extends Scene {
-  constructor({ ui, window, cameraConfig, tl }) {
+  constructor() {
     super();
-    this.ui = ui;
-    this.tl = tl;
+  }
+
+  init(engine) {
+    this.ui = engine.makeContainer();
+    this.tl = gsap.timeline();
     this.timeToNextTick = 0.1;
     this.commands = [];
-    const { aspect } = window.sizes;
+    const { aspect } = engine.window.sizes;
     let camera = null;
+    const cameraConfig = {
+      isPerspective: false,
+      width: 10,
+    };
     if (cameraConfig.isPerspective) {
       const { fov } = cameraConfig;
       camera = new PerspectiveCamera(fov, aspect);
@@ -213,11 +208,8 @@ export class GameState extends Scene {
     }
     this.add(camera);
     this.camera = camera;
-  }
-
-  init({ listener }) {
-    this.manifest().forEach((path) => listener.load({ path }));
-    this.camera.add(listener);
+    this.manifest().forEach((path) => engine.listener.load({ path }));
+    this.camera.add(engine.listener);
   }
 
   // things to load

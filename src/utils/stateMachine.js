@@ -8,8 +8,8 @@ export class StateMachine {
     return {};
   }
 
-  init(stateConstructor) {
-    this.pushState(stateConstructor);
+  init(state) {
+    this.pushState(state);
   }
 
   cleanup(state) {
@@ -24,24 +24,23 @@ export class StateMachine {
     return null;
   }
 
-  addState(stateConstructor) {
-    const state = new stateConstructor(this.stateParams());
+  addState(state) {
     state.init(this);
     this.states.push(state);
   }
 
-  replaceState(stateConstructor) {
+  replaceState(state) {
     const current = this.currentState();
     if (current) {
       this.states.pop().cleanup();
       this.cleanup(current);
     }
-    this.addState(stateConstructor);
+    this.addState(state);
   }
 
-  pushState(stateConstructor) {
+  pushState(state) {
     this.currentState()?.pause();
-    this.addState(stateConstructor);
+    this.addState(state);
   }
 
   popState() {
@@ -61,11 +60,9 @@ export class StateMachine {
 export class State {
   constructor() {}
 
-  init(engine) {}
-
+  init(machine) {}
   cleanup() {}
   pause() {}
   resume() {}
-
-  update(engine) {}
+  update(machine) {}
 }

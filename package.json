@@ -4,7 +4,7 @@
   "description": "Base template to start working from.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5173",
     "build": "vite build"
   },
   "keywords": [],

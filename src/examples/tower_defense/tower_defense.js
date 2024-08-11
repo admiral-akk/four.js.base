@@ -5,6 +5,7 @@ import { GameOverMenu } from "./game_over_menu.js";
 import { TowerDefenseGame, baseTowerConfig } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
 import { KeyedMap, makeEnum } from "../../utils/helper.js";
+import { State, StateMachine } from "../../utils/stateMachine.js";
 
 const entityMap = new KeyedMap();
 
@@ -247,7 +248,38 @@ class ProjectileMesh extends EntityMesh {
   }
 }
 
-export class TowerDefenseInput {
+class InputStateMachine extends StateMachine {
+  constructor() {
+    super();
+    this.init(new OpenInputState());
+  }
+}
+
+class OpenInputState extends State {
+  constructor() {}
+
+  init(machine) {}
+  cleanup() {}
+  update(machine) {}
+}
+
+class SelectedUnitInputState extends State {
+  constructor() {}
+
+  init(machine) {}
+  cleanup() {}
+  update(machine) {}
+}
+
+class BuildInputState extends State {
+  constructor() {}
+
+  init(machine) {}
+  cleanup() {}
+  update(machine) {}
+}
+
+class TowerDefenseInput {
   static states = makeEnum(["free", "build", "selectedUnit"]);
 
   constructor({ ui }) {
@@ -830,7 +862,7 @@ export class TowerDefense extends GameState {
           entityMap.get(effect.entity)?.update(this);
           break;
         case TowerDefenseGame.effects.gameOver:
-          engine.pushState(GameOverMenu);
+          engine.pushState(new GameOverMenu());
         case TowerDefenseGame.effects.livesChanged:
           document.getElementById(
             inputIds.livesText

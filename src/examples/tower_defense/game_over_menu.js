@@ -64,11 +64,11 @@ export class GameOverMenu extends GameState {
       switch (command.type) {
         case commands.mainMenu:
           engine.popState();
-          engine.replaceState(MainMenu);
+          engine.replaceState(new MainMenu());
           break;
         case commands.newGame:
           engine.popState();
-          engine.replaceState(TowerDefense);
+          engine.replaceState(new TowerDefense());
           break;
         default:
           break;

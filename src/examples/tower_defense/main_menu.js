@@ -54,7 +54,7 @@ export class MainMenu extends GameState {
           engine.playSound("./audio/click1.ogg");
           this.tl.to(".column-c", { top: "-100%" });
           this.tl.eventCallback("onComplete", () => {
-            engine.replaceState(TowerDefense);
+            engine.replaceState(new TowerDefense());
           });
           break;
         default:

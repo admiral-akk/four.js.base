@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Launch Chrome against localhost",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMapRenames": true,
+      "sourceMapPathOverrides": {
+        "localhost꞉5173/*": "C:/Users/Work/Documents/repos/four.js.base/src/*",
+        "webpack://@?:*/?:*/*": "C:/Users/Work/Documents/repos/four.js.base/src/*"
+      },
+      "sourceMaps": true
+    }
+  ]
+}
