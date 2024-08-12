@@ -8,10 +8,6 @@ export class StateMachine {
     return {};
   }
 
-  init(state) {
-    this.pushState(state);
-  }
-
   cleanup(state) {
     state.cleanup();
   }
@@ -51,10 +47,6 @@ export class StateMachine {
     }
     this.currentState()?.resume();
   }
-
-  update() {
-    this.currentState()?.update(this);
-  }
 }
 
 export class State {
@@ -64,5 +56,4 @@ export class State {
   cleanup() {}
   pause() {}
   resume() {}
-  update(machine) {}
 }
