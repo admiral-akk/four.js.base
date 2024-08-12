@@ -394,7 +394,8 @@ class TowerDefenseInput extends StateMachine {
     }
   }
 
-  updateUi(scene, state) {
+  updateUi(scene) {
+    const state = scene.inputManager.getState();
     const { hover } = state.ui;
     const { camera, game } = scene;
     const { children } = document.getElementById("bottomMenu");
@@ -888,9 +889,8 @@ export class TowerDefense extends GameState {
   }
 
   resolveCommands(engine) {
-    const state = engine.input.getState();
     const effects = this.game.handle(this.commands);
     this.applyEffects(effects, engine);
-    this.input.updateUi(this, state);
+    this.input.updateUi(this);
   }
 }
