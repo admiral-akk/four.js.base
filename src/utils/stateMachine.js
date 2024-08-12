@@ -8,8 +8,10 @@ export class StateMachine {
     return {};
   }
 
-  cleanup(state) {
-    state.cleanup();
+  cleanup() {
+    while (this.currentState()) {
+      this.popState();
+    }
   }
 
   currentState() {
@@ -28,8 +30,7 @@ export class StateMachine {
   replaceState(state) {
     const current = this.currentState();
     if (current) {
-      this.states.pop().cleanup();
-      this.cleanup(current);
+      this.states.pop().cleanup(this);
     }
     this.addState(state);
   }
@@ -42,8 +43,7 @@ export class StateMachine {
   popState() {
     const current = this.currentState();
     if (current) {
-      this.states.pop().cleanup();
-      this.cleanup(current);
+      this.states.pop().cleanup(this);
     }
     this.currentState()?.resume();
   }
