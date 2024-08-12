@@ -248,35 +248,96 @@ class ProjectileMesh extends EntityMesh {
   }
 }
 
-class InputStateMachine extends StateMachine {
-  constructor() {
-    super();
-    this.init(new OpenInputState());
+class OpenInputState extends State {
+  generateCommand(input, scene) {
+    const state = scene.inputManager.getState();
+    const { playSound, game } = scene;
+    const { mouse, object, ui } = state;
+    const { released } = mouse;
+
+    const hit = object.hover.get(this.ground);
+    const hitGrid = hit ? new GridPosition(hit.point) : null;
+    let clickedCommand = ui.commands?.[0];
+    switch (clickedCommand?.type) {
+      case "selectBuilding":
+        playSound("./audio/click1.ogg");
+        input.replaceState(new BuildInputState(clickedCommand.buildingConfig));
+        break;
+      default:
+        break;
+    }
+    const towerAt = game.getTower(hitGrid);
+    if (hitGrid && towerAt && released) {
+      input.replaceState(new SelectedUnitInputState(towerAt));
+    }
+    return clickedCommand;
   }
 }
 
-class OpenInputState extends State {
-  constructor() {}
-
-  init(machine) {}
-  cleanup() {}
-  update(machine) {}
-}
-
 class SelectedUnitInputState extends State {
-  constructor() {}
+  constructor(selectedUnit) {
+    super();
+    this.selectedUnit = selectedUnit;
+  }
 
-  init(machine) {}
-  cleanup() {}
-  update(machine) {}
+  generateCommand(input, scene) {
+    const state = scene.inputManager.getState();
+    const { playSound, game } = scene;
+    const { mouse, object, ui } = state;
+    const { released } = mouse;
+
+    const hit = object.hover.get(this.ground);
+    const hitGrid = hit ? new GridPosition(hit.point) : null;
+    let clickedCommand = ui.commands?.[0];
+    switch (clickedCommand?.type) {
+      case "selectBuilding":
+        playSound("./audio/click1.ogg");
+        input.replaceState(new BuildInputState(clickedCommand.buildingConfig));
+        break;
+      case TowerDefenseGame.commands.setAbility:
+        clickedCommand.gridPos = this.selectedUnit;
+        playSound("./audio/click1.ogg");
+        break;
+      default:
+        break;
+    }
+    const towerAt = game.getTower(hitGrid);
+    if (hitGrid && towerAt && released) {
+      this.replaceState(new SelectedUnitInputState(towerAt));
+    } else if (released) {
+      this.replaceState(new OpenInputState());
+    }
+    return clickedCommand;
+  }
 }
 
 class BuildInputState extends State {
-  constructor() {}
+  constructor(buildingConfig) {
+    super();
+    this.buildingConfig = buildingConfig;
+  }
 
-  init(machine) {}
-  cleanup() {}
-  update(machine) {}
+  generateCommand(input, scene) {
+    const state = scene.inputManager.getState();
+    const { playSound } = scene;
+    const { mouse, object, ui } = state;
+    const { released } = mouse;
+
+    const hit = object.hover.get(input.ground);
+    const hitGrid = hit ? new GridPosition(hit.point) : null;
+    let clickedCommand = ui.commands?.[0];
+    if (clickedCommand?.type === "selectBuilding") {
+      playSound("./audio/click1.ogg");
+      input.replaceState(new OpenInputState());
+    } else if (hit && released) {
+      clickedCommand = {
+        type: TowerDefenseGame.commands.build,
+        gridPos: hitGrid,
+        config: this.buildingConfig,
+      };
+    }
+    return clickedCommand;
+  }
 }
 
 class TowerDefenseInput extends StateMachine {
@@ -285,89 +346,79 @@ class TowerDefenseInput extends StateMachine {
   constructor({ ui }) {
     super();
     this.ui = ui;
-    this.state = {
-      type: TowerDefenseInput.states.free,
-      selectedUnit: null,
-      selectedBuild: null,
-      hitTarget: null,
-    };
+    this.pushState(new OpenInputState());
   }
 
   updateTooltipPosition(camera) {
     const tooltip = document.getElementById(inputIds.tooltip);
-    switch (this.state.type) {
-      case TowerDefenseInput.states.selectedUnit:
-        const { selectedUnit } = this.state;
-        const towerScreenSpace = selectedUnit.gridPos
-          .toVector3()
-          .project(camera);
-        tooltip.style.display = "block";
-        tooltip.classList.add("targetable");
-        tooltip.style.opacity = 1;
+    const selectedUnit = this.currentState()?.selectedUnit;
+    if (selectedUnit) {
+      const towerScreenSpace = selectedUnit.gridPos.toVector3().project(camera);
+      tooltip.style.display = "block";
+      tooltip.classList.add("targetable");
+      tooltip.style.opacity = 1;
 
-        tooltip.style.bottom = null;
-        tooltip.style.top = null;
-        tooltip.style.right = null;
-        tooltip.style.left = null;
-        if (towerScreenSpace.y > 0.5) {
-          tooltip.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
+      tooltip.style.bottom = null;
+      tooltip.style.top = null;
+      tooltip.style.right = null;
+      tooltip.style.left = null;
+      if (towerScreenSpace.y > 0.5) {
+        tooltip.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
+      } else {
+        tooltip.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
+      }
+      if (towerScreenSpace.x > 0.5) {
+        tooltip.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
+      } else {
+        tooltip.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
+      }
+
+      const { children } = document.getElementById(inputIds.abilitySelect);
+
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (selectedUnit.getActiveIndex() === i) {
+          child.classList.add("selected");
         } else {
-          tooltip.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
-        }
-        if (towerScreenSpace.x > 0.5) {
-          tooltip.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
-        } else {
-          tooltip.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
+          child.classList.remove("selected");
         }
 
-        const { children } = document.getElementById(inputIds.abilitySelect);
+        const { damage, cooldown } = selectedUnit.abilityOptions[i];
 
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          if (selectedUnit.getActiveIndex() === i) {
-            child.classList.add("selected");
-          } else {
-            child.classList.remove("selected");
-          }
-
-          const { damage, cooldown } = selectedUnit.abilityOptions[i];
-
-          child.children[0].children[0].innerText = `${cooldown}`;
-          child.children[1].children[0].innerText = `${damage}`;
-        }
-
-        break;
-      default:
-        tooltip.style.display = "none";
-        tooltip.classList.remove("targetable");
-        break;
+        child.children[0].children[0].innerText = `${cooldown}`;
+        child.children[1].children[0].innerText = `${damage}`;
+      }
+    } else {
+      tooltip.style.display = "none";
+      tooltip.classList.remove("targetable");
     }
   }
 
   updateRangeHint() {
-    switch (this.state.type) {
-      case TowerDefenseInput.states.selectedUnit:
-        const { selectedUnit } = this.state;
+    const selectedUnit = this.currentState()?.selectedUnit;
+    if (selectedUnit) {
+      const { range } =
+        selectedUnit.abilityOptions[selectedUnit.getActiveIndex()];
 
-        const { range } =
-          selectedUnit.abilityOptions[selectedUnit.getActiveIndex()];
-
-        this.rangeHint.position.x = selectedUnit.position.x;
-        this.rangeHint.position.y = 0.01;
-        this.rangeHint.position.z = selectedUnit.position.z;
-        this.rangeHint.scale.set(range, range, range);
-        this.rangeHint.material.opacity = 0.4;
-        break;
-      default:
-        this.rangeHint.material.opacity = 0;
-        break;
+      this.rangeHint.position.x = selectedUnit.position.x;
+      this.rangeHint.position.y = 0.01;
+      this.rangeHint.position.z = selectedUnit.position.z;
+      this.rangeHint.scale.set(range, range, range);
+      this.rangeHint.material.opacity = 0.4;
+    } else {
+      this.rangeHint.material.opacity = 0;
     }
   }
 
-  updateHint(game) {
-    const gridPos = this.state.hitTarget;
+  updateHint(scene) {
+    const { game } = scene;
+    const state = scene.inputManager.getState();
+    const { object } = state;
+
+    const hit = object.hover.get(this.ground);
+    const gridPos = hit ? new GridPosition(hit.point) : null;
     if (gridPos) {
-      if (this.state.type === TowerDefenseInput.states.build) {
+      if (this.currentState()?.buildingConfig) {
         this.hint.position.copy(gridPos.toVector3());
         const legalPos = game.legalBuild(gridPos);
 
@@ -394,10 +445,10 @@ class TowerDefenseInput extends StateMachine {
     }
   }
 
-  updateUi(scene) {
+  update(scene) {
     const state = scene.inputManager.getState();
     const { hover } = state.ui;
-    const { camera, game } = scene;
+    const { camera } = scene;
     const { children } = document.getElementById("bottomMenu");
 
     for (let i = 0; i < children.length; i++) {
@@ -409,7 +460,9 @@ class TowerDefenseInput extends StateMachine {
       }
 
       if (child.command.type === "selectBuilding") {
-        if (this.state.selectedBuild === child.command.buildingConfig) {
+        if (
+          this.currentState()?.selectedBuild === child.command.buildingConfig
+        ) {
           child.classList.add("selected");
         } else {
           child.classList.remove("selected");
@@ -418,72 +471,16 @@ class TowerDefenseInput extends StateMachine {
     }
 
     this.updateTooltipPosition(camera);
-    this.updateHint(game);
+    this.updateHint(scene);
     this.updateRangeHint();
   }
 
   generateCommands(scene) {
-    const state = scene.inputManager.getState();
-    const { playSound, game } = scene;
-    const { mouse, object, ui } = state;
-    const { released } = mouse;
-    const commands = [];
-
-    const hit = object.hover.get(this.ground);
-    const hitGrid = hit ? new GridPosition(hit.point) : null;
-    this.state.hitTarget = hitGrid;
-    const clickedCommand = ui.commands?.[0];
-
-    switch (this.state.type) {
-      case TowerDefenseInput.states.free:
-      case TowerDefenseInput.states.selectedUnit:
-        switch (clickedCommand?.type) {
-          case "selectBuilding":
-            this.state.type = TowerDefenseInput.states.build;
-            this.state.selectedUnit = null;
-            this.state.selectedBuild = clickedCommand.buildingConfig;
-            playSound("./audio/click1.ogg");
-            break;
-          case TowerDefenseGame.commands.setAbility:
-            clickedCommand.gridPos = this.state.selectedUnit.gridPos;
-            playSound("./audio/click1.ogg");
-            break;
-          default:
-            break;
-        }
-        const towerAt = game.getTower(hitGrid);
-        if (hitGrid && towerAt && released) {
-          this.state.type = TowerDefenseInput.states.selectedUnit;
-          this.state.selectedBuild = null;
-          this.state.selectedUnit = towerAt;
-        } else if (released) {
-          this.state.type = TowerDefenseInput.states.free;
-          this.state.selectedUnit = null;
-        }
-        break;
-      case TowerDefenseInput.states.build:
-        if (clickedCommand?.type === "selectBuilding") {
-          this.state.type = TowerDefenseInput.states.free;
-          this.state.selectedBuild = null;
-          playSound("./audio/click1.ogg");
-          break;
-        }
-        if (hit && released) {
-          commands.push({
-            type: TowerDefenseGame.commands.build,
-            gridPos: hitGrid,
-            config: this.state.selectedBuild,
-          });
-        }
-        break;
-      default:
-        break;
+    const command = this.currentState()?.generateCommand(this, scene);
+    if (command) {
+      return [command];
     }
-
-    if (clickedCommand) {
-      commands.push(clickedCommand);
-    }
-    return commands;
+    return [];
   }
 
   init(scene) {
@@ -844,7 +841,6 @@ export class TowerDefense extends GameState {
           }
           break;
         case TowerDefenseGame.effects.changedActiveAbility:
-          console.log("Changes");
           entityMap.get(effect.entity)?.update(this);
           break;
         case TowerDefenseGame.effects.attacked:
@@ -891,6 +887,6 @@ export class TowerDefense extends GameState {
   resolveCommands(engine) {
     const effects = this.game.handle(this.commands);
     this.applyEffects(effects, engine);
-    this.input.updateUi(this);
+    this.input.update(this);
   }
 }
