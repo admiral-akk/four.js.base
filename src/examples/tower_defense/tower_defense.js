@@ -293,10 +293,17 @@ class SelectedUnitInputState extends State {
     };
 
     this.rangeHint = makeRangeHint();
+    const tooltip = document.getElementById(inputIds.tooltip);
+    tooltip.style.display = "block";
+    tooltip.classList.add("targetable");
+    tooltip.style.opacity = 1;
   }
 
   cleanup(input) {
     input.scene.remove(this.rangeHint);
+    const tooltip = document.getElementById(inputIds.tooltip);
+    tooltip.style.display = "none";
+    tooltip.classList.remove("targetable");
   }
 
   updateRangeHint() {
@@ -311,8 +318,47 @@ class SelectedUnitInputState extends State {
     this.rangeHint.material.opacity = 0.4;
   }
 
+  updateTooltipPosition(input) {
+    const { camera } = input.scene;
+    const tooltip = document.getElementById(inputIds.tooltip);
+    const selectedUnit = this.selectedUnit;
+    const towerScreenSpace = selectedUnit.gridPos.toVector3().project(camera);
+
+    tooltip.style.bottom = null;
+    tooltip.style.top = null;
+    tooltip.style.right = null;
+    tooltip.style.left = null;
+    if (towerScreenSpace.y > 0.5) {
+      tooltip.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
+    } else {
+      tooltip.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
+    }
+    if (towerScreenSpace.x > 0.5) {
+      tooltip.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
+    } else {
+      tooltip.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
+    }
+
+    const { children } = document.getElementById(inputIds.abilitySelect);
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (selectedUnit.getActiveIndex() === i) {
+        child.classList.add("selected");
+      } else {
+        child.classList.remove("selected");
+      }
+
+      const { damage, cooldown } = selectedUnit.abilityOptions[i];
+
+      child.children[0].children[0].innerText = `${cooldown}`;
+      child.children[1].children[0].innerText = `${damage}`;
+    }
+  }
+
   update(input, scene) {
     this.updateRangeHint();
+    this.updateTooltipPosition(input);
   }
 
   generateCommand(input, scene) {
@@ -463,51 +509,6 @@ class TowerDefenseInput extends StateMachine {
     this.pushState(new OpenInputState());
   }
 
-  updateTooltipPosition(camera) {
-    const tooltip = document.getElementById(inputIds.tooltip);
-    const selectedUnit = this.currentState()?.selectedUnit;
-    if (selectedUnit) {
-      const towerScreenSpace = selectedUnit.gridPos.toVector3().project(camera);
-      tooltip.style.display = "block";
-      tooltip.classList.add("targetable");
-      tooltip.style.opacity = 1;
-
-      tooltip.style.bottom = null;
-      tooltip.style.top = null;
-      tooltip.style.right = null;
-      tooltip.style.left = null;
-      if (towerScreenSpace.y > 0.5) {
-        tooltip.style.top = `${(1.025 - towerScreenSpace.y) * 50}%`;
-      } else {
-        tooltip.style.bottom = `${(towerScreenSpace.y + 1.025) * 50}%`;
-      }
-      if (towerScreenSpace.x > 0.5) {
-        tooltip.style.right = `${(1.025 - towerScreenSpace.x) * 50}%`;
-      } else {
-        tooltip.style.left = `${(towerScreenSpace.x + 1.025) * 50}%`;
-      }
-
-      const { children } = document.getElementById(inputIds.abilitySelect);
-
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i];
-        if (selectedUnit.getActiveIndex() === i) {
-          child.classList.add("selected");
-        } else {
-          child.classList.remove("selected");
-        }
-
-        const { damage, cooldown } = selectedUnit.abilityOptions[i];
-
-        child.children[0].children[0].innerText = `${cooldown}`;
-        child.children[1].children[0].innerText = `${damage}`;
-      }
-    } else {
-      tooltip.style.display = "none";
-      tooltip.classList.remove("targetable");
-    }
-  }
-
   update(scene) {
     const state = scene.inputManager.getState();
     const { hover } = state.ui;
@@ -524,8 +525,6 @@ class TowerDefenseInput extends StateMachine {
     }
 
     this.currentState()?.update(this, scene);
-
-    this.updateTooltipPosition(camera);
   }
 
   generateCommands(scene) {
