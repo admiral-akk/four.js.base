@@ -249,6 +249,7 @@ class ProjectileMesh extends EntityMesh {
 }
 
 class OpenInputState extends State {
+  update(input, scene) {}
   generateCommand(input, scene) {
     const state = scene.inputManager.getState();
     const { playSound, game } = scene;
@@ -279,6 +280,7 @@ class SelectedUnitInputState extends State {
     super();
     this.selectedUnit = selectedUnit;
   }
+  update(input, scene) {}
 
   generateCommand(input, scene) {
     const state = scene.inputManager.getState();
@@ -316,6 +318,36 @@ class BuildInputState extends State {
     super();
     this.buildingConfig = buildingConfig;
   }
+  init() {
+    const { children } = document.getElementById("bottomMenu");
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.command.type === "selectBuilding") {
+        if (this.selectedBuild === child.command.buildingConfig) {
+          child.classList.add("selected");
+        } else {
+          child.classList.remove("selected");
+        }
+      }
+    }
+  }
+
+  cleanup() {
+    const { children } = document.getElementById("bottomMenu");
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.command.type === "selectBuilding") {
+        if (this.selectedBuild === child.command.buildingConfig) {
+          child.classList.add("selected");
+        } else {
+          child.classList.remove("selected");
+        }
+      }
+    }
+  }
+  update(input, scene) {}
 
   generateCommand(input, scene) {
     const state = scene.inputManager.getState();
@@ -458,17 +490,9 @@ class TowerDefenseInput extends StateMachine {
       } else {
         child.classList.remove("hovered");
       }
-
-      if (child.command.type === "selectBuilding") {
-        if (
-          this.currentState()?.selectedBuild === child.command.buildingConfig
-        ) {
-          child.classList.add("selected");
-        } else {
-          child.classList.remove("selected");
-        }
-      }
     }
+
+    this.currentState()?.update(this, scene);
 
     this.updateTooltipPosition(camera);
     this.updateHint(scene);
