@@ -279,10 +279,11 @@ class BuildInputState extends State {
   update(machine) {}
 }
 
-class TowerDefenseInput {
+class TowerDefenseInput extends StateMachine {
   static states = makeEnum(["free", "build", "selectedUnit"]);
 
   constructor({ ui }) {
+    super();
     this.ui = ui;
     this.state = {
       type: TowerDefenseInput.states.free,

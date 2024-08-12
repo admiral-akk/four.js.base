@@ -161,7 +161,7 @@ export class GameEngine extends StateMachine {
     const current = this.currentState();
     if (current) {
       this.input.update(current, current.camera);
-      super.update();
+      this.currentState()?.update(this);
       while (this.tickTracker.shouldTick()) {
         current.tick(this);
       }
