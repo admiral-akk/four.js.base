@@ -421,7 +421,9 @@ class TowerDefenseInput extends StateMachine {
     this.updateRangeHint();
   }
 
-  generateCommands(state, engine, game) {
+  generateCommands(scene) {
+    const state = scene.inputManager.getState();
+    const { playSound, game } = scene;
     const { mouse, object, ui } = state;
     const { released } = mouse;
     const commands = [];
@@ -439,11 +441,11 @@ class TowerDefenseInput extends StateMachine {
             this.state.type = TowerDefenseInput.states.build;
             this.state.selectedUnit = null;
             this.state.selectedBuild = clickedCommand.buildingConfig;
-            engine.playSound("./audio/click1.ogg");
+            playSound("./audio/click1.ogg");
             break;
           case TowerDefenseGame.commands.setAbility:
             clickedCommand.gridPos = this.state.selectedUnit.gridPos;
-            engine.playSound("./audio/click1.ogg");
+            playSound("./audio/click1.ogg");
             break;
           default:
             break;
@@ -462,7 +464,7 @@ class TowerDefenseInput extends StateMachine {
         if (clickedCommand?.type === "selectBuilding") {
           this.state.type = TowerDefenseInput.states.free;
           this.state.selectedBuild = null;
-          engine.playSound("./audio/click1.ogg");
+          playSound("./audio/click1.ogg");
           break;
         }
         if (hit && released) {
@@ -733,6 +735,8 @@ export class TowerDefense extends GameState {
 
   init(engine) {
     super.init(engine);
+    this.inputManager = engine.input;
+    this.playSound = (path) => engine.playSound(path);
     this.game = new TowerDefenseGame();
     const effects = this.game.init();
     this.applyEffects(effects);
@@ -880,10 +884,7 @@ export class TowerDefense extends GameState {
   }
 
   update(engine) {
-    const state = engine.input.getState();
-    this.commands.push(
-      ...this.input.generateCommands(state, engine, this.game)
-    );
+    this.commands.push(...this.input.generateCommands(this));
   }
 
   resolveCommands(engine) {
