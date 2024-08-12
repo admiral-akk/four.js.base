@@ -256,7 +256,7 @@ class OpenInputState extends State {
     const { mouse, object, ui } = state;
     const { released } = mouse;
 
-    const hit = object.hover.get(this.ground);
+    const hit = object.hover.get(input.ground);
     const hitGrid = hit ? new GridPosition(hit.point) : null;
     let clickedCommand = ui.commands?.[0];
     switch (clickedCommand?.type) {
@@ -280,7 +280,40 @@ class SelectedUnitInputState extends State {
     super();
     this.selectedUnit = selectedUnit;
   }
-  update(input, scene) {}
+
+  init(input) {
+    const makeRangeHint = () => {
+      const geo = new THREE.CircleGeometry(1).rotateX(-Math.PI / 2);
+      const material = new THREE.MeshBasicMaterial({ color: "red" });
+      const mesh = new THREE.Mesh(geo, material);
+      material.transparent = true;
+      material.opacity = 0;
+      input.scene.add(mesh);
+      return mesh;
+    };
+
+    this.rangeHint = makeRangeHint();
+  }
+
+  cleanup(input) {
+    input.scene.remove(this.rangeHint);
+  }
+
+  updateRangeHint() {
+    const selectedUnit = this.selectedUnit;
+    const { range } =
+      selectedUnit.abilityOptions[selectedUnit.getActiveIndex()];
+
+    this.rangeHint.position.x = selectedUnit.position.x;
+    this.rangeHint.position.y = 0.01;
+    this.rangeHint.position.z = selectedUnit.position.z;
+    this.rangeHint.scale.set(range, range, range);
+    this.rangeHint.material.opacity = 0.4;
+  }
+
+  update(input, scene) {
+    this.updateRangeHint();
+  }
 
   generateCommand(input, scene) {
     const state = scene.inputManager.getState();
@@ -297,7 +330,7 @@ class SelectedUnitInputState extends State {
         input.replaceState(new BuildInputState(clickedCommand.buildingConfig));
         break;
       case TowerDefenseGame.commands.setAbility:
-        clickedCommand.gridPos = this.selectedUnit;
+        clickedCommand.gridPos = this.selectedUnit.gridPos;
         playSound("./audio/click1.ogg");
         break;
       default:
@@ -305,9 +338,9 @@ class SelectedUnitInputState extends State {
     }
     const towerAt = game.getTower(hitGrid);
     if (hitGrid && towerAt && released) {
-      this.replaceState(new SelectedUnitInputState(towerAt));
+      input.replaceState(new SelectedUnitInputState(towerAt));
     } else if (released) {
-      this.replaceState(new OpenInputState());
+      input.replaceState(new OpenInputState());
     }
     return clickedCommand;
   }
@@ -475,22 +508,6 @@ class TowerDefenseInput extends StateMachine {
     }
   }
 
-  updateRangeHint() {
-    const selectedUnit = this.currentState()?.selectedUnit;
-    if (selectedUnit) {
-      const { range } =
-        selectedUnit.abilityOptions[selectedUnit.getActiveIndex()];
-
-      this.rangeHint.position.x = selectedUnit.position.x;
-      this.rangeHint.position.y = 0.01;
-      this.rangeHint.position.z = selectedUnit.position.z;
-      this.rangeHint.scale.set(range, range, range);
-      this.rangeHint.material.opacity = 0.4;
-    } else {
-      this.rangeHint.material.opacity = 0;
-    }
-  }
-
   update(scene) {
     const state = scene.inputManager.getState();
     const { hover } = state.ui;
@@ -509,7 +526,6 @@ class TowerDefenseInput extends StateMachine {
     this.currentState()?.update(this, scene);
 
     this.updateTooltipPosition(camera);
-    this.updateRangeHint();
   }
 
   generateCommands(scene) {
@@ -531,18 +547,6 @@ class TowerDefenseInput extends StateMachine {
       return mesh;
     };
     this.ground = makeGround(100, 100);
-
-    const makeRangeHint = () => {
-      const geo = new THREE.CircleGeometry(1).rotateX(-Math.PI / 2);
-      const material = new THREE.MeshBasicMaterial({ color: "red" });
-      const mesh = new THREE.Mesh(geo, material);
-      material.transparent = true;
-      material.opacity = 0;
-      scene.add(mesh);
-      return mesh;
-    };
-
-    this.rangeHint = makeRangeHint();
 
     this.ui.createElement({
       classNames: "targetable column-c",

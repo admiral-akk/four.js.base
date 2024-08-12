@@ -346,6 +346,7 @@ export class TowerDefenseGame {
     const effects = [];
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
+      console.log(command);
       switch (command.type) {
         case TowerDefenseGame.commands.startFightPhase:
           this.setPhase(TowerDefenseGame.phases.fight, effects);
