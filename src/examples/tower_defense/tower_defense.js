@@ -6,6 +6,7 @@ import { TowerDefenseGame, baseTowerConfig } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
 import { KeyedMap, makeEnum } from "../../utils/helper.js";
 import { State, StateMachine } from "../../utils/stateMachine.js";
+import { AnimationCSS } from "../../utils/animate.js";
 
 const entityMap = new KeyedMap();
 
@@ -512,7 +513,6 @@ class TowerDefenseInput extends StateMachine {
   update(scene) {
     const state = scene.inputManager.getState();
     const { hover } = state.ui;
-    const { camera } = scene;
     const { children } = document.getElementById("bottomMenu");
 
     for (let i = 0; i < children.length; i++) {
@@ -568,6 +568,7 @@ class TowerDefenseInput extends StateMachine {
         width: 0.8,
         height: 0.15,
       },
+      intro: new AnimationCSS("fadeIn"),
       children: [
         {
           classNames: "targetable column-c",
@@ -621,14 +622,9 @@ class TowerDefenseInput extends StateMachine {
           id: inputIds.abilitySelect,
           children: [
             {
-              classNames: "targetable ability",
+              classNames: "targetable ability dart-image",
               alignment: {
                 width: 0.4,
-              },
-              style: {
-                aspectRatio: 1,
-                backgroundImage: "url(./icons/dart.png)",
-                backgroundSize: "100% 100%",
               },
               command: {
                 type: TowerDefenseGame.commands.setAbility,
@@ -636,20 +632,7 @@ class TowerDefenseInput extends StateMachine {
               },
               children: [
                 {
-                  classNames: "column-c stat",
-                  alignment: {
-                    height: 0.4,
-                    width: 0.4,
-                    topOffset: -0.1,
-                    rightOffset: -0.1,
-                  },
-                  style: {
-                    aspectRatio: 1,
-                    position: "absolute",
-                    backgroundColor: "transparent",
-                    backgroundImage: "url(./icons/clockwise-rotation.png)",
-                    backgroundSize: "100% 100%",
-                  },
+                  classNames: "stat column-c top-left reload-image",
                   children: [
                     {
                       classNames: "ability-number",
@@ -658,20 +641,7 @@ class TowerDefenseInput extends StateMachine {
                   ],
                 },
                 {
-                  classNames: "column-c stat",
-                  alignment: {
-                    height: 0.4,
-                    width: 0.4,
-                    topOffset: -0.1,
-                    rightOffset: 0.7,
-                  },
-                  style: {
-                    aspectRatio: 1,
-                    position: "absolute",
-                    backgroundColor: "transparent",
-                    backgroundImage: "url(./icons/punch-blast.png)",
-                    backgroundSize: "100% 100%",
-                  },
+                  classNames: "stat column-c top-right attack-image",
                   children: [
                     {
                       classNames: "ability-number",
@@ -682,14 +652,9 @@ class TowerDefenseInput extends StateMachine {
               ],
             },
             {
-              classNames: "targetable ability",
+              classNames: "targetable ability spear-image",
               alignment: {
                 width: 0.4,
-              },
-              style: {
-                aspectRatio: 1,
-                backgroundImage: "url(./icons/spear-feather.png)",
-                backgroundSize: "100% 100%",
               },
               command: {
                 type: TowerDefenseGame.commands.setAbility,
@@ -697,20 +662,7 @@ class TowerDefenseInput extends StateMachine {
               },
               children: [
                 {
-                  classNames: "column-c stat",
-                  alignment: {
-                    height: 0.4,
-                    width: 0.4,
-                    topOffset: -0.1,
-                    rightOffset: -0.1,
-                  },
-                  style: {
-                    aspectRatio: 1,
-                    position: "absolute",
-                    backgroundColor: "transparent",
-                    backgroundImage: "url(./icons/clockwise-rotation.png)",
-                    backgroundSize: "100% 100%",
-                  },
+                  classNames: "stat column-c top-left reload-image",
                   children: [
                     {
                       classNames: "ability-number",
@@ -719,20 +671,7 @@ class TowerDefenseInput extends StateMachine {
                   ],
                 },
                 {
-                  classNames: "column-c stat",
-                  alignment: {
-                    height: 0.4,
-                    width: 0.4,
-                    topOffset: -0.1,
-                    rightOffset: 0.7,
-                  },
-                  style: {
-                    aspectRatio: 1,
-                    position: "absolute",
-                    backgroundColor: "transparent",
-                    backgroundImage: "url(./icons/punch-blast.png)",
-                    backgroundSize: "100% 100%",
-                  },
+                  classNames: "stat column-c top-right attack-image",
                   children: [
                     {
                       classNames: "ability-number",
@@ -799,13 +738,6 @@ export class TowerDefense extends GameState {
         grid(x - 0.5, y - 0.5);
       }
     }
-
-    this.tl.fromTo(
-      "#bottomMenu",
-      { top: "200%" },
-      { top: "80%" },
-      this.tl.time()
-    );
 
     this.ui.createElement({
       classNames: "row-c",

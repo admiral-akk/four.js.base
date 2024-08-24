@@ -3,6 +3,7 @@ import { gsap } from "gsap";
 import { AudioManager } from "./audio.js";
 import { commandButton } from "./input.js";
 import { StateMachine } from "../utils/stateMachine.js";
+import { animateCSS } from "../utils/animate.js";
 
 function addAlignment(style, alignment) {
   if ("height" in alignment) {
@@ -33,12 +34,16 @@ function addUiHelpers(div) {
     style = {},
     command = null,
     parent = div,
+    intro = null,
     classNames = "",
     text = "",
     data = null,
     children = [],
   }) => {
     const element = document.createElement(type);
+    if (classNames instanceof Array) {
+      classNames = classNames.join(" ");
+    }
     element.className = classNames;
     if (command) {
       element.command = command;
@@ -77,6 +82,9 @@ function addUiHelpers(div) {
       }
       element.appendChild(div.createElement(child));
     });
+    if (intro) {
+      animateCSS(element, intro);
+    }
     return element;
   };
 }
@@ -149,10 +157,10 @@ export class GameEngine extends StateMachine {
     return div;
   }
 
-  cleanup(current) {
-    super.cleanup(current);
-    this.ui.removeChild(current.ui);
-    this.input.cleanup(current);
+  cleanupState(state) {
+    super.cleanupState(state);
+    this.ui.removeChild(state.ui);
+    this.input.cleanup(state);
   }
 
   update() {

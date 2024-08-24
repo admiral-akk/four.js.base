@@ -27,10 +27,15 @@ export class StateMachine {
     this.states.push(state);
   }
 
+  cleanupState(state) {
+    state.cleanup(this);
+  }
+
   replaceState(state) {
     const current = this.currentState();
     if (current) {
-      this.states.pop().cleanup(this);
+      console.log(current);
+      this.cleanupState(this.states.pop());
     }
     this.addState(state);
   }
@@ -43,7 +48,7 @@ export class StateMachine {
   popState() {
     const current = this.currentState();
     if (current) {
-      this.states.pop().cleanup(this);
+      this.cleanupState(this.states.pop());
     }
     this.currentState()?.resume();
   }
