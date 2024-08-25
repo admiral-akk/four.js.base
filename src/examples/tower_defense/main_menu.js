@@ -61,7 +61,6 @@ export class MainMenu extends GameState {
           engine.playSound("./audio/click1.ogg");
 
           this.ui.exitAll().then((result) => {
-            console.log("resolved");
             engine.replaceState(new TowerDefense());
           });
           break;

@@ -75,8 +75,6 @@ export const animateCSSKey = (elements, key) => {
       }
     }
 
-    console.log(nodes);
-
     nodes.forEach((node) => {
       const animation = node[key];
       animation.addAnimation(node);
