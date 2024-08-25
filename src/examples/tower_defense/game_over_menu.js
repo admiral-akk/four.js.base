@@ -8,6 +8,7 @@ const commands = makeEnum(["newGame", "mainMenu"]);
 export class GameOverMenu extends GameState {
   init(engine) {
     super.init(engine);
+
     this.ui.createElement({
       classNames: "column-c",
       style: {

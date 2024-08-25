@@ -43,6 +43,73 @@ function addAlignment(style, alignment) {
   }
 }
 
+class UIParams {
+  constructor(params) {
+    for (const key in params) {
+      this[key] = params[key];
+    }
+  }
+}
+
+export class UIContainerParams extends UIParams {
+  construct(parent) {
+    const {
+      center = [0.5, 0.5],
+      size = [1, 1],
+      intro = null,
+      outro = null,
+    } = this;
+    const div = document.createElement("div");
+    div.className = "root-level-ui";
+    div.isCustom = true;
+    div.style.width = `${size[0] * 100}%`;
+    div.style.height = `${size[1] * 100}%`;
+    // offset by half to center it.
+    div.style.right = `${center[0] * 100 - size[0] * 50}%`;
+    div.style.top = `${center[1] * 100 - size[1] * 50}%`;
+    parent.appendChild(div);
+
+    div.intro = intro;
+    div.outro = outro;
+    animateCSSKey([div], "intro");
+    return div;
+  }
+}
+
+export class UIButtonParams extends UIParams {
+  construct(parent) {
+    const { command } = this;
+    const div = document.createElement("div");
+    div.isCustom = true;
+    div.className = `targetable ${commandButton}`;
+    div.command = command;
+    parent.appendChild(div);
+    return div;
+  }
+}
+
+export class UITextBox extends UIParams {
+  construct(parent) {
+    const {
+      containerClass = "default-text-box-container",
+      textClass = "default-text-box",
+      text,
+      size = "m",
+    } = this;
+    const div = document.createElement("div");
+    const textDiv = document.createElement("div");
+    div.appendChild(textDiv);
+    div.isCustom = true;
+    textDiv.isCustom = true;
+    parent.appendChild(div);
+    div.className = `${containerClass} text-box-container`;
+    textDiv.className = `${textClass} text-box f-${size}`;
+    textDiv.innerText = text;
+
+    return div;
+  }
+}
+
 export class UIInstance {
   constructor(zIndex) {
     this.div = document.createElement("div");
@@ -59,73 +126,11 @@ export class UIInstance {
     return animateCSSKey(element, "outro");
   }
 
-  compose(uiOperations) {
-    let parent = this.div;
+  compose(uiOperations, parent = this.div) {
     for (let op of uiOperations) {
-      if (op.command) {
-        parent = this.createButton(parent, op);
-      } else if (op.text) {
-        parent = this.createTextBox(parent, op);
-      } else {
-        op.parent = parent;
-        parent = this.createContainer(op);
-      }
+      parent = op.construct(parent);
     }
     return parent;
-  }
-
-  createButton(parent, { command }) {
-    const div = document.createElement("div");
-    div.isCustom = true;
-    div.className = `targetable ${commandButton}`;
-    div.command = command;
-    parent.appendChild(div);
-    return div;
-  }
-
-  createContainer({
-    parent = this.div,
-    center = [0.5, 0.5],
-    size = [1, 1],
-    intro = null,
-    outro = null,
-  }) {
-    const div = document.createElement("div");
-    div.className = "root-level-ui";
-    div.isCustom = true;
-    div.style.width = `${size[0] * 100}%`;
-    div.style.height = `${size[1] * 100}%`;
-    // offset by half to center it.
-    div.style.right = `${center[0] * 100 - size[0] * 50}%`;
-    div.style.top = `${center[1] * 100 - size[1] * 50}%`;
-    parent.appendChild(div);
-
-    div.intro = intro;
-    div.outro = outro;
-    animateCSSKey([div], "intro");
-    return div;
-  }
-
-  createTextBox(
-    parent,
-    {
-      containerClass = "default-text-box-container",
-      textClass = "default-text-box",
-      text = "Lorem Ipsum",
-      size = "m",
-    }
-  ) {
-    const div = document.createElement("div");
-    const textDiv = document.createElement("div");
-    div.appendChild(textDiv);
-    div.isCustom = true;
-    textDiv.isCustom = true;
-    parent.appendChild(div);
-    div.className = `${containerClass} text-box-container`;
-    textDiv.className = `${textClass} text-box f-${size}`;
-    textDiv.innerText = text;
-
-    return div;
   }
 
   createElement({

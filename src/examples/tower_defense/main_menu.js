@@ -2,6 +2,11 @@ import { TowerDefense } from "./tower_defense.js";
 import { GameState } from "../../engine/engine.js";
 import { makeEnum } from "../../utils/helper.js";
 import { animateCSS, AnimationCSS } from "../../utils/animate.js";
+import {
+  UIButtonParams,
+  UIContainerParams,
+  UITextBox,
+} from "../../engine/ui.js";
 
 const commands = makeEnum(["start"]);
 
@@ -10,30 +15,30 @@ export class MainMenu extends GameState {
     super.init(engine);
 
     this.ui.compose([
-      {
+      new UIContainerParams({
         center: [0.5, 0.1],
         size: [0.8, 0.1],
         intro: new AnimationCSS("zoomInDown", 1, "fast"),
         outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
-      },
-      {
+      }),
+      new UITextBox({
         text: "Start Game",
-      },
+      }),
     ]);
 
     this.ui.compose([
-      {
+      new UIContainerParams({
         center: [0.5, 0.8],
         size: [0.2, 0.1],
         intro: new AnimationCSS("zoomInDown", 1, "fast"),
         outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
-      },
-      {
+      }),
+      new UIButtonParams({
         command: { type: commands.start },
-      },
-      {
+      }),
+      new UITextBox({
         text: "Start Game",
-      },
+      }),
     ]);
   }
 
