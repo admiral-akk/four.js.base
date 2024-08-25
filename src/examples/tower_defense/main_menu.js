@@ -9,31 +9,32 @@ export class MainMenu extends GameState {
   init(engine) {
     super.init(engine);
 
-    const container = this.ui.createContainer({
-      center: [0.5, 0.1],
-      size: [0.8, 0.1],
-      intro: new AnimationCSS("zoomInDown", 1, "fast"),
-      outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
-    });
+    this.ui.compose([
+      {
+        center: [0.5, 0.1],
+        size: [0.8, 0.1],
+        intro: new AnimationCSS("zoomInDown", 1, "fast"),
+        outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
+      },
+      {
+        text: "Start Game",
+      },
+    ]);
 
-    this.ui.createTextBox(container, {
-      text: "My First Tower Defense",
-    });
-
-    const buttonContainer = this.ui.createContainer({
-      center: [0.5, 0.8],
-      size: [0.2, 0.1],
-      intro: new AnimationCSS("zoomInDown", 1, "fast"),
-      outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
-    });
-
-    const button = this.ui.createButton(buttonContainer, {
-      command: { type: commands.start },
-    });
-
-    this.ui.createTextBox(button, {
-      text: "Start Game",
-    });
+    this.ui.compose([
+      {
+        center: [0.5, 0.8],
+        size: [0.2, 0.1],
+        intro: new AnimationCSS("zoomInDown", 1, "fast"),
+        outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
+      },
+      {
+        command: { type: commands.start },
+      },
+      {
+        text: "Start Game",
+      },
+    ]);
   }
 
   // things to load

@@ -59,6 +59,21 @@ export class UIInstance {
     return animateCSSKey(element, "outro");
   }
 
+  compose(uiOperations) {
+    let parent = this.div;
+    for (let op of uiOperations) {
+      if (op.command) {
+        parent = this.createButton(parent, op);
+      } else if (op.text) {
+        parent = this.createTextBox(parent, op);
+      } else {
+        op.parent = parent;
+        parent = this.createContainer(op);
+      }
+    }
+    return parent;
+  }
+
   createButton(parent, { command }) {
     const div = document.createElement("div");
     div.isCustom = true;
