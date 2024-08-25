@@ -5,7 +5,7 @@ import { animateCSS, AnimationCSS } from "../../utils/animate.js";
 import {
   UIButtonParams,
   UIContainerParams,
-  UITextBox,
+  UITextBoxParams,
 } from "../../engine/ui.js";
 
 const commands = makeEnum(["start"]);
@@ -21,7 +21,7 @@ export class MainMenu extends GameState {
         intro: new AnimationCSS("zoomInDown", 1, "fast"),
         outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
       }),
-      new UITextBox({
+      new UITextBoxParams({
         text: "Start Game",
       }),
     ]);
@@ -36,7 +36,7 @@ export class MainMenu extends GameState {
       new UIButtonParams({
         command: { type: commands.start },
       }),
-      new UITextBox({
+      new UITextBoxParams({
         text: "Start Game",
       }),
     ]);

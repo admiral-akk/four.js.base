@@ -94,7 +94,18 @@ export class UIButtonParams extends UIParams {
   }
 }
 
-export class UITextBox extends UIParams {
+export class UITableParams extends UIParams {
+  construct(parent) {
+    const div = super.construct(parent);
+
+    const { direction = "column", tableClass = "default-ui-table" } = this;
+    div.className = `${tableClass} c-${direction} ui-table`;
+
+    return div;
+  }
+}
+
+export class UITextBoxParams extends UIParams {
   construct(parent) {
     const {
       containerClass = "default-text-box-container",

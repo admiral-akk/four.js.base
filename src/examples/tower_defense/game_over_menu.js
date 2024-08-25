@@ -2,6 +2,12 @@ import { TowerDefense } from "./tower_defense.js";
 import { MainMenu } from "./main_menu.js";
 import { GameState } from "../../engine/engine.js";
 import { makeEnum } from "../../utils/helper.js";
+import {
+  UIButtonParams,
+  UIContainerParams,
+  UITextBoxParams,
+} from "../../engine/ui.js";
+import { animateCSS, AnimationCSS } from "../../utils/animate.js";
 
 const commands = makeEnum(["newGame", "mainMenu"]);
 
@@ -9,71 +15,59 @@ export class GameOverMenu extends GameState {
   init(engine) {
     super.init(engine);
 
-    this.ui.createElement({
-      classNames: "column-c",
-      style: {
-        position: "absolute",
-        top: "20%",
-        right: "40%",
-        height: "50%",
-        width: "20%",
-      },
-      children: [
-        {
-          classNames: "targetable column-c",
-          style: {
-            height: "90%",
-            width: "30%",
-          },
-          command: {
-            type: commands.newGame,
-          },
-          children: [
-            {
-              text: "New Game",
-            },
-          ],
-        },
-        {
-          classNames: "targetable column-c",
-          style: {
-            height: "90%",
-            width: "30%",
-          },
-          command: {
-            type: commands.mainMenu,
-          },
-          children: [
-            {
-              text: "Main Menu",
-            },
-          ],
-        },
+    const table = this.ui.compose([
+      new UIContainerParams({
+        center: [0.5, 0.4],
+        size: [0.2, 0.5],
+        intro: new AnimationCSS("zoomInDown", 1, "fast"),
+        outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
+      }),
+    ]);
+
+    this.ui.compose(
+      [
+        new UIButtonParams({ command: { type: commands.newGame } }),
+        new UITextBoxParams({ text: "New Game" }),
       ],
-    });
+      table
+    );
+
+    this.ui.compose(
+      [
+        new UIButtonParams({ command: { type: commands.mainMenu } }),
+        new UITextBoxParams({ text: "Main Menu" }),
+      ],
+      table
+    );
   }
 
   tick(engine) {}
 
   update(engine) {
-    const { clickedCommands } = engine.input.getState().ui;
-    this.commands.push(...clickedCommands);
+    const { commands } = engine.input.getState().ui;
+    this.commands.push(...commands);
   }
 
   resolveCommands(engine) {
     this.commands.forEach((command) => {
       switch (command.type) {
         case commands.mainMenu:
-          engine.popState();
-          engine.replaceState(new MainMenu());
+          this.ui.exitAll().then((_) => {
+            engine.popState();
+            engine.replaceState(new MainMenu());
+          });
           break;
         case commands.newGame:
-          engine.popState();
-          engine.replaceState(new TowerDefense());
+          this.ui.exitAll().then((_) => {
+            engine.popState();
+            engine.replaceState(new TowerDefense());
+          });
           break;
         default:
           break;
       }
     });
   }
+
+  render(renderer) {}
 }
