@@ -49,25 +49,31 @@ class UIParams {
       this[key] = params[key];
     }
   }
+
+  construct(parent) {
+    const div = document.createElement("div");
+    parent.appendChild(div);
+    div.isCustom = true;
+    return div;
+  }
 }
 
 export class UIContainerParams extends UIParams {
   construct(parent) {
+    const div = super.construct(parent);
+
     const {
       center = [0.5, 0.5],
       size = [1, 1],
       intro = null,
       outro = null,
     } = this;
-    const div = document.createElement("div");
     div.className = "root-level-ui";
-    div.isCustom = true;
     div.style.width = `${size[0] * 100}%`;
     div.style.height = `${size[1] * 100}%`;
     // offset by half to center it.
     div.style.right = `${center[0] * 100 - size[0] * 50}%`;
     div.style.top = `${center[1] * 100 - size[1] * 50}%`;
-    parent.appendChild(div);
 
     div.intro = intro;
     div.outro = outro;
@@ -78,12 +84,12 @@ export class UIContainerParams extends UIParams {
 
 export class UIButtonParams extends UIParams {
   construct(parent) {
+    const div = super.construct(parent);
+
     const { command } = this;
-    const div = document.createElement("div");
-    div.isCustom = true;
     div.className = `targetable ${commandButton}`;
     div.command = command;
-    parent.appendChild(div);
+
     return div;
   }
 }
@@ -96,13 +102,11 @@ export class UITextBox extends UIParams {
       text,
       size = "m",
     } = this;
-    const div = document.createElement("div");
-    const textDiv = document.createElement("div");
-    div.appendChild(textDiv);
-    div.isCustom = true;
-    textDiv.isCustom = true;
-    parent.appendChild(div);
+
+    const div = super.construct(parent);
     div.className = `${containerClass} text-box-container`;
+
+    const textDiv = super.construct(div);
     textDiv.className = `${textClass} text-box f-${size}`;
     textDiv.innerText = text;
 
