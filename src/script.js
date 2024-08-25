@@ -9,6 +9,9 @@ import GUI from "lil-gui";
 import { GameEngine } from "./engine/engine.js";
 import { MainMenu } from "./examples/tower_defense/main_menu.js";
 
+import { addCustomArrayMethods } from "./utils/array.js";
+addCustomArrayMethods();
+
 const gui = new GUI();
 
 var stats = new Stats();

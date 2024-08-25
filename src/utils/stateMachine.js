@@ -9,17 +9,13 @@ export class StateMachine {
   }
 
   cleanup() {
-    while (this.currentState()) {
-      this.popState();
+    while (this.states.length) {
+      this.cleanupState(this.states.pop());
     }
   }
 
   currentState() {
-    const len = this.states.length;
-    if (len > 0) {
-      return this.states[len - 1];
-    }
-    return null;
+    return this.states.peek();
   }
 
   addState(state) {
@@ -28,15 +24,13 @@ export class StateMachine {
   }
 
   cleanupState(state) {
-    state.cleanup(this);
+    if (state) {
+      state.cleanup(this);
+    }
   }
 
   replaceState(state) {
-    const current = this.currentState();
-    if (current) {
-      console.log(current);
-      this.cleanupState(this.states.pop());
-    }
+    this.cleanupState(this.states.pop());
     this.addState(state);
   }
 
@@ -46,10 +40,7 @@ export class StateMachine {
   }
 
   popState() {
-    const current = this.currentState();
-    if (current) {
-      this.cleanupState(this.states.pop());
-    }
+    this.cleanupState(this.states.pop());
     this.currentState()?.resume();
   }
 }
