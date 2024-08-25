@@ -31,7 +31,7 @@ class InputManager {
         this.history.object.delete(child);
       }
     });
-    this.cleanupContainer(scene.ui);
+    this.cleanupContainer(scene.ui.div);
   }
 
   cleanupContainer(ui) {

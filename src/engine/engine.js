@@ -1,93 +1,8 @@
 import { Scene, PerspectiveCamera, OrthographicCamera } from "three";
 import { gsap } from "gsap";
 import { AudioManager } from "./audio.js";
-import { commandButton } from "./input.js";
 import { StateMachine } from "../utils/stateMachine.js";
-import { animateCSS } from "../utils/animate.js";
-
-function addAlignment(style, alignment) {
-  if ("height" in alignment) {
-    style.height = `${alignment.height * 100}%`;
-  }
-  if ("width" in alignment) {
-    style.width = `${alignment.width * 100}%`;
-  }
-  if (style.position === "absolute") {
-    if ("rightOffset" in alignment) {
-      style.right = `${100 * alignment.rightOffset}%`;
-    } else {
-      style.right = `${50 * (1 - alignment.width)}%`;
-    }
-    if ("topOffset" in alignment) {
-      style.top = `${100 * alignment.topOffset}%`;
-    } else {
-      style.top = `${50 * (1 - alignment.height)}%`;
-    }
-  }
-}
-
-function addUiHelpers(div) {
-  div.createElement = ({
-    type = "div",
-    id = null,
-    alignment = {},
-    style = {},
-    command = null,
-    parent = div,
-    intro = null,
-    classNames = "",
-    text = "",
-    data = null,
-    children = [],
-  }) => {
-    const element = document.createElement(type);
-    if (classNames instanceof Array) {
-      classNames = classNames.join(" ");
-    }
-    element.className = classNames;
-    if (command) {
-      element.command = command;
-      element.classList.add(commandButton);
-    }
-    if (parent === div) {
-      element.style.position = "absolute";
-    }
-    for (const [key, value] of Object.entries(style)) {
-      element.style[key] = value;
-    }
-    addAlignment(element.style, alignment);
-    element.isCustom = true;
-    if (data) {
-      element.data = data;
-    }
-    if (id) {
-      element.id = id;
-    }
-    element.innerText = text;
-
-    if (typeof parent === "string" || parent instanceof String) {
-      parent = document.getElementById(parent);
-    }
-    parent.appendChild(element);
-    children.map((c) => {
-      let child = c;
-      if (typeof c === "string" || c instanceof String) {
-        child = {
-          className: "f-s",
-          text: c,
-          parent: element,
-        };
-      } else {
-        child.parent = element;
-      }
-      element.appendChild(div.createElement(child));
-    });
-    if (intro) {
-      animateCSS(element, intro);
-    }
-    return element;
-  };
-}
+import { UIManager } from "./ui.js";
 
 class TickTracker {
   constructor(tickRate, getTime) {
@@ -126,7 +41,7 @@ export class GameEngine extends StateMachine {
     super();
     this.input = input;
     gsap.globalTimeline.timeScale(1);
-    this.ui = document.querySelector("div.uiContainer");
+    this.ui = new UIManager();
     this.time = time;
     this.loader = loader;
     this.renderer = renderer;
@@ -149,17 +64,12 @@ export class GameEngine extends StateMachine {
   }
 
   makeContainer() {
-    var div = document.createElement("div");
-    div.className = "ui";
-    div.style.zIndex = `${this.states.length + 1}`;
-    this.ui.appendChild(div);
-    addUiHelpers(div);
-    return div;
+    return this.ui.pushInstance();
   }
 
   cleanupState(state) {
     super.cleanupState(state);
-    this.ui.removeChild(state.ui);
+    this.ui.dropInstance();
     this.input.cleanup(state);
   }
 
