@@ -45,8 +45,35 @@ div {
   container: ui;
 }
 
+.default-text-box-container {
+  background-color: darkgray;
+}
+
+.text-box-container {
+  flex: 1;
+  background-color: darkgray;
+}
+
+.default-text-box {
+  background-color: darkgray;
+}
+
+.text-box {
+  container: ui;
+}
+
+.f-xs {
+  font-size: 0.5cqi;
+  text-align: center;
+}
+
 .f-s {
   font-size: 1cqi;
+  text-align: center;
+}
+
+.f-m {
+  font-size: 3cqi;
   text-align: center;
 }
 
@@ -55,11 +82,23 @@ div {
   text-align: center;
 }
 
+.f-xl {
+  font-size: 4cqi;
+  text-align: center;
+}
+
 .ability-number {
   font-size: 1.5cqi;
   text-align: center;
   font-weight: bold;
   color: white;
+}
+
+.root-level-ui {
+  position: absolute;
+  align-items: center;
+  justify-content: center;
+  display: flex;
 }
 
 /* c for container */

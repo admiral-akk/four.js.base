@@ -8,21 +8,31 @@ const commands = makeEnum(["start"]);
 export class MainMenu extends GameState {
   init(engine) {
     super.init(engine);
-    this.ui.createElement({
-      id: "12",
-      classNames: ["column-c", "main-menu-title"],
+
+    const container = this.ui.createContainer({
+      center: [0.5, 0.1],
+      size: [0.8, 0.1],
       intro: new AnimationCSS("zoomInDown", 1, "fast"),
-      children: ["My First Tower Defense"],
+      outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
     });
 
-    this.ui.createElement({
-      id: "13",
-      classNames: ["column-c", "main-menu-start-game"],
-      intro: new AnimationCSS("zoomInDown", 4, "slow"),
-      command: {
-        type: commands.start,
-      },
-      children: ["Start Game"],
+    this.ui.createTextBox(container, {
+      text: "My First Tower Defense",
+    });
+
+    const buttonContainer = this.ui.createContainer({
+      center: [0.5, 0.8],
+      size: [0.2, 0.1],
+      intro: new AnimationCSS("zoomInDown", 1, "fast"),
+      outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
+    });
+
+    const button = this.ui.createButton(buttonContainer, {
+      command: { type: commands.start },
+    });
+
+    this.ui.createTextBox(button, {
+      text: "Start Game",
     });
   }
 
@@ -43,12 +53,11 @@ export class MainMenu extends GameState {
       switch (command.type) {
         case commands.start:
           engine.playSound("./audio/click1.ogg");
-          animateCSS(".column-c", new AnimationCSS("bounceOutLeft")).then(
-            (msg) => {
-              console.log("resolved");
-              engine.replaceState(new TowerDefense());
-            }
-          );
+
+          this.ui.exitAll().then((result) => {
+            console.log("resolved");
+            engine.replaceState(new TowerDefense());
+          });
           break;
         default:
           break;

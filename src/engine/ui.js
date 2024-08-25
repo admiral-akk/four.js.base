@@ -1,4 +1,4 @@
-import { animateCSS } from "../utils/animate.js";
+import { animateCSS, animateCSSKey } from "../utils/animate.js";
 
 import { commandButton } from "./input.js";
 export class UIManager {
@@ -48,6 +48,69 @@ export class UIInstance {
     this.div = document.createElement("div");
     this.div.className = "ui";
     this.div.style.zIndex = `${zIndex}`;
+  }
+
+  exitAll() {
+    return animateCSSKey(Array.from(this.div.children), "outro");
+  }
+
+  // All elements can have an intro and outtro animation
+  exit(element) {
+    return animateCSSKey(element, "outro");
+  }
+
+  createButton(parent, { command }) {
+    const div = document.createElement("div");
+    div.isCustom = true;
+    div.className = `targetable ${commandButton}`;
+    div.command = command;
+    parent.appendChild(div);
+    return div;
+  }
+
+  createContainer({
+    parent = this.div,
+    center = [0.5, 0.5],
+    size = [1, 1],
+    intro = null,
+    outro = null,
+  }) {
+    const div = document.createElement("div");
+    div.className = "root-level-ui";
+    div.isCustom = true;
+    div.style.width = `${size[0] * 100}%`;
+    div.style.height = `${size[1] * 100}%`;
+    // offset by half to center it.
+    div.style.right = `${center[0] * 100 - size[0] * 50}%`;
+    div.style.top = `${center[1] * 100 - size[1] * 50}%`;
+    parent.appendChild(div);
+
+    div.intro = intro;
+    div.outro = outro;
+    animateCSSKey([div], "intro");
+    return div;
+  }
+
+  createTextBox(
+    parent,
+    {
+      containerClass = "default-text-box-container",
+      textClass = "default-text-box",
+      text = "Lorem Ipsum",
+      size = "m",
+    }
+  ) {
+    const div = document.createElement("div");
+    const textDiv = document.createElement("div");
+    div.appendChild(textDiv);
+    div.isCustom = true;
+    textDiv.isCustom = true;
+    parent.appendChild(div);
+    div.className = `${containerClass} text-box-container`;
+    textDiv.className = `${textClass} text-box f-${size}`;
+    textDiv.innerText = text;
+
+    return div;
   }
 
   createElement({
@@ -106,7 +169,7 @@ export class UIInstance {
       element.appendChild(this.createElement(child));
     });
     if (intro) {
-      animateCSS(element, intro);
+      animateCSS([element], intro);
     }
     return element;
   }

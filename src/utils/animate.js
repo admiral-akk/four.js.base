@@ -52,14 +52,51 @@ export class AnimationCSS {
   }
 }
 
-export const animateCSS = (element, animation) =>
+export const animateCSSKey = (elements, key) => {
+  // We create a Promise and return it
+  return new Promise((resolve, reject) => {
+    let nodes = [];
+    if (typeof elements === "string" || elements instanceof String) {
+      nodes = document.querySelectorAll(elements);
+    } else {
+      nodes = elements;
+    }
+
+    let remaining = nodes.length;
+
+    function handleAnimationEnd(node, event) {
+      event.stopPropagation();
+      clearAnimations(node);
+      if (remaining === 1) {
+        // When the animation ends, we clean the classes and return the nodes
+        resolve(nodes);
+      } else {
+        remaining--;
+      }
+    }
+
+    console.log(nodes);
+
+    nodes.forEach((node) => {
+      const animation = node[key];
+      animation.addAnimation(node);
+      node.addEventListener(
+        "animationend",
+        (ev) => handleAnimationEnd(node, ev),
+        { once: true }
+      );
+    });
+  });
+};
+
+export const animateCSS = (elements, animation) =>
   // We create a Promise and return it
   new Promise((resolve, reject) => {
     let nodes = [];
-    if (typeof element === "string" || element instanceof String) {
-      nodes = document.querySelectorAll(element);
+    if (typeof elements === "string" || elements instanceof String) {
+      nodes = document.querySelectorAll(elements);
     } else {
-      nodes = [element];
+      nodes = elements;
     }
 
     let remaining = nodes.length;
