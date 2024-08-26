@@ -13,7 +13,7 @@ function clearAnimations(element) {
 }
 
 export class AnimationCSS {
-  constructor(name, delay = 0, speed = null) {
+  constructor(name, delay = 0, speed = 1) {
     this.name = name;
     this.delay = delay;
     this.speed = speed;
@@ -26,29 +26,8 @@ export class AnimationCSS {
 
     const animationName = `${animationPrefix}${this.name}`;
     element.classList.add(`${animationPrefix}animated`, animationName);
-
-    switch (this.delay) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-      case 5:
-        element.classList.add(`${animationPrefix}delay-${this.delay}`);
-        break;
-      default:
-        break;
-    }
-
-    switch (this.speed) {
-      case "slow":
-      case "slower":
-      case "fast":
-      case "faster":
-        element.classList.add(`${animationPrefix}${this.speed}`);
-        break;
-      default:
-        break;
-    }
+    element.style["animation-delay"] = `${this.delay}s`;
+    element.style["animation-duration"] = `${this.speed}s`;
   }
 }
 

@@ -18,8 +18,8 @@ export class MainMenu extends GameState {
       new UIContainerParams({
         center: [0.5, 0.1],
         size: [0.8, 0.1],
-        intro: new AnimationCSS("zoomInDown", 1, "fast"),
-        outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
+        intro: new AnimationCSS("zoomInDown", 0, 1),
+        outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
       new UITextBoxParams({
         text: "Start Game",
@@ -30,8 +30,8 @@ export class MainMenu extends GameState {
       new UIContainerParams({
         center: [0.5, 0.8],
         size: [0.2, 0.1],
-        intro: new AnimationCSS("zoomInDown", 1, "fast"),
-        outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
+        intro: new AnimationCSS("zoomInDown", 1, 1),
+        outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
       new UIButtonParams({
         command: { type: commands.start },

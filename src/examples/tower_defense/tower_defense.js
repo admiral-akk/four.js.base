@@ -7,6 +7,11 @@ import { GridPosition } from "./grid_position.js";
 import { KeyedMap, makeEnum } from "../../utils/helper.js";
 import { State, StateMachine } from "../../utils/stateMachine.js";
 import { AnimationCSS } from "../../utils/animate.js";
+import {
+  UIButtonParams,
+  UITableParams,
+  UITextBoxParams,
+} from "../../engine/ui.js";
 
 const entityMap = new KeyedMap();
 
@@ -547,18 +552,62 @@ class TowerDefenseInput extends StateMachine {
     };
     this.ground = makeGround(100, 100);
 
-    this.ui.createElement({
-      classNames: "targetable column-c",
-      alignment: {
-        topOffset: 0.05,
-        width: 0.15,
-        height: 0.1,
-      },
-      command: {
-        type: TowerDefenseGame.commands.startFightPhase,
-      },
-      text: "Start Fight",
-    });
+    this.ui.compose([
+      new UIContainerParams({
+        center: [0.5, 0.1],
+        size: [0.15, 0.1],
+        intro: new AnimationCSS("zoomInDown", 1, 1),
+        outro: new AnimationCSS("bounceOutLeft", 1, 1),
+      }),
+      new UIButtonParams({
+        command: {
+          type: TowerDefenseGame.commands.startFightPhase,
+        },
+      }),
+      new UITextBoxParams({
+        text: "Start Fight",
+      }),
+    ]);
+
+    const bottomBar = this.ui.compose([
+      new UIContainerParams({
+        center: [0.5, 0.875],
+        size: [0.8, 0.15],
+        intro: new AnimationCSS("zoomInDown", 1, 1),
+        outro: new AnimationCSS("bounceOutLeft", 1, 1),
+      }),
+      new UITableParams({}),
+    ]);
+
+    this.ui.compose(
+      [
+        new UIButtonParams({
+          command: { type: "selectBuilding", buildingConfig: baseTowerConfig },
+        }),
+        new UITextBoxParams({
+          text: "Build 1",
+        }),
+      ],
+      bottomBar
+    );
+    this.ui.compose(
+      [
+        new UIButtonParams({
+          command: {
+            type: TowerDefenseGame.commands.spawnEnemy,
+            config: {
+              health: 2,
+              speed: 0.01,
+            },
+          },
+          t,
+        }),
+        new UITextBoxParams({
+          text: "Spawn Enemy",
+        }),
+      ],
+      bottomBar
+    );
 
     this.ui.createElement({
       classNames: "row-c",

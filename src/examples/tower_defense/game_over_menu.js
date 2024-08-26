@@ -19,8 +19,8 @@ export class GameOverMenu extends GameState {
       new UIContainerParams({
         center: [0.5, 0.4],
         size: [0.2, 0.5],
-        intro: new AnimationCSS("zoomInDown", 1, "fast"),
-        outro: new AnimationCSS("bounceOutLeft", 1, "fast"),
+        intro: new AnimationCSS("zoomInDown", 1, 1),
+        outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
     ]);
 
