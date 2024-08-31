@@ -9,7 +9,6 @@ import { State, StateMachine } from "../../utils/stateMachine.js";
 import { AnimationCSS } from "../../utils/animate.js";
 import {
   UIButtonParams,
-  UITableParams,
   UIContainerParams,
   UITextBoxParams,
 } from "../../engine/ui.js";
@@ -572,12 +571,12 @@ class TowerDefenseInput extends StateMachine {
 
     const bottomBar = this.ui.compose([
       new UIContainerParams({
+        id: inputIds.bottomMenu,
         center: [0.5, 0.875],
         size: [0.8, 0.15],
         intro: new AnimationCSS("zoomInDown", 1, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
-      new UITableParams({}),
     ]);
 
     this.ui.compose(
@@ -609,46 +608,6 @@ class TowerDefenseInput extends StateMachine {
       bottomBar
     );
 
-    const towerUi = this.ui.compose(
-      [
-        new UIButtonParams({
-          command: {
-            type: TowerDefenseGame.commands.spawnEnemy,
-            config: {
-              health: 2,
-              speed: 0.01,
-            },
-          },
-        }),
-        new UITextBoxParams({
-          text: "Spawn Enemy",
-        }),
-      ],
-      bottomBar
-    );
-
-    towerUi.style = "none";
-    towerUi.id = inputIds.tooltip;
-
-    this.ui.compose(
-      [
-        new UIButtonParams({
-          command: {
-            type: TowerDefenseGame.commands.spawnEnemy,
-            config: {
-              health: 2,
-              speed: 0.01,
-            },
-          },
-        }),
-        new UITextBoxParams({
-          text: "Spawn Enemy",
-        }),
-      ],
-      bottomBar
-    );
-
-    this.towerUi = towerUi;
     this.towerUi = this.ui.createElement({
       classNames: "targetable column-c",
       id: inputIds.tooltip,

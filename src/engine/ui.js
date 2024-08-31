@@ -54,6 +54,11 @@ class UIParams {
     const div = document.createElement("div");
     parent.appendChild(div);
     div.isCustom = true;
+    // special case
+    if (this.id) {
+      console.log("ID", this.id);
+      div.id = this.id;
+    }
     return div;
   }
 
@@ -92,19 +97,6 @@ export class UIButtonParams extends UIParams {
     this.setPosition(div, center, size);
     div.className = `targetable ${commandButton}`;
     div.command = command;
-
-    return div;
-  }
-}
-
-export class UITableParams extends UIParams {
-  construct(parent) {
-    const div = super.construct(parent);
-    const { center = [0.5, 0.5], size = [1, 1], command } = this;
-    this.setPosition(div, center, size);
-
-    const { direction = "column", tableClass = "default-ui-table" } = this;
-    div.className = `${tableClass} c-${direction} ui-table`;
 
     return div;
   }
