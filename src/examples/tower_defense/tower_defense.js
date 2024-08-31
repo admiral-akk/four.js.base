@@ -10,6 +10,7 @@ import { AnimationCSS } from "../../utils/animate.js";
 import {
   UIButtonParams,
   UIContainerParams,
+  UIImageParams,
   UITextBoxParams,
 } from "../../engine/ui.js";
 
@@ -608,89 +609,106 @@ class TowerDefenseInput extends StateMachine {
       bottomBar
     );
 
-    this.towerUi = this.ui.createElement({
-      classNames: "targetable column-c",
-      id: inputIds.tooltip,
-      alignment: {
-        height: 0.2,
-        width: 0.2,
-      },
-      style: {
-        display: "none",
-      },
-      children: [
-        {
-          classNames: "row-c",
-          children: ["Tower"],
-        },
-        {
-          classNames: "row-c",
-          id: inputIds.abilitySelect,
-          children: [
-            {
-              classNames: "targetable ability dart-image",
-              alignment: {
-                width: 0.4,
-              },
-              command: {
-                type: TowerDefenseGame.commands.setAbility,
-                index: 0,
-              },
-              children: [
-                {
-                  classNames: "stat column-c top-left reload-image",
-                  children: [
-                    {
-                      classNames: "ability-number",
-                      text: "40",
-                    },
-                  ],
-                },
-                {
-                  classNames: "stat column-c top-right attack-image",
-                  children: [
-                    {
-                      classNames: "ability-number",
-                      text: "40",
-                    },
-                  ],
-                },
-              ],
-            },
-            {
-              classNames: "targetable ability spear-image",
-              alignment: {
-                width: 0.4,
-              },
-              command: {
-                type: TowerDefenseGame.commands.setAbility,
-                index: 1,
-              },
-              children: [
-                {
-                  classNames: "stat column-c top-left reload-image",
-                  children: [
-                    {
-                      classNames: "ability-number",
-                      text: "40",
-                    },
-                  ],
-                },
-                {
-                  classNames: "stat column-c top-right attack-image",
-                  children: [
-                    {
-                      classNames: "ability-number",
-                      text: "40",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
+    this.towerUi = this.ui.compose([
+      new UIContainerParams({
+        id: inputIds.tooltip,
+        center: [0.5, 0.5],
+        size: [0.2, 0.2],
+        intro: new AnimationCSS("zoomInDown", 1, 1),
+        outro: new AnimationCSS("bounceOutLeft", 1, 1),
+      }),
+      new UIContainerParams({
+        id: inputIds.abilitySelect,
+        center: [0.5, 0.5],
+        size: [1, 0.8],
+      }),
+    ]);
+
+    const dart = this.ui.compose(
+      [
+        new UIButtonParams({
+          command: {
+            type: TowerDefenseGame.commands.setAbility,
+            index: 0,
+          },
+          center: [0.25, 0.5],
+          size: [0.4, 0.4],
+        }),
+        new UIImageParams({ imageName: "dart" }),
       ],
-    });
+      this.towerUi
+    );
+
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "clockwise-rotation",
+          center: [0.5, 0.5],
+          size: [0.2, 0.2],
+        }),
+        new UITextBoxParams({
+          text: "40",
+        }),
+      ],
+      dart
+    );
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "punch-blast",
+          center: [0.5, 0.5],
+          size: [0.2, 0.2],
+        }),
+        new UITextBoxParams({
+          text: "1",
+        }),
+      ],
+      dart
+    );
+
+    const spear = this.ui.compose(
+      [
+        new UIButtonParams({
+          command: {
+            type: TowerDefenseGame.commands.setAbility,
+            index: 1,
+          },
+        }),
+        new UIImageParams({
+          imageName: "spear-feather",
+          center: [0.75, 0.5],
+          size: [0.4, 0.4],
+        }),
+      ],
+      this.towerUi
+    );
+
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "clockwise-rotation",
+          center: [0.5, 0.5],
+          size: [0.2, 0.2],
+        }),
+        new UITextBoxParams({
+          text: "40",
+        }),
+      ],
+      spear
+    );
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "punch-blast",
+          center: [0.5, 0.5],
+          size: [0.2, 0.2],
+        }),
+        new UITextBoxParams({
+          text: "1",
+        }),
+      ],
+      spear
+    );
   }
 }
 

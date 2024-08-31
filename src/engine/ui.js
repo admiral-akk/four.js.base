@@ -56,8 +56,10 @@ class UIParams {
     div.isCustom = true;
     // special case
     if (this.id) {
-      console.log("ID", this.id);
       div.id = this.id;
+    }
+    if (this.class) {
+      div.className = this.class;
     }
     return div;
   }
@@ -81,10 +83,22 @@ export class UIContainerParams extends UIParams {
       outro = null,
     } = this;
     this.setPosition(div, center, size);
-    div.className = "root-level-ui";
+    div.classList.add("root-level-ui");
     div.intro = intro;
     div.outro = outro;
     animateCSSKey([div], "intro");
+    return div;
+  }
+}
+
+export class UIImageParams extends UIParams {
+  construct(parent) {
+    const div = super.construct(parent);
+    const { center = [0.5, 0.5], size = [1, 1], imageName } = this;
+    this.setPosition(div, center, size);
+    div.classList.add("default-image");
+    div.style["background-image"] = `url(./icons/${imageName}.png)`;
+
     return div;
   }
 }
@@ -95,7 +109,8 @@ export class UIButtonParams extends UIParams {
 
     const { center = [0.5, 0.5], size = [1, 1], command } = this;
     this.setPosition(div, center, size);
-    div.className = `targetable ${commandButton}`;
+    div.classList.add("targetable");
+    div.classList.add(commandButton);
     div.command = command;
 
     return div;
@@ -116,10 +131,13 @@ export class UITextBoxParams extends UIParams {
     const div = super.construct(parent);
     this.setPosition(div, center, size);
 
-    div.className = `${containerClass} text-box-container`;
+    div.classList.add(containerClass);
+    div.classList.add("text-box-container");
 
     const textDiv = super.construct(div);
-    textDiv.className = `${textClass} text-box f-${textSize}`;
+    textDiv.classList.add(textClass);
+    textDiv.classList.add("text-box");
+    textDiv.classList.add(`f-${textSize}`);
     textDiv.innerText = text;
 
     return div;

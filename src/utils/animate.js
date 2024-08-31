@@ -44,7 +44,10 @@ export const animateCSSKey = (elements, key) => {
     let remaining = nodes.length;
 
     function handleAnimationEnd(node, event) {
-      event.stopPropagation();
+      if (event) {
+        event.stopPropagation();
+      }
+
       clearAnimations(node);
       if (remaining === 1) {
         // When the animation ends, we clean the classes and return the nodes
@@ -56,12 +59,16 @@ export const animateCSSKey = (elements, key) => {
 
     nodes.forEach((node) => {
       const animation = node[key];
-      animation.addAnimation(node);
-      node.addEventListener(
-        "animationend",
-        (ev) => handleAnimationEnd(node, ev),
-        { once: true }
-      );
+      if (animation) {
+        animation.addAnimation(node);
+        node.addEventListener(
+          "animationend",
+          (ev) => handleAnimationEnd(node, ev),
+          { once: true }
+        );
+      } else {
+        handleAnimationEnd(node, null);
+      }
     });
   });
 };
