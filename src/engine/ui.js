@@ -51,8 +51,48 @@ class Params {
   }
 }
 
+// Controls the position / size of the UI element.
+export class PositionParams extends Params {}
+
+export class RelativePosition extends PositionParams {}
+
+export class ImagePosition extends PositionParams {
+  constructor(
+    params = { width: 1, aspectRatio: 1, centerX: 0.5, centerY: 0.5 }
+  ) {
+    super(params);
+  }
+
+  setPosition(style) {
+    style.width = `${this.width * 100}%`;
+    style.height = `${this.height * 100}%`;
+    style.position = "absolute";
+    //style["aspect-ratio"] = this.aspectRatio;
+    // offset by half to center it.
+    style.right = `${this.centerX * 100 - this.width * 50}%`;
+    style.top = `${this.centerY * 100 - this.height * 50}%`;
+  }
+}
+
+export class AbsolutePosition extends PositionParams {
+  constructor(params = { width: 1, height: 1, centerX: 0.5, centerY: 0.5 }) {
+    super(params);
+  }
+
+  setPosition(style) {
+    style.height = `${this.height * 100}%`;
+    style.width = `${this.width * 100}%`;
+    style.position = "absolute";
+    // offset by half to center it.
+    style.right = `${this.centerX * 100 - this.width * 50}%`;
+    style.top = `${this.centerY * 100 - this.height * 50}%`;
+  }
+}
+
 class UIParams extends Params {
   construct(parent) {
+    const { position = new AbsolutePosition() } = this;
+
     const div = document.createElement("div");
     parent.appendChild(div);
     div.isCustom = true;
@@ -63,6 +103,7 @@ class UIParams extends Params {
     if (this.class) {
       div.className = this.class;
     }
+    position.setPosition(div.style);
     return div;
   }
 
@@ -75,38 +116,10 @@ class UIParams extends Params {
   }
 }
 
-export class PositionParams extends Params {
-  setPosition(style) {
-    style.height = `${this.height * 100}%`;
-    style.width = `${this.width * 100}%`;
-  }
-}
-
-export class RelativePosition extends PositionParams {}
-
-export class AbsolutePosition extends PositionParams {
-  constructor(params = { width: 1, height: 1, centerX: 0.5, centerY: 0.5 }) {
-    super(params);
-  }
-
-  setPosition(style) {
-    super.setPosition(style);
-    style.position = "absolute";
-    // offset by half to center it.
-    style.right = `${this.centerX * 100 - this.width * 50}%`;
-    style.top = `${this.centerY * 100 - this.height * 50}%`;
-  }
-}
-
 export class UIContainerParams extends UIParams {
   construct(parent) {
     const div = super.construct(parent);
-    const {
-      position = new AbsolutePosition(),
-      intro = null,
-      outro = null,
-    } = this;
-    position.setPosition(div.style);
+    const { intro = null, outro = null } = this;
     div.classList.add("root-level-ui");
     div.intro = intro;
     div.outro = outro;
@@ -118,8 +131,7 @@ export class UIContainerParams extends UIParams {
 export class UIImageParams extends UIParams {
   construct(parent) {
     const div = super.construct(parent);
-    const { center = [0.5, 0.5], size = [1, 1], imageName } = this;
-    this.setPosition(div, center, size);
+    const { imageName } = this;
     div.classList.add("default-image");
     div.style["background-image"] = `url(./icons/${imageName}.png)`;
 
@@ -131,8 +143,7 @@ export class UIButtonParams extends UIParams {
   construct(parent) {
     const div = super.construct(parent);
 
-    const { center = [0.5, 0.5], size = [1, 1], command } = this;
-    this.setPosition(div, center, size);
+    const { command } = this;
     div.classList.add("targetable");
     div.classList.add(commandButton);
     div.command = command;
@@ -148,13 +159,9 @@ export class UITextBoxParams extends UIParams {
       textClass = "default-text-box",
       text,
       textSize = "m",
-      center = [0.5, 0.5],
-      size = [1, 1],
     } = this;
 
     const div = super.construct(parent);
-    this.setPosition(div, center, size);
-
     div.classList.add(containerClass);
     div.classList.add("text-box-container");
 

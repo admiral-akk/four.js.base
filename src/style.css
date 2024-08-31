@@ -46,16 +46,15 @@ div {
 }
 
 .default-text-box-container {
-  background-color: darkgray;
+  background-color: transparent;
 }
 
 .text-box-container {
   flex: 1;
-  background-color: darkgray;
 }
 
 .default-text-box {
-  background-color: darkgray;
+  background-color: transparent;
 }
 
 .text-box {
@@ -103,6 +102,9 @@ div {
   font-weight: bold;
   color: white;
 }
+.background-grey {
+  background-color: darkgray;
+}
 
 .root-level-ui {
   position: absolute;
@@ -125,22 +127,6 @@ div {
   justify-content: space-around;
   display: flex;
   background-color: darkgray;
-}
-
-/* Main Menu */
-.main-menu-title {
-  width: 80%;
-  height: 10%;
-  top: 10%;
-  right: 10%;
-}
-
-.main-menu-start-game {
-  width: 20%;
-  height: 10%;
-  top: 80%;
-  right: 40%;
-  --animate-delay: 0.5s;
 }
 
 /* ui disables pointer events to allow the canvas to accept them */
@@ -178,32 +164,8 @@ div {
   height: 40%;
 }
 
-.top-left {
-  top: -10%;
-  right: -10%;
-}
-
-.top-right {
-  top: -10%;
-  right: 70%;
-}
-
-.dart-image {
-  background-image: url(./icons/dart.png);
-}
-
-.attack-image {
-  background-image: url(./icons/punch-blast.png);
-}
-
-.reload-image {
-  background-image: url(./icons/clockwise-rotation.png);
-}
-
-.spear-image {
-  background-image: url(./icons/spear-feather.png);
-}
-
 .default-image {
-  background-size: 100% 100%;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
 }

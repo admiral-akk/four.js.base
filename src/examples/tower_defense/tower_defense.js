@@ -6,11 +6,12 @@ import { TowerDefenseGame, baseTowerConfig } from "./tower_defense_game.js";
 import { GridPosition } from "./grid_position.js";
 import { KeyedMap, makeEnum } from "../../utils/helper.js";
 import { State, StateMachine } from "../../utils/stateMachine.js";
-import { AnimationCSS } from "../../utils/animate.js";
+import { AnimationCSS, animateCSSKey } from "../../utils/animate.js";
 import {
   AbsolutePosition,
   UIButtonParams,
   UIContainerParams,
+  ImagePosition,
   UIImageParams,
   UITextBoxParams,
 } from "../../engine/ui.js";
@@ -277,16 +278,17 @@ class OpenInputState extends State {
     }
     const towerAt = game.getTower(hitGrid);
     if (hitGrid && towerAt && released) {
-      input.replaceState(new SelectedUnitInputState(towerAt));
+      input.replaceState(new SelectedUnitInputState(towerAt, scene.ui));
     }
     return clickedCommand;
   }
 }
 
 class SelectedUnitInputState extends State {
-  constructor(selectedUnit) {
+  constructor(selectedUnit, ui) {
     super();
     this.selectedUnit = selectedUnit;
+    this.ui = ui;
   }
 
   init(input) {
@@ -301,17 +303,156 @@ class SelectedUnitInputState extends State {
     };
 
     this.rangeHint = makeRangeHint();
-    const tooltip = document.getElementById(inputIds.tooltip);
-    tooltip.style.display = "block";
-    tooltip.classList.add("targetable");
-    tooltip.style.opacity = 1;
+
+    this.tooltip = this.ui.compose([
+      new UIContainerParams({
+        id: inputIds.tooltip,
+        position: new AbsolutePosition({
+          width: 0.2,
+          height: 0.2,
+          centerX: 0.5,
+          centerY: 0.5,
+        }),
+        intro: new AnimationCSS("zoomInDown", 0, 0.1),
+        outro: new AnimationCSS("bounceOutLeft", 0, 0.1),
+      }),
+      new UIContainerParams({
+        id: inputIds.abilitySelect,
+        position: new AbsolutePosition({
+          width: 1,
+          height: 0.8,
+          centerX: 0.5,
+          centerY: 0.5,
+        }),
+      }),
+    ]);
+
+    const dart = this.ui.compose(
+      [
+        new UIButtonParams({
+          command: {
+            type: TowerDefenseGame.commands.setAbility,
+            index: 0,
+          },
+          position: new AbsolutePosition({
+            width: 0.4,
+            height: 0.4,
+            centerX: 0.25,
+            centerY: 0.5,
+          }),
+        }),
+        new UIImageParams({ imageName: "dart" }),
+      ],
+      this.tooltip
+    );
+
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "clockwise-rotation",
+          position: new AbsolutePosition({
+            width: 0.2,
+            height: 0.2,
+            centerX: 0,
+            centerY: 0,
+          }),
+        }),
+        new UITextBoxParams({
+          class: "ability-number",
+          text: "40",
+        }),
+      ],
+      dart
+    );
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "punch-blast",
+          position: new AbsolutePosition({
+            width: 0.2,
+            height: 0.2,
+            centerX: 1,
+            centerY: 0,
+          }),
+        }),
+        new UITextBoxParams({
+          class: "ability-number",
+          text: "1",
+        }),
+      ],
+      dart
+    );
+
+    const spear = this.ui.compose(
+      [
+        new UIButtonParams({
+          command: {
+            type: TowerDefenseGame.commands.setAbility,
+            index: 1,
+          },
+          position: new AbsolutePosition({
+            width: 0.4,
+            height: 0.4,
+            centerX: 0.75,
+            centerY: 0.5,
+          }),
+        }),
+        new UIImageParams({
+          imageName: "spear-feather",
+        }),
+      ],
+      this.tooltip
+    );
+
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "clockwise-rotation",
+          position: new AbsolutePosition({
+            width: 0.2,
+            height: 0.1,
+            centerX: 0,
+            centerY: 0,
+          }),
+        }),
+        new UITextBoxParams({
+          class: "ability-number",
+          text: "40",
+        }),
+      ],
+      spear
+    );
+    this.ui.compose(
+      [
+        new UIImageParams({
+          imageName: "punch-blast",
+          position: new AbsolutePosition({
+            width: 0.2,
+            height: 0.2,
+            centerX: 1,
+            centerY: 0,
+          }),
+        }),
+        new UITextBoxParams({
+          class: "ability-number",
+          text: "1",
+        }),
+      ],
+      spear
+    );
+
+    this.tooltip.style.display = "block";
+    this.tooltip.classList.add("targetable");
+    this.tooltip.style.opacity = 1;
   }
 
   cleanup(input) {
     input.scene.remove(this.rangeHint);
-    const tooltip = document.getElementById(inputIds.tooltip);
-    tooltip.style.display = "none";
+    const tooltip = this.tooltip;
     tooltip.classList.remove("targetable");
+    animateCSSKey([tooltip], "outro").then(() => {
+      tooltip.remove();
+    });
   }
 
   updateRangeHint() {
@@ -328,7 +469,7 @@ class SelectedUnitInputState extends State {
 
   updateTooltipPosition(input) {
     const { camera } = input.scene;
-    const tooltip = document.getElementById(inputIds.tooltip);
+    const tooltip = this.tooltip;
     const selectedUnit = this.selectedUnit;
     const towerScreenSpace = selectedUnit.gridPos.toVector3().project(camera);
 
@@ -359,8 +500,8 @@ class SelectedUnitInputState extends State {
 
       const { damage, cooldown } = selectedUnit.abilityOptions[i];
 
-      child.children[0].children[0].innerText = `${cooldown}`;
-      child.children[1].children[0].innerText = `${damage}`;
+      child.children[0].children[0].children[0].children[0].innerText = `${cooldown}`;
+      child.children[0].children[1].children[0].children[0].innerText = `${damage}`;
     }
   }
 
@@ -392,7 +533,7 @@ class SelectedUnitInputState extends State {
     }
     const towerAt = game.getTower(hitGrid);
     if (hitGrid && towerAt && released) {
-      input.replaceState(new SelectedUnitInputState(towerAt));
+      input.replaceState(new SelectedUnitInputState(towerAt, scene.ui));
     } else if (released) {
       input.replaceState(new OpenInputState());
     }
@@ -592,6 +733,12 @@ class TowerDefenseInput extends StateMachine {
     this.ui.compose(
       [
         new UIButtonParams({
+          position: new AbsolutePosition({
+            width: 0.4,
+            height: 0.8,
+            centerX: 0.25,
+            centerY: 0.5,
+          }),
           command: { type: "selectBuilding", buildingConfig: baseTowerConfig },
         }),
         new UITextBoxParams({
@@ -603,6 +750,12 @@ class TowerDefenseInput extends StateMachine {
     this.ui.compose(
       [
         new UIButtonParams({
+          position: new AbsolutePosition({
+            width: 0.4,
+            height: 0.8,
+            centerX: 0.75,
+            centerY: 0.5,
+          }),
           command: {
             type: TowerDefenseGame.commands.spawnEnemy,
             config: {
@@ -616,115 +769,6 @@ class TowerDefenseInput extends StateMachine {
         }),
       ],
       bottomBar
-    );
-
-    this.towerUi = this.ui.compose([
-      new UIContainerParams({
-        id: inputIds.tooltip,
-        position: new AbsolutePosition({
-          width: 0.2,
-          height: 0.2,
-          centerX: 0.5,
-          centerY: 0.5,
-        }),
-        intro: new AnimationCSS("zoomInDown", 1, 1),
-        outro: new AnimationCSS("bounceOutLeft", 1, 1),
-      }),
-      new UIContainerParams({
-        id: inputIds.abilitySelect,
-        position: new AbsolutePosition({
-          width: 1,
-          height: 0.8,
-          centerX: 0.5,
-          centerY: 0.5,
-        }),
-      }),
-    ]);
-
-    const dart = this.ui.compose(
-      [
-        new UIButtonParams({
-          command: {
-            type: TowerDefenseGame.commands.setAbility,
-            index: 0,
-          },
-          center: [0.25, 0.5],
-          size: [0.4, 0.4],
-        }),
-        new UIImageParams({ imageName: "dart" }),
-      ],
-      this.towerUi
-    );
-
-    this.ui.compose(
-      [
-        new UIImageParams({
-          imageName: "clockwise-rotation",
-          center: [0.5, 0.5],
-          size: [0.2, 0.2],
-        }),
-        new UITextBoxParams({
-          text: "40",
-        }),
-      ],
-      dart
-    );
-    this.ui.compose(
-      [
-        new UIImageParams({
-          imageName: "punch-blast",
-          center: [0.5, 0.5],
-          size: [0.2, 0.2],
-        }),
-        new UITextBoxParams({
-          text: "1",
-        }),
-      ],
-      dart
-    );
-
-    const spear = this.ui.compose(
-      [
-        new UIButtonParams({
-          command: {
-            type: TowerDefenseGame.commands.setAbility,
-            index: 1,
-          },
-        }),
-        new UIImageParams({
-          imageName: "spear-feather",
-          center: [0.75, 0.5],
-          size: [0.4, 0.4],
-        }),
-      ],
-      this.towerUi
-    );
-
-    this.ui.compose(
-      [
-        new UIImageParams({
-          imageName: "clockwise-rotation",
-          center: [0.5, 0.5],
-          size: [0.2, 0.2],
-        }),
-        new UITextBoxParams({
-          text: "40",
-        }),
-      ],
-      spear
-    );
-    this.ui.compose(
-      [
-        new UIImageParams({
-          imageName: "punch-blast",
-          center: [0.5, 0.5],
-          size: [0.2, 0.2],
-        }),
-        new UITextBoxParams({
-          text: "1",
-        }),
-      ],
-      spear
     );
   }
 }

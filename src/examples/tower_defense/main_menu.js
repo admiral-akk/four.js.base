@@ -64,11 +64,12 @@ export class MainMenu extends GameState {
           centerX: 0.5,
           centerY: 0.1,
         }),
+        class: "background-grey",
         intro: new AnimationCSS("zoomInDown", 0, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
       new UITextBoxParams({
-        text: "Start Game",
+        text: "My First Tower Defense",
       }),
     ]);
 
