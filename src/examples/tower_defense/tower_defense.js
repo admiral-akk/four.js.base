@@ -10,6 +10,7 @@ import { AnimationCSS } from "../../utils/animate.js";
 import {
   UIButtonParams,
   UITableParams,
+  UIContainerParams,
   UITextBoxParams,
 } from "../../engine/ui.js";
 
@@ -600,7 +601,6 @@ class TowerDefenseInput extends StateMachine {
               speed: 0.01,
             },
           },
-          t,
         }),
         new UITextBoxParams({
           text: "Spawn Enemy",
@@ -609,36 +609,9 @@ class TowerDefenseInput extends StateMachine {
       bottomBar
     );
 
-    this.ui.createElement({
-      classNames: "row-c",
-      id: inputIds.bottomMenu,
-      alignment: {
-        topOffset: 0.8,
-        width: 0.8,
-        height: 0.15,
-      },
-      intro: new AnimationCSS("fadeIn"),
-      children: [
-        {
-          classNames: "targetable column-c",
-          alignment: {
-            height: 0.9,
-          },
-          style: {
-            aspectRatio: 1,
-          },
-          command: {
-            type: "selectBuilding",
-            buildingConfig: baseTowerConfig,
-          },
-          text: "Build1",
-        },
-        {
-          classNames: "targetable column-c",
-          alignment: {
-            height: 0.9,
-            width: 0.3,
-          },
+    const towerUi = this.ui.compose(
+      [
+        new UIButtonParams({
           command: {
             type: TowerDefenseGame.commands.spawnEnemy,
             config: {
@@ -646,11 +619,36 @@ class TowerDefenseInput extends StateMachine {
               speed: 0.01,
             },
           },
+        }),
+        new UITextBoxParams({
           text: "Spawn Enemy",
-        },
+        }),
       ],
-    });
+      bottomBar
+    );
 
+    towerUi.style = "none";
+    towerUi.id = inputIds.tooltip;
+
+    this.ui.compose(
+      [
+        new UIButtonParams({
+          command: {
+            type: TowerDefenseGame.commands.spawnEnemy,
+            config: {
+              health: 2,
+              speed: 0.01,
+            },
+          },
+        }),
+        new UITextBoxParams({
+          text: "Spawn Enemy",
+        }),
+      ],
+      bottomBar
+    );
+
+    this.towerUi = towerUi;
     this.towerUi = this.ui.createElement({
       classNames: "targetable column-c",
       id: inputIds.tooltip,

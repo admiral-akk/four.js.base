@@ -56,25 +56,27 @@ class UIParams {
     div.isCustom = true;
     return div;
   }
+
+  setPosition(div, center, size) {
+    div.style.width = `${size[0] * 100}%`;
+    div.style.height = `${size[1] * 100}%`;
+    // offset by half to center it.
+    div.style.right = `${center[0] * 100 - size[0] * 50}%`;
+    div.style.top = `${center[1] * 100 - size[1] * 50}%`;
+  }
 }
 
 export class UIContainerParams extends UIParams {
   construct(parent) {
     const div = super.construct(parent);
-
     const {
       center = [0.5, 0.5],
       size = [1, 1],
       intro = null,
       outro = null,
     } = this;
+    this.setPosition(div, center, size);
     div.className = "root-level-ui";
-    div.style.width = `${size[0] * 100}%`;
-    div.style.height = `${size[1] * 100}%`;
-    // offset by half to center it.
-    div.style.right = `${center[0] * 100 - size[0] * 50}%`;
-    div.style.top = `${center[1] * 100 - size[1] * 50}%`;
-
     div.intro = intro;
     div.outro = outro;
     animateCSSKey([div], "intro");
@@ -86,7 +88,8 @@ export class UIButtonParams extends UIParams {
   construct(parent) {
     const div = super.construct(parent);
 
-    const { command } = this;
+    const { center = [0.5, 0.5], size = [1, 1], command } = this;
+    this.setPosition(div, center, size);
     div.className = `targetable ${commandButton}`;
     div.command = command;
 
@@ -97,6 +100,8 @@ export class UIButtonParams extends UIParams {
 export class UITableParams extends UIParams {
   construct(parent) {
     const div = super.construct(parent);
+    const { center = [0.5, 0.5], size = [1, 1], command } = this;
+    this.setPosition(div, center, size);
 
     const { direction = "column", tableClass = "default-ui-table" } = this;
     div.className = `${tableClass} c-${direction} ui-table`;
@@ -111,14 +116,18 @@ export class UITextBoxParams extends UIParams {
       containerClass = "default-text-box-container",
       textClass = "default-text-box",
       text,
-      size = "m",
+      textSize = "m",
+      center = [0.5, 0.5],
+      size = [1, 1],
     } = this;
 
     const div = super.construct(parent);
+    this.setPosition(div, center, size);
+
     div.className = `${containerClass} text-box-container`;
 
     const textDiv = super.construct(div);
-    textDiv.className = `${textClass} text-box f-${size}`;
+    textDiv.className = `${textClass} text-box f-${textSize}`;
     textDiv.innerText = text;
 
     return div;

@@ -2,6 +2,7 @@ import { TowerDefense } from "./tower_defense.js";
 import { GameState } from "../../engine/engine.js";
 import { makeEnum } from "../../utils/helper.js";
 import { animateCSS, AnimationCSS } from "../../utils/animate.js";
+import { State, StateMachine } from "../../utils/stateMachine.js";
 import {
   UIButtonParams,
   UIContainerParams,
@@ -10,10 +11,50 @@ import {
 
 const commands = makeEnum(["start"]);
 
+class ExitInputState extends State {
+  handle({}) {}
+}
+
+class OpenInputState extends State {
+  handle({ command, engine, mainMenu, commandManager }) {
+    switch (command.type) {
+      case commands.start:
+        commandManager.replaceState(new ExitInputState());
+        engine.playSound("./audio/click1.ogg");
+
+        mainMenu.ui.exitAll().then((result) => {
+          engine.replaceState(new TowerDefense());
+        });
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+class CommandManager extends StateMachine {
+  constructor(scene) {
+    super();
+    this.pushState(new OpenInputState());
+  }
+
+  handle({ commands, engine, mainMenu }) {
+    commands.forEach((command) => {
+      this.currentState().handle({
+        command,
+        engine,
+        mainMenu,
+        commandManager: this,
+      });
+    });
+  }
+}
+
 export class MainMenu extends GameState {
   init(engine) {
     super.init(engine);
 
+    this.commandManager = new CommandManager();
     this.ui.compose([
       new UIContainerParams({
         center: [0.5, 0.1],
@@ -55,18 +96,10 @@ export class MainMenu extends GameState {
   }
 
   resolveCommands(engine) {
-    this.commands.forEach((command) => {
-      switch (command.type) {
-        case commands.start:
-          engine.playSound("./audio/click1.ogg");
-
-          this.ui.exitAll().then((result) => {
-            engine.replaceState(new TowerDefense());
-          });
-          break;
-        default:
-          break;
-      }
+    this.commandManager.handle({
+      commands: this.commands,
+      engine,
+      mainMenu: this,
     });
   }
 }
