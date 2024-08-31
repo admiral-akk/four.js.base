@@ -7,6 +7,7 @@ import {
   UIButtonParams,
   UIContainerParams,
   UITextBoxParams,
+  AbsolutePosition,
 } from "../../engine/ui.js";
 
 const commands = makeEnum(["start"]);
@@ -57,8 +58,12 @@ export class MainMenu extends GameState {
     this.commandManager = new CommandManager();
     this.ui.compose([
       new UIContainerParams({
-        center: [0.5, 0.1],
-        size: [0.8, 0.1],
+        position: new AbsolutePosition({
+          width: 0.8,
+          height: 0.1,
+          centerX: 0.5,
+          centerY: 0.1,
+        }),
         intro: new AnimationCSS("zoomInDown", 0, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
@@ -69,8 +74,12 @@ export class MainMenu extends GameState {
 
     this.ui.compose([
       new UIContainerParams({
-        center: [0.5, 0.8],
-        size: [0.2, 0.1],
+        position: new AbsolutePosition({
+          width: 0.2,
+          height: 0.1,
+          centerX: 0.5,
+          centerY: 0.8,
+        }),
         intro: new AnimationCSS("zoomInDown", 1, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),

@@ -6,6 +6,7 @@ import {
   UIButtonParams,
   UIContainerParams,
   UITextBoxParams,
+  AbsolutePosition,
 } from "../../engine/ui.js";
 import { animateCSS, AnimationCSS } from "../../utils/animate.js";
 
@@ -17,8 +18,12 @@ export class GameOverMenu extends GameState {
 
     const table = this.ui.compose([
       new UIContainerParams({
-        center: [0.5, 0.4],
-        size: [0.2, 0.5],
+        position: new AbsolutePosition({
+          width: 0.2,
+          height: 0.5,
+          centerX: 0.5,
+          centerY: 0.4,
+        }),
         intro: new AnimationCSS("zoomInDown", 1, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),

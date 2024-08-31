@@ -8,6 +8,7 @@ import { KeyedMap, makeEnum } from "../../utils/helper.js";
 import { State, StateMachine } from "../../utils/stateMachine.js";
 import { AnimationCSS } from "../../utils/animate.js";
 import {
+  AbsolutePosition,
   UIButtonParams,
   UIContainerParams,
   UIImageParams,
@@ -555,8 +556,12 @@ class TowerDefenseInput extends StateMachine {
 
     this.ui.compose([
       new UIContainerParams({
-        center: [0.5, 0.1],
-        size: [0.15, 0.1],
+        position: new AbsolutePosition({
+          width: 0.15,
+          height: 0.1,
+          centerX: 0.5,
+          centerY: 0.1,
+        }),
         intro: new AnimationCSS("zoomInDown", 1, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
@@ -573,8 +578,12 @@ class TowerDefenseInput extends StateMachine {
     const bottomBar = this.ui.compose([
       new UIContainerParams({
         id: inputIds.bottomMenu,
-        center: [0.5, 0.875],
-        size: [0.8, 0.15],
+        position: new AbsolutePosition({
+          width: 0.8,
+          height: 0.15,
+          centerX: 0.5,
+          centerY: 0.875,
+        }),
         intro: new AnimationCSS("zoomInDown", 1, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
@@ -612,15 +621,23 @@ class TowerDefenseInput extends StateMachine {
     this.towerUi = this.ui.compose([
       new UIContainerParams({
         id: inputIds.tooltip,
-        center: [0.5, 0.5],
-        size: [0.2, 0.2],
+        position: new AbsolutePosition({
+          width: 0.2,
+          height: 0.2,
+          centerX: 0.5,
+          centerY: 0.5,
+        }),
         intro: new AnimationCSS("zoomInDown", 1, 1),
         outro: new AnimationCSS("bounceOutLeft", 1, 1),
       }),
       new UIContainerParams({
         id: inputIds.abilitySelect,
-        center: [0.5, 0.5],
-        size: [1, 0.8],
+        position: new AbsolutePosition({
+          width: 1,
+          height: 0.8,
+          centerX: 0.5,
+          centerY: 0.5,
+        }),
       }),
     ]);
 

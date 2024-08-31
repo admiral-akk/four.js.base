@@ -43,13 +43,15 @@ function addAlignment(style, alignment) {
   }
 }
 
-class UIParams {
+class Params {
   constructor(params) {
     for (const key in params) {
       this[key] = params[key];
     }
   }
+}
 
+class UIParams extends Params {
   construct(parent) {
     const div = document.createElement("div");
     parent.appendChild(div);
@@ -73,16 +75,38 @@ class UIParams {
   }
 }
 
+export class PositionParams extends Params {
+  setPosition(style) {
+    style.height = `${this.height * 100}%`;
+    style.width = `${this.width * 100}%`;
+  }
+}
+
+export class RelativePosition extends PositionParams {}
+
+export class AbsolutePosition extends PositionParams {
+  constructor(params = { width: 1, height: 1, centerX: 0.5, centerY: 0.5 }) {
+    super(params);
+  }
+
+  setPosition(style) {
+    super.setPosition(style);
+    style.position = "absolute";
+    // offset by half to center it.
+    style.right = `${this.centerX * 100 - this.width * 50}%`;
+    style.top = `${this.centerY * 100 - this.height * 50}%`;
+  }
+}
+
 export class UIContainerParams extends UIParams {
   construct(parent) {
     const div = super.construct(parent);
     const {
-      center = [0.5, 0.5],
-      size = [1, 1],
+      position = new AbsolutePosition(),
       intro = null,
       outro = null,
     } = this;
-    this.setPosition(div, center, size);
+    position.setPosition(div.style);
     div.classList.add("root-level-ui");
     div.intro = intro;
     div.outro = outro;
