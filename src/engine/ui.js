@@ -74,24 +74,62 @@ export class ImagePosition extends PositionParams {
   }
 }
 
+class SizeParams extends Params {
+  setSize(style) {
+    style.width = `${this.width * 100}%`;
+  }
+}
+
+export class RelativeSize extends SizeParams {
+  constructor(params = { width: 1, height: 1 }) {
+    super(params);
+  }
+
+  setSize(style) {
+    super.setSize(style);
+    style.height = `${this.height * 100}%`;
+  }
+
+  getSize() {
+    // hard coded aspect ratio, fix later.
+    return [this.width, this.height];
+  }
+}
+
+export class AspectSize extends SizeParams {
+  constructor(params = { width: 1, aspectRatio: 1 }) {
+    super(params);
+  }
+
+  setSize(style) {
+    super.setSize(style);
+    style["aspect-ratio"] = `${this.aspectRatio}`;
+  }
+
+  getSize() {
+    // hard coded aspect ratio, fix later.
+    return [this.width, ((16 / 9) * this.width) / this.aspectRatio];
+  }
+}
+
 export class AbsolutePosition extends PositionParams {
   constructor(params = { width: 1, height: 1, centerX: 0.5, centerY: 0.5 }) {
     super(params);
   }
 
-  setPosition(style) {
-    style.height = `${this.height * 100}%`;
-    style.width = `${this.width * 100}%`;
+  setPosition(style, size) {
+    const [width, height] = size.getSize();
     style.position = "absolute";
     // offset by half to center it.
-    style.right = `${this.centerX * 100 - this.width * 50}%`;
-    style.top = `${this.centerY * 100 - this.height * 50}%`;
+    style.right = `${this.centerX * 100 - width * 50}%`;
+    style.top = `${this.centerY * 100 - height * 50}%`;
   }
 }
 
 class UIParams extends Params {
   construct(parent) {
-    const { position = new AbsolutePosition() } = this;
+    const { position = new AbsolutePosition(), size = new RelativeSize() } =
+      this;
 
     const div = document.createElement("div");
     parent.appendChild(div);
@@ -103,16 +141,14 @@ class UIParams extends Params {
     if (this.class) {
       div.className = this.class;
     }
-    position.setPosition(div.style);
+    if (this.style) {
+      for (const key in this.style) {
+        div.style[key] = this.style[key];
+      }
+    }
+    size.setSize(div.style);
+    position.setPosition(div.style, size);
     return div;
-  }
-
-  setPosition(div, center, size) {
-    div.style.width = `${size[0] * 100}%`;
-    div.style.height = `${size[1] * 100}%`;
-    // offset by half to center it.
-    div.style.right = `${center[0] * 100 - size[0] * 50}%`;
-    div.style.top = `${center[1] * 100 - size[1] * 50}%`;
   }
 }
 

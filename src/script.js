@@ -7,7 +7,7 @@ import { generateLoadingManager } from "./engine/loader.js";
 import { InputManager } from "./engine/input.js";
 import GUI from "lil-gui";
 import { GameEngine } from "./engine/engine.js";
-import { MainMenu } from "./examples/tower_defense/main_menu.js";
+import { RadianceCascade } from "./examples/radiance_cascade/radiance_cascade.js";
 import { addCustomArrayMethods } from "./utils/array.js";
 
 addCustomArrayMethods();
@@ -38,7 +38,7 @@ const engine = new GameEngine(
   config
 );
 
-engine.pushState(new MainMenu());
+engine.pushState(new RadianceCascade());
 
 function raf() {
   stats.begin();

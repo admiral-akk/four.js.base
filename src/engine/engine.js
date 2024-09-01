@@ -79,15 +79,26 @@ export class GameEngine extends StateMachine {
     const current = this.currentState();
     if (current) {
       this.input.update(current, current.camera);
-      this.currentState()?.update(this);
+
+      const clickedCommands = this.input.getState().ui.commands;
+      if (clickedCommands) {
+        current.commands.push(...clickedCommands);
+      }
+      current.update(this);
       while (this.tickTracker.shouldTick()) {
         current.tick(this);
       }
       current.timeToNextTick = this.tickTracker.timeToNextTick() / 1000;
-      current.resolveCommands(this);
-      current.clearCommands();
-      this.input.endLoop();
     }
+    this.endLoop();
+  }
+
+  endLoop() {
+    const current = this.currentState();
+    if (current) {
+      current.commands.length = 0;
+    }
+    this.input.endLoop();
     this.time.endLoop();
   }
 
@@ -140,7 +151,9 @@ export class GameState extends Scene {
   resume() {}
 
   tick(engine) {}
-  update(engine) {}
+  update(engine) {
+    this.input.update(engine, this);
+  }
   resolveCommands(engine) {}
 
   clearCommands() {
