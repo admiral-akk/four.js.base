@@ -166,7 +166,8 @@ bool outOfBounds(vec2 uv) {
 
 
 float stepSize(vec2 uv, float minStep) {
-  return max(minStep, texture2D(tSdf, uv).x);
+  // hack - will cause bleed
+  return max(minStep, texture2D(tSdf, uv).x) + 0.001;
 }
 
 vec4 raymarch() {
@@ -393,11 +394,7 @@ export class RadianceCascade extends GameState {
   }
 
   render(renderer) {
-    renderer.applyPostProcess(
-      { tInput: this.distanceFieldRT },
-      renderTextureFrag,
-      null
-    );
+    renderer.applyPostProcess({ tInput: this.sdfRT }, renderTextureFrag, null);
     renderer.applyPostProcess(
       {
         tColor: this.colorRT,
