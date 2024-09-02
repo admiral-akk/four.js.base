@@ -98,44 +98,6 @@ class InputManager extends StateMachine {
   }
 }
 
-const sdfFragShader = `
-uniform sampler2D tTarget;
-
-uniform vec2 start;
-uniform vec2 end;
-
-uniform float radius;
-uniform float totalWidth;
-
-varying vec2 vUv;
-out vec4 outColor;
-
-float sdfDist(vec2 p, vec2 texelSize) {
-  float xPixelCount = float(textureSize(tTarget,0).x);
-  float distancePerPixel = totalWidth / xPixelCount;
-
-  vec2 toStart = p - start;
-  vec2 line = end - start;
-  float lineLengthSquared = dot(line, line);
-  float t = clamp(dot(toStart, line) / lineLengthSquared, 0., 1.);
-  vec2 closest = distancePerPixel * texelSize * (toStart - line * t);
-  return dot(closest, closest);
-}
-
-void main()
-{ 
-    float xPixelCount = float(textureSize(tTarget,0).x);
-    float distancePerPixel = totalWidth / xPixelCount;
-
-    vec2 texelSize = 16. / fwidth(vUv);
-    float dist = max(0., sdfDist(vUv, texelSize) - radius);
-
-    vec4 current =  texture2D(tTarget,vUv);
-
-    outColor =  min(vec4(dist), vec4(current));
-}
-  `;
-
 const colorFragShader = `
 uniform sampler2D tTarget;
 
@@ -175,7 +137,6 @@ void main()
   `;
 
 const setToConstant = `
-
   uniform vec4 constant;
   out vec4 outColor;
   void main() {  outColor = constant; }`;
@@ -203,12 +164,14 @@ bool outOfBounds(vec2 uv) {
   return uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0;
 }
 
-float stepSizeSquared(vec2 uv) {
-  vec2 diff = texture2D(tDistanceField, uv).xy - uv;
-  return dot(diff,diff);
+
+float stepSize(vec2 uv, float minStep) {
+  return max(minStep, texture2D(tSdf, uv).x);
 }
 
 vec4 raymarch() {
+  ivec2 texSize = textureSize(tSdf, 0);
+  float minStep = min(1. / float(texSize.x), 1. / float(texSize.y));
   vec4 light = texture2D(tColor, vUv);
 
   if (light.a > 0.1) {
@@ -219,25 +182,24 @@ float tauOverRayCount = TAU * oneOverRayCount;
 
 float noise = rand(vUv);
 vec4 radiance = vec4(0.0);
-float stepSize = sqrt(stepSizeSquared(vUv));
 
 for (int i = 0; i < rayCount; i++) {
   float angle = tauOverRayCount * (float(i) + noise);
   vec2 rayDirectionUv =  vec2(cos(angle), -sin(angle));
 
-  vec2 sampleUv = vUv + stepSize * rayDirectionUv;
+  vec2 sampleUv = vUv + stepSize(vUv, minStep) * rayDirectionUv;
 
   for (int step = 0; step < maxSteps; step++) {
-  if (outOfBounds(sampleUv)) {
-    break;
-  }
+    if (outOfBounds(sampleUv)) {
+      break;
+    }
+      float stepVal = stepSize(sampleUv, minStep);
     vec4 sampleLight = texture2D(tColor, sampleUv);
     if (sampleLight.a > 0.1) {
       radiance += sampleLight;
       break;
     }
-    stepSize = sqrt(stepSizeSquared(sampleUv));
-    sampleUv += stepSize * rayDirectionUv;
+    sampleUv += stepVal * rayDirectionUv;
   }
 } 
 
@@ -310,6 +272,16 @@ void main() {
 }
 `;
 
+const fillSdf = `
+  uniform sampler2D tDistanceField; 
+  varying vec2 vUv;
+  out vec4 outColor;
+  void main() {  
+    vec2 closestUv = texture2D(tDistanceField, vUv).xy;
+    float dist = length(vUv - closestUv);
+  outColor = vec4(dist, 0., 0., 0.); 
+  }`;
+
 export class RadianceCascade extends GameState {
   init(engine) {
     super.init(engine);
@@ -317,7 +289,8 @@ export class RadianceCascade extends GameState {
     this.input.init(engine, this);
     this.color = "#dddddd";
     this.pixelRadius = 0.1;
-    this.rayCount = 32;
+    this.rayCount = 16;
+    this.maxSteps = 16;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
 
@@ -329,15 +302,6 @@ export class RadianceCascade extends GameState {
       format: THREE.RedFormat,
     };
     this.sdfRT = engine.renderer.newRenderTarget(1, sdfRTConfig);
-    this.spareSdfRT = engine.renderer.newRenderTarget(1, sdfRTConfig);
-
-    engine.renderer.applyPostProcess(
-      {
-        constant: new THREE.Vector4(1000, 1000, 1000, 1000),
-      },
-      setToConstant,
-      this.sdfRT
-    );
   }
 
   applyDrag(engine, [start, end]) {
@@ -396,16 +360,11 @@ export class RadianceCascade extends GameState {
 
     engine.renderer.applyPostProcess(
       {
-        start: start,
-        end: end,
-        radius: this.pixelRadius * this.pixelRadius,
-        totalWidth: 4,
-        tTarget: this.sdfRT,
+        tDistanceField: this.distanceFieldRT,
       },
-      sdfFragShader,
-      this.spareSdfRT
+      fillSdf,
+      this.sdfRT
     );
-    [this.sdfRT, this.spareSdfRT] = [this.spareSdfRT, this.sdfRT];
   }
 
   update(engine) {
@@ -445,7 +404,7 @@ export class RadianceCascade extends GameState {
         tSdf: this.sdfRT,
         tDistanceField: this.distanceFieldRT,
         rayCount: this.rayCount,
-        maxSteps: 32,
+        maxSteps: this.maxSteps,
       },
       rayMarch,
       null
