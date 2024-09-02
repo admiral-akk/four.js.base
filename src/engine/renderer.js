@@ -27,6 +27,30 @@ class ScaledRenderTarget extends WebGLRenderTarget {
   }
 }
 
+class CustomUniforms {
+  constructor(uniforms) {
+    for (const key in uniforms) {
+      const value = uniforms[key];
+      if (!value.hasOwnProperty("value")) {
+        uniforms[key] = { value: value };
+      }
+    }
+
+    for (const key in uniforms) {
+      const valueWrapper = uniforms[key];
+      if (
+        Object.getPrototypeOf(valueWrapper.value).constructor ===
+        ScaledRenderTarget
+      ) {
+        valueWrapper.value = valueWrapper.value.texture;
+      }
+    }
+
+    for (const key in uniforms) {
+    }
+  }
+}
+
 class CustomerRenderer extends WebGLRenderer {
   constructor(windowManager) {
     const canvas = document.querySelector("canvas.webgl");
@@ -76,6 +100,23 @@ class CustomerRenderer extends WebGLRenderer {
   }
 
   applyPostProcess(uniforms, fragShader, outputBuffer) {
+    for (const key in uniforms) {
+      const value = uniforms[key];
+      if (!value.hasOwnProperty("value")) {
+        uniforms[key] = { value: value };
+      }
+    }
+
+    for (const key in uniforms) {
+      const valueWrapper = uniforms[key];
+      if (
+        Object.getPrototypeOf(valueWrapper.value).constructor ===
+        ScaledRenderTarget
+      ) {
+        valueWrapper.value = valueWrapper.value.texture;
+      }
+    }
+
     const gradientPass = new FullScreenQuad(
       new ShaderMaterial({
         uniforms: uniforms,

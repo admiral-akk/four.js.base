@@ -98,16 +98,50 @@ class InputManager extends StateMachine {
   }
 }
 
-const sdfRTConfig = {
-  type: THREE.FloatType,
-  format: THREE.RedFormat,
-  internalFormat: THREE.R32F,
-};
-
 const sdfFragShader = `
 #include <packing>
 
-uniform sampler2D tSdf;
+uniform sampler2D tTarget;
+
+uniform vec2 start;
+uniform vec2 end;
+
+uniform float radius;
+uniform float totalWidth;
+
+varying vec2 vUv;
+out vec4 outColor;
+
+float sdfDist(vec2 p, vec2 texelSize) {
+  float xPixelCount = float(textureSize(tTarget,0).x);
+  float distancePerPixel = totalWidth / xPixelCount;
+
+  vec2 toStart = p - start;
+  vec2 line = end - start;
+  float lineLengthSquared = dot(line, line);
+  float t = clamp(dot(toStart, line) / lineLengthSquared, 0., 1.);
+  vec2 closest = distancePerPixel * texelSize * (toStart - line * t);
+  return dot(closest, closest);
+}
+
+void main()
+{ 
+    float xPixelCount = float(textureSize(tTarget,0).x);
+    float distancePerPixel = totalWidth / xPixelCount;
+
+    vec2 texelSize = 16. / fwidth(vUv);
+    float dist = max(0., sdfDist(vUv, texelSize) - radius);
+
+    vec4 current =  texture2D(tTarget,vUv);
+
+    outColor =  min(vec4(dist), vec4(current));
+}
+  `;
+
+const colorFragShader = `
+#include <packing>
+
+uniform sampler2D tTarget;
 
 uniform vec2 start;
 uniform vec2 end;
@@ -115,29 +149,39 @@ uniform vec2 end;
 uniform vec3 color;
 
 uniform float radius;
+uniform float totalWidth;
 
 varying vec2 vUv;
 out vec4 outColor;
 
-float sdfDist(vec2 p) {
+float sdfDist(vec2 p, vec2 texelSize) {
+    float xPixelCount = float(textureSize(tTarget,0).x);
+    float distancePerPixel = totalWidth / xPixelCount;
+
     vec2 toStart = p - start;
     vec2 line = end - start;
     float lineLengthSquared = dot(line, line);
     float t = clamp(dot(toStart, line) / lineLengthSquared, 0., 1.);
-    vec2 closest = (toStart - line * t);
+    vec2 closest = distancePerPixel * texelSize * (toStart - line * t);
     return dot(closest, closest);
 }
 
 void main()
 { 
-    vec4 current =  texture2D(tSdf,vUv);
-    float dist = sdfDist(vUv);
-
+    vec2 texelSize = 1. / fwidth(vUv);
+    float dist = sdfDist(vUv, texelSize);
     float inRange = step(radius,dist);
-    
+
+    vec4 current =  texture2D(tTarget,vUv);
+
     outColor = inRange * current + (1. - inRange) * vec4(color, 1.);
 }
   `;
+
+const setToConstant = `
+  uniform vec4 constant;
+  out vec4 outColor;
+  void main() {  outColor = constant; }`;
 
 export class RadianceCascade extends GameState {
   init(engine) {
@@ -145,30 +189,53 @@ export class RadianceCascade extends GameState {
     this.input = new InputManager(this);
     this.input.init(engine, this);
     this.color = "#dddddd";
-    this.radius = 0.01;
-    this.sdfRenderTarget = engine.renderer.newRenderTarget(1, {});
-    this.spareRenderTarget = engine.renderer.newRenderTarget(1, {});
+    this.pixelRadius = 0.1;
+    this.colorRT = engine.renderer.newRenderTarget(1, {});
+    this.spareRT = engine.renderer.newRenderTarget(1, {});
+
+    const sdfRTConfig = {
+      type: THREE.FloatType,
+      format: THREE.RedFormat,
+    };
+    this.sdfRT = engine.renderer.newRenderTarget(1, sdfRTConfig);
+    this.spareSdfRT = engine.renderer.newRenderTarget(1, sdfRTConfig);
+
+    engine.renderer.applyPostProcess(
+      {
+        constant: new THREE.Vector4(1000, 1000, 1000, 1000),
+      },
+      setToConstant,
+      this.sdfRT
+    );
   }
 
   applyDrag(engine, [start, end]) {
-    const startCopy = start.clone().addScalar(1).multiplyScalar(0.5);
-    const endCopy = end.clone().addScalar(1).multiplyScalar(0.5);
     engine.renderer.applyPostProcess(
       {
-        start: { value: startCopy },
-        end: { value: endCopy },
-        color: { value: new THREE.Color(this.color) },
-        radius: { value: this.radius * this.radius },
-        tSdf: { value: this.sdfRenderTarget.texture },
+        start: start,
+        end: end,
+        color: new THREE.Color(this.color),
+        radius: this.pixelRadius * this.pixelRadius,
+        totalWidth: 4,
+        tTarget: this.colorRT,
+      },
+      colorFragShader,
+      this.spareRT
+    );
+    [this.colorRT, this.spareRT] = [this.spareRT, this.colorRT];
+
+    engine.renderer.applyPostProcess(
+      {
+        start: start,
+        end: end,
+        radius: this.pixelRadius * this.pixelRadius,
+        totalWidth: 4,
+        tTarget: this.sdfRT,
       },
       sdfFragShader,
-      this.spareRenderTarget
+      this.spareSdfRT
     );
-    engine.renderer.applyPostProcess(
-      { tInput: { value: this.spareRenderTarget.texture } },
-      renderTextureFrag,
-      this.sdfRenderTarget
-    );
+    [this.sdfRT, this.spareSdfRT] = [this.spareSdfRT, this.sdfRT];
   }
 
   update(engine) {
@@ -179,7 +246,12 @@ export class RadianceCascade extends GameState {
           this.color = command.color;
           break;
         case DragCommand:
-          this.applyDrag(engine, [command.start, command.end]);
+          const startCopy = command.start
+            .clone()
+            .addScalar(1)
+            .multiplyScalar(0.5);
+          const endCopy = command.end.clone().addScalar(1).multiplyScalar(0.5);
+          this.applyDrag(engine, [startCopy, endCopy]);
           break;
         default:
           break;
@@ -193,7 +265,7 @@ export class RadianceCascade extends GameState {
 
   render(renderer) {
     renderer.applyPostProcess(
-      { tInput: { value: this.sdfRenderTarget.texture } },
+      { tInput: { value: this.colorRT } },
       renderTextureFrag,
       null
     );
