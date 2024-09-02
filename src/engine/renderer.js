@@ -56,7 +56,7 @@ class CustomerRenderer extends WebGLRenderer {
     const canvas = document.querySelector("canvas.webgl");
     super({
       canvas,
-      antialias: true,
+      antialias: false,
       logarithmicDepthBuffer: true,
     });
     this.renderTargets = [];

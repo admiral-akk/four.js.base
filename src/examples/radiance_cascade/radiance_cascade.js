@@ -161,17 +161,15 @@ out vec4 outColor;
 
 float rand(vec2 co)
 {
-return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+return 0.; // fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
 bool outOfBounds(vec2 uv) {
   return uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0;
 }
 
-
 float stepSize(vec2 uv, float minStep) {
-  // hack - will cause bleed
-  return max(minStep, texture2D(tSdf, uv).x) + 0.01;
+  return max(minStep, texture2D(tSdf, uv).x);
 }
 
 vec4 raymarch() {
@@ -198,14 +196,14 @@ for (int i = 0; i < rayCount; i++) {
     if (outOfBounds(sampleUv)) {
       break;
     }
-      float stepVal = stepSize(sampleUv, minStep);
-    vec4 sampleLight = texture2D(tColor, sampleUv);
-    if (sampleLight.a > 0.1) {
-      radiance += sampleLight;
+    float stepVal = stepSize(sampleUv, minStep);
+    vec4 color = texture2D(tColor, sampleUv);
+    if (color.a > 0.9) {
       break;
     }
     sampleUv += stepVal * rayDirectionUv;
   }
+  radiance += texture2D(tColor, sampleUv);
 } 
 
 return radiance * oneOverRayCount;
@@ -246,17 +244,19 @@ bool outOfBounds(vec2 uv) {
 }
 
 void main() {
+  vec4 current = texture2D(tDistanceField, vUv);
   vec4 nearestSeed = vec4(-2.0);
   float nearestDist = 999999.9;
+  vec2 resolution = vec2(textureSize(tDistanceField,0));
   vec2 jumpSize = fwidth(vUv) * stepSize;
   for (int x = -1; x <= 1; x++) {
     for (int y = -1; y <= 1; y++) {
-      vec2 sampleUv = vUv + vec2(float(x), float(y)) * jumpSize;
+      vec2 sampleUv = vUv + vec2(float(x), float(y)) * stepSize / resolution ;
       if (outOfBounds(sampleUv)) {
         continue;
       }
       vec4 distanceField = texture2D(tDistanceField, sampleUv);
-      if (distanceField.a < 0.1) {
+      if (distanceField.a == 0.0) {
         continue;
       }
       
@@ -269,7 +269,7 @@ void main() {
     }
   }
 
-  if (nearestDist < 10000.) {
+  if (nearestDist < 999999.) {
     outColor = nearestSeed;
   } else {
     outColor = vec4(0.);
@@ -283,7 +283,7 @@ const fillSdf = `
   out vec4 outColor;
   void main() {  
     vec2 closestUv = texture2D(tDistanceField, vUv).xy;
-    float dist = length(vUv - closestUv);
+    float dist = clamp(distance(vUv, closestUv), 0.0, 1.0);
   outColor = vec4(dist, 0., 0., 0.); 
   }`;
 
@@ -294,8 +294,8 @@ export class RadianceCascade extends GameState {
     this.input.init(engine, this);
     this.color = "#dddddd";
     this.pixelRadius = 0.1;
-    this.rayCount = 32;
-    this.maxSteps = 16;
+    this.rayCount = 128;
+    this.maxSteps = 12;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
 
@@ -306,7 +306,7 @@ export class RadianceCascade extends GameState {
       type: THREE.FloatType,
       format: THREE.RedFormat,
     };
-    this.sdfRT = engine.renderer.newRenderTarget(1, sdfRTConfig);
+    this.sdfRT = engine.renderer.newRenderTarget(1, {});
   }
 
   applyDrag(engine, [start, end]) {
@@ -344,13 +344,13 @@ export class RadianceCascade extends GameState {
 
     console.log(maxDim);
 
-    let resolution = 4 * Math.ceil(Math.log2(maxDim));
+    let resolution = Math.ceil(Math.log2(maxDim)) - 1;
 
-    while (resolution >= 0) {
+    while (resolution >= -2) {
       engine.renderer.applyPostProcess(
         {
           tDistanceField: this.spareDistanceFieldRT,
-          stepSize: 2 << resolution,
+          stepSize: Math.pow(2, resolution),
         },
         jumpFlood,
         this.distanceFieldRT
@@ -398,7 +398,11 @@ export class RadianceCascade extends GameState {
   }
 
   render(renderer) {
-    renderer.applyPostProcess({ tInput: this.sdfRT }, renderTextureFrag, null);
+    renderer.applyPostProcess(
+      { tInput: this.distanceFieldRT },
+      renderTextureFrag,
+      null
+    );
     renderer.applyPostProcess(
       {
         tColor: this.colorRT,
