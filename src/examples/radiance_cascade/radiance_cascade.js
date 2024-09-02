@@ -99,8 +99,6 @@ class InputManager extends StateMachine {
 }
 
 const sdfFragShader = `
-#include <packing>
-
 uniform sampler2D tTarget;
 
 uniform vec2 start;
@@ -139,8 +137,6 @@ void main()
   `;
 
 const colorFragShader = `
-#include <packing>
-
 uniform sampler2D tTarget;
 
 uniform vec2 start;
@@ -179,9 +175,140 @@ void main()
   `;
 
 const setToConstant = `
+
   uniform vec4 constant;
   out vec4 outColor;
   void main() {  outColor = constant; }`;
+
+const rayMarch = `
+#define M_PI 3.1415926538
+#define TAU 6.283185307179586
+
+uniform sampler2D tColor;
+uniform sampler2D tSdf;
+uniform sampler2D tDistanceField;
+
+uniform int rayCount;
+uniform int maxSteps;
+
+varying vec2 vUv;
+out vec4 outColor;
+
+float rand(vec2 co)
+{
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+bool outOfBounds(vec2 uv) {
+  return uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0;
+}
+
+float stepSizeSquared(vec2 uv) {
+  vec2 diff = texture2D(tDistanceField, uv).xy - uv;
+  return dot(diff,diff);
+}
+
+vec4 raymarch() {
+  vec4 light = texture2D(tColor, vUv);
+
+  if (light.a > 0.1) {
+    return light;
+  }
+    float oneOverRayCount = 1.0 / float(rayCount);
+float tauOverRayCount = TAU * oneOverRayCount;
+
+float noise = rand(vUv);
+vec4 radiance = vec4(0.0);
+float stepSize = sqrt(stepSizeSquared(vUv));
+
+for (int i = 0; i < rayCount; i++) {
+  float angle = tauOverRayCount * (float(i) + noise);
+  vec2 rayDirectionUv =  vec2(cos(angle), -sin(angle));
+
+  vec2 sampleUv = vUv + stepSize * rayDirectionUv;
+
+  for (int step = 0; step < maxSteps; step++) {
+  if (outOfBounds(sampleUv)) {
+    break;
+  }
+    vec4 sampleLight = texture2D(tColor, sampleUv);
+    if (sampleLight.a > 0.1) {
+      radiance += sampleLight;
+      break;
+    }
+    stepSize = sqrt(stepSizeSquared(sampleUv));
+    sampleUv += stepSize * rayDirectionUv;
+  }
+} 
+
+return radiance * oneOverRayCount;
+
+}
+
+void main() {
+  outColor = raymarch();
+}
+`;
+
+const initUv = `
+uniform sampler2D tColor;
+varying vec2 vUv;
+
+out vec4 outColor;
+
+void main() {
+  vec4 color = texture2D(tColor, vUv);
+
+  if (color.a > 0.1) {
+    outColor = vec4(vUv, 0., 1.);
+  } else {
+    outColor = vec4(0.,0.,0.,0.); 
+  }
+}
+`;
+
+const jumpFlood = `
+uniform sampler2D tDistanceField;
+
+uniform float stepSize;
+varying vec2 vUv;
+out vec4 outColor;
+
+bool outOfBounds(vec2 uv) {
+  return uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0;
+}
+
+void main() {
+  vec4 nearestSeed = vec4(-2.0);
+  float nearestDist = 999999.9;
+  vec2 jumpSize = fwidth(vUv) * stepSize;
+  for (int x = -1; x <= 1; x++) {
+    for (int y = -1; y <= 1; y++) {
+      vec2 sampleUv = vUv + vec2(float(x), float(y)) * jumpSize;
+      if (outOfBounds(sampleUv)) {
+        continue;
+      }
+      vec4 distanceField = texture2D(tDistanceField, sampleUv);
+      if (distanceField.a < 0.1) {
+        continue;
+      }
+      
+      vec2 diff = vUv - distanceField.xy;
+      float dist = dot(diff,diff);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestSeed = distanceField;
+      }
+    }
+  }
+
+  if (nearestDist < 10000.) {
+    outColor = nearestSeed;
+  } else {
+    outColor = vec4(0.);
+  }
+}
+`;
 
 export class RadianceCascade extends GameState {
   init(engine) {
@@ -190,8 +317,12 @@ export class RadianceCascade extends GameState {
     this.input.init(engine, this);
     this.color = "#dddddd";
     this.pixelRadius = 0.1;
+    this.rayCount = 32;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
+
+    this.distanceFieldRT = engine.renderer.newRenderTarget(1, {});
+    this.spareDistanceFieldRT = engine.renderer.newRenderTarget(1, {});
 
     const sdfRTConfig = {
       type: THREE.FloatType,
@@ -223,6 +354,45 @@ export class RadianceCascade extends GameState {
       this.spareRT
     );
     [this.colorRT, this.spareRT] = [this.spareRT, this.colorRT];
+
+    engine.renderer.applyPostProcess(
+      {
+        tColor: this.colorRT,
+      },
+      initUv,
+      this.distanceFieldRT
+    );
+
+    [this.distanceFieldRT, this.spareDistanceFieldRT] = [
+      this.spareDistanceFieldRT,
+      this.distanceFieldRT,
+    ];
+
+    const maxDim = Math.max(
+      this.distanceFieldRT.width,
+      this.distanceFieldRT.height
+    );
+
+    console.log(maxDim);
+
+    let resolution = 4 * Math.ceil(Math.log2(maxDim));
+
+    while (resolution >= 0) {
+      engine.renderer.applyPostProcess(
+        {
+          tDistanceField: this.spareDistanceFieldRT,
+          stepSize: 2 << resolution,
+        },
+        jumpFlood,
+        this.distanceFieldRT
+      );
+
+      [this.distanceFieldRT, this.spareDistanceFieldRT] = [
+        this.spareDistanceFieldRT,
+        this.distanceFieldRT,
+      ];
+      resolution--;
+    }
 
     engine.renderer.applyPostProcess(
       {
@@ -265,8 +435,19 @@ export class RadianceCascade extends GameState {
 
   render(renderer) {
     renderer.applyPostProcess(
-      { tInput: { value: this.colorRT } },
+      { tInput: this.distanceFieldRT },
       renderTextureFrag,
+      null
+    );
+    renderer.applyPostProcess(
+      {
+        tColor: this.colorRT,
+        tSdf: this.sdfRT,
+        tDistanceField: this.distanceFieldRT,
+        rayCount: this.rayCount,
+        maxSteps: 32,
+      },
+      rayMarch,
       null
     );
   }

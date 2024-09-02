@@ -121,7 +121,6 @@ class CustomerRenderer extends WebGLRenderer {
       new ShaderMaterial({
         uniforms: uniforms,
         vertexShader: `
-        #include <packing>
         varying vec2 vUv;
     
         void main() {
