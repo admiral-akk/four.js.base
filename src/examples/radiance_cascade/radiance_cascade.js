@@ -54,6 +54,10 @@ class OpenInputState extends State {
     const state = engine.input.getState();
     const { mouse } = state;
     if (mouse.pressed) {
+      const { pos } = mouse;
+      if (pos) {
+        game.commands.push(new DragCommand(pos, pos));
+      }
       input.replaceState(new DragInputState(mouse.pos));
     }
   }
@@ -157,7 +161,7 @@ out vec4 outColor;
 
 float rand(vec2 co)
 {
-    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
 bool outOfBounds(vec2 uv) {
@@ -167,7 +171,7 @@ bool outOfBounds(vec2 uv) {
 
 float stepSize(vec2 uv, float minStep) {
   // hack - will cause bleed
-  return max(minStep, texture2D(tSdf, uv).x) + 0.001;
+  return max(minStep, texture2D(tSdf, uv).x) + 0.01;
 }
 
 vec4 raymarch() {
@@ -290,7 +294,7 @@ export class RadianceCascade extends GameState {
     this.input.init(engine, this);
     this.color = "#dddddd";
     this.pixelRadius = 0.1;
-    this.rayCount = 16;
+    this.rayCount = 32;
     this.maxSteps = 16;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
