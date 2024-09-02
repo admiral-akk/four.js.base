@@ -3,7 +3,10 @@ import {
   Vector2,
   PCFSoftShadowMap,
   WebGLRenderer,
+  ShaderMaterial,
+  GLSL3,
 } from "three";
+import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 
 const _vector2 = new Vector2();
 
@@ -21,23 +24,6 @@ class ScaledRenderTarget extends WebGLRenderTarget {
       _vector2.x * this.ratio * pixelRatio,
       _vector2.y * this.ratio * pixelRatio
     );
-  }
-}
-
-class TickTracker {
-  constructor(tickRate, getTime) {
-    this.tickRate = tickRate;
-    this.getTime = getTime;
-    this.targetTime = getTime() + 1000 / tickRate;
-
-    const frameData = {
-      targetTime: new Date().getTime(),
-    };
-
-    function getDelay() {
-      frameData.targetTime += 1000 / renderer.fps;
-      return frameData.targetTime - new Date().getTime();
-    }
   }
 }
 
@@ -91,7 +77,7 @@ class CustomerRenderer extends WebGLRenderer {
 
   applyPostProcess(uniforms, fragShader, outputBuffer) {
     const gradientPass = new FullScreenQuad(
-      new THREE.ShaderMaterial({
+      new ShaderMaterial({
         uniforms: uniforms,
         vertexShader: `
         #include <packing>
@@ -104,6 +90,7 @@ class CustomerRenderer extends WebGLRenderer {
     
         }`,
         fragmentShader: fragShader,
+        glslVersion: GLSL3,
       })
     );
     const temp = this.getRenderTarget();

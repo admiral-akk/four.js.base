@@ -323,10 +323,11 @@ export const renderTextureFrag = `
   uniform sampler2D tInput;
   
   varying vec2 vUv;
+out vec4 outColor;
   
    void main()
    {  
-      gl_FragColor = texture2D(vUv, tInput);
+      outColor  = texture2D(tInput,vUv);
    }
   `;
 
