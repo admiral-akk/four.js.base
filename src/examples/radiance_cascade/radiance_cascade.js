@@ -161,7 +161,7 @@ out vec4 outColor;
 
 float rand(vec2 co)
 {
-return 0.; // fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
 bool outOfBounds(vec2 uv) {
@@ -294,7 +294,7 @@ export class RadianceCascade extends GameState {
     this.input.init(engine, this);
     this.color = "#dddddd";
     this.pixelRadius = 0.1;
-    this.rayCount = 128;
+    this.rayCount = 16;
     this.maxSteps = 12;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
