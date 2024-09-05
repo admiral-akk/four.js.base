@@ -145,74 +145,119 @@ const setToConstant = `
   out vec4 outColor;
   void main() {  outColor = constant; }`;
 
-const rayMarch = `
+const cascadeRayMarch = `
 #define M_PI 3.1415926538
 #define TAU 6.283185307179586
+#define EPS 0.001
 
 uniform sampler2D tColor;
 uniform sampler2D tSdf;
-uniform sampler2D tDistanceField;
+uniform sampler2D tPrevCascade;
 
-uniform int rayCount;
+// higher means fewer probes, more angles
+uniform int cascadeDepth;
+
+// the ray count at cascadeDepth = 0;
+uniform int sqrtBaseRayCount;
+uniform int baseRayCount;
+
 uniform int maxSteps;
 
-varying vec2 vUv;
-out vec4 outColor;
+// Distance we travel before trying to use
+// the higher cascade
+uniform float maxDistance;
 
-float rand(vec2 co)
-{
-return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-}
+varying vec2 vUv;
+
+out vec4 outColor;
 
 bool outOfBounds(vec2 uv) {
   return uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0;
 }
 
-float stepSize(vec2 uv, float minStep) {
-  return max(minStep, texture2D(tSdf, uv).x);
+float stepSize(vec2 uv) {
+  return texture2D(tSdf, uv).x;
 }
 
-vec4 raymarch() {
-  ivec2 texSize = textureSize(tSdf, 0);
-  float minStep = min(1. / float(texSize.x), 1. / float(texSize.y));
-  vec4 light = texture2D(tColor, vUv);
+void sampleCascade(vec2 sampleUv, int index) {
+  // first, figure out the 4 places to read from
+}
 
-  if (light.a > 0.1) {
-    return light;
-  }
-    float oneOverRayCount = 1.0 / float(rayCount);
-float tauOverRayCount = TAU * oneOverRayCount;
-
-float noise = rand(vUv);
-vec4 radiance = vec4(0.0);
-
-for (int i = 0; i < rayCount; i++) {
-  float angle = tauOverRayCount * (float(i) + noise);
-  vec2 rayDirectionUv =  vec2(cos(angle), -sin(angle));
-
-  vec2 sampleUv = vUv + stepSize(vUv, minStep) * rayDirectionUv;
-
+void fireRay(vec2 sampleUv, int index, inout vec4 radiance) {
+  int rayCount = baseRayCount << (2 * cascadeDepth);
+  float oneOverRayCount = 1.0 / float(rayCount);
+  float tauOverRayCount = TAU * oneOverRayCount;
+  float angle = tauOverRayCount * (float(index )+ 0.5);
+  vec2 rayDirectionUv = vec2(cos(angle), -sin(angle));
+  float distTravelled = 0.;
   for (int step = 0; step < maxSteps; step++) {
     if (outOfBounds(sampleUv)) {
       break;
     }
-    float stepVal = stepSize(sampleUv, minStep);
-    vec4 color = texture2D(tColor, sampleUv);
-    if (color.a > 0.9) {
+    float stepVal = stepSize(sampleUv);
+    if (stepVal < EPS) {
+      radiance += texture2D(tColor, sampleUv);
       break;
     }
     sampleUv += stepVal * rayDirectionUv;
+    distTravelled += stepVal;
+    if (distTravelled >= maxDistance) {
+      // sample from the higher cascade level
+      sampleCascade(sampleUv, index);
+      break;
+    }
   }
-  radiance += texture2D(tColor, sampleUv);
-} 
-
-return radiance * oneOverRayCount;
-
 }
 
-void main() {
-  outColor = raymarch();
+// returns the UV to start the probe from and the index which
+// indicates the direction
+vec3 probeToEvaluate(vec2 uv) {
+  vec2 texSize = vec2(textureSize(tSdf, 0));
+  float sqrtNumRays = float(sqrtBaseRayCount << cascadeDepth);
+
+  vec2 discreteUv =  mod(uv * sqrtNumRays, vec2(1.));
+
+  float probeIndex = floor(float(sqrtNumRays) * uv.x) + 
+    float(sqrtNumRays) * floor(float(sqrtNumRays) * uv.y) ;
+
+  return vec3(discreteUv, probeIndex);
 }
+
+
+vec4 raymarch() {
+  int rayCount = baseRayCount << (2 * cascadeDepth);
+  bool isLastLayer = false;
+  float partial = 0.125;
+  float intervalStart = isLastLayer ? 0.0 : partial;
+  float intervalEnd = isLastLayer ? partial : 2.;
+  ivec2 texSize = textureSize(tSdf, 0);
+  vec2 resolution = vec2(texSize);
+  float minStep = min(1. / float(texSize.x), 1. / float(texSize.y));
+  float oneOverRayCount = 1.0 / float(baseRayCount);
+  float tauOverRayCount = TAU * oneOverRayCount;
+  
+  vec2 resolutionUv = floor(0.25 * vUv * resolution) * 4.0 / resolution;
+  vec4 radiance = vec4(0.0);
+
+  vec3 probeData = probeToEvaluate(vUv);
+
+  
+  
+  for (int i = 0; i < baseRayCount; i++) {
+    fireRay(vUv, i, radiance);
+  } 
+  vec4 radiance2 = vec4(0.0);
+  int index = int(probeData.z);
+  vec2 startUv = probeData.xy;
+  fireRay(startUv, index, radiance2);
+  
+  return radiance2;
+  }
+  
+  void main() {
+    outColor = raymarch();
+    //outColor = vec4(probeToEvaluate(vUv), 1.0);
+  }
 `;
 
 const initUv = `
@@ -293,7 +338,7 @@ export class RadianceCascade extends GameState {
     this.input = new InputManager(this);
     this.input.init(engine, this);
     this.color = "#dddddd";
-    this.pixelRadius = 0.1;
+    this.pixelRadius = 0.02;
     this.rayCount = 16;
     this.maxSteps = 12;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
@@ -408,10 +453,13 @@ export class RadianceCascade extends GameState {
         tColor: this.colorRT,
         tSdf: this.sdfRT,
         tDistanceField: this.distanceFieldRT,
-        rayCount: this.rayCount,
+        cascadeDepth: 1,
+        sqrtBaseRayCount: Math.sqrt(this.rayCount),
+        baseRayCount: this.rayCount,
         maxSteps: this.maxSteps,
+        maxDistance: 0.5,
       },
-      rayMarch,
+      cascadeRayMarch,
       null
     );
   }

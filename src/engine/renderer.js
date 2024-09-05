@@ -24,6 +24,7 @@ class ScaledRenderTarget extends WebGLRenderTarget {
       _vector2.x * this.ratio * pixelRatio,
       _vector2.y * this.ratio * pixelRatio
     );
+    this.setSize(1024, 1024);
   }
 }
 
