@@ -145,10 +145,49 @@ const setToConstant = `
   out vec4 outColor;
   void main() {  outColor = constant; }`;
 
-const cascadeRayMarch = `
+const renderCascade = `
 #define M_PI 3.1415926538
 #define TAU 6.283185307179586
 #define EPS 0.001
+
+uniform sampler2D tColor;
+uniform sampler2D tSdf;
+uniform sampler2D tCascadeZero;
+
+// the ray count at cascadeDepth = 0;
+uniform int sqrtBaseRayCount;
+uniform int baseRayCount;
+
+varying vec2 vUv;
+
+out vec4 outColor;
+
+vec2 uvOffset(int index) {
+  float xOffset = floor(mod(float(index), float(sqrtBaseRayCount)));
+  float yOffset = floor(float(index) / float(sqrtBaseRayCount));
+  return vec2(xOffset, yOffset) /  float(sqrtBaseRayCount);
+}
+
+vec4 radiance(vec2 uv) {
+  vec4 rad = vec4(0.);
+  for (int i = 0; i < baseRayCount; i++) {
+    vec2 offsetUv = uvOffset(i) + uv / float(sqrtBaseRayCount);
+    rad += texture2D(tCascadeZero, offsetUv);
+  }
+  return rad / float(baseRayCount);
+}
+
+  void main() {
+    vec2 off = uvOffset(12) + vUv / float(sqrtBaseRayCount);
+    outColor = vec4(off, 0., 1.);
+    outColor = radiance(vUv);
+  }
+`;
+
+const cascadeRayMarch = `
+#define M_PI 3.1415926538
+#define TAU 6.283185307179586
+#define EPS 0.0001
 
 uniform sampler2D tColor;
 uniform sampler2D tSdf;
@@ -179,7 +218,25 @@ float stepSize(vec2 uv) {
   return texture2D(tSdf, uv).x;
 }
 
-void sampleCascade(vec2 sampleUv, int index) {
+vec2 uvOffset(int index, int depth) {
+  float sqrtNumRays = float(sqrtBaseRayCount << cascadeDepth);
+  float xOffset = floor(mod(float(index), sqrtNumRays));
+  float yOffset = floor(float(index) / sqrtNumRays);
+  return vec2(xOffset, yOffset);
+}
+
+vec4 sampleCascade(vec2 sampleUv, int index) {
+  int startIndex = baseRayCount * index - sqrtBaseRayCount / 2;
+  int endIndex = baseRayCount * index + sqrtBaseRayCount / 2;
+  float sqrtNumRaysDeeper = float(sqrtBaseRayCount << (cascadeDepth + 1));
+
+  vec2 downscaledUv = sampleUv / sqrtNumRaysDeeper;
+
+  vec4 radiance = vec4(0.);
+  for (int i = startIndex; i < endIndex; i++) {
+    radiance += texture2D(tPrevCascade,downscaledUv + uvOffset(i, cascadeDepth + 1));
+  }
+  return radiance / float(sqrtBaseRayCount);
   // first, figure out the 4 places to read from
 }
 
@@ -194,8 +251,9 @@ void fireRay(vec2 sampleUv, int index, inout vec4 radiance) {
     if (outOfBounds(sampleUv)) {
       break;
     }
+    vec4 color = texture2D(tColor, sampleUv);
     float stepVal = stepSize(sampleUv);
-    if (stepVal < EPS) {
+    if (color.a > 0.2) {
       radiance += texture2D(tColor, sampleUv);
       break;
     }
@@ -203,7 +261,7 @@ void fireRay(vec2 sampleUv, int index, inout vec4 radiance) {
     distTravelled += stepVal;
     if (distTravelled >= maxDistance) {
       // sample from the higher cascade level
-      sampleCascade(sampleUv, index);
+      radiance += sampleCascade(sampleUv, index);
       break;
     }
   }
@@ -269,7 +327,7 @@ out vec4 outColor;
 void main() {
   vec4 color = texture2D(tColor, vUv);
 
-  if (color.a > 0.1) {
+  if (color.a > 0.01) {
     outColor = vec4(vUv, 0., 1.);
   } else {
     outColor = vec4(0.,0.,0.,0.); 
@@ -340,12 +398,15 @@ export class RadianceCascade extends GameState {
     this.color = "#dddddd";
     this.pixelRadius = 0.02;
     this.rayCount = 16;
-    this.maxSteps = 12;
+    this.maxSteps = 120;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
 
     this.distanceFieldRT = engine.renderer.newRenderTarget(1, {});
     this.spareDistanceFieldRT = engine.renderer.newRenderTarget(1, {});
+
+    this.cascadeRT = engine.renderer.newRenderTarget(1, {});
+    this.spareCascadeRT = engine.renderer.newRenderTarget(1, {});
 
     const sdfRTConfig = {
       type: THREE.FloatType,
@@ -386,8 +447,6 @@ export class RadianceCascade extends GameState {
       this.distanceFieldRT.width,
       this.distanceFieldRT.height
     );
-
-    console.log(maxDim);
 
     let resolution = Math.ceil(Math.log2(maxDim)) - 1;
 
@@ -448,18 +507,47 @@ export class RadianceCascade extends GameState {
       renderTextureFrag,
       null
     );
+
+    let cascadeDepth = 5;
+    while (cascadeDepth >= 0) {
+      renderer.applyPostProcess(
+        {
+          tColor: this.colorRT,
+          tSdf: this.sdfRT,
+          tPrevCascade: this.cascadeRT,
+          cascadeDepth: cascadeDepth,
+          sqrtBaseRayCount: Math.sqrt(this.rayCount),
+          baseRayCount: this.rayCount,
+          maxSteps: this.maxSteps,
+          maxDistance: Math.pow(0.5, cascadeDepth) / 2,
+        },
+        cascadeRayMarch,
+        this.spareCascadeRT
+      );
+
+      [this.spareCascadeRT, this.cascadeRT] = [
+        this.cascadeRT,
+        this.spareCascadeRT,
+      ];
+      cascadeDepth--;
+    }
+
+    renderer.applyPostProcess(
+      { tInput: this.cascadeRT },
+      renderTextureFrag,
+      null
+    );
     renderer.applyPostProcess(
       {
         tColor: this.colorRT,
         tSdf: this.sdfRT,
-        tDistanceField: this.distanceFieldRT,
-        cascadeDepth: 1,
+        tCascadeZero: this.cascadeRT,
         sqrtBaseRayCount: Math.sqrt(this.rayCount),
         baseRayCount: this.rayCount,
         maxSteps: this.maxSteps,
-        maxDistance: 0.5,
+        maxDistance: Math.pow(0.5, cascadeDepth) / 2,
       },
-      cascadeRayMarch,
+      renderCascade,
       null
     );
   }
