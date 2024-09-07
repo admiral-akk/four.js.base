@@ -87,20 +87,19 @@ vec4 sampleCascade(vec2 sampleUv, int index) {
   return radiance;
 }
 
-void fireRay(vec2 sampleUv, int index, inout vec4 radiance) {
+vec4 fireRay(vec2 sampleUv, int index) {
+  vec4 radiance = vec4(0.0);
   float angle = tauOverRayCount * (float(index) + 0.5);
   vec2 rayDirectionUv = vec2(cos(angle), -sin(angle));
   float distTravelled = 0.;
   for (int step = 0; step < maxSteps; step++) {
     if (outOfBounds(sampleUv)) {
-      //radiance += vec4(0.,1.,1.,1.);
       break;
     }
     float stepVal = texture2D(tSdf, sampleUv).x + minStep;
     // our SDF goes negative. This could cause bleed if it steps through
     // a wall and hit another wall, but it's fine for now.
     if (stepVal < 0.) {
-      //radiance += vec4(x,y, 0., 1.);
       radiance += texture2D(tColor, sampleUv);
       break;
     }
@@ -112,6 +111,8 @@ void fireRay(vec2 sampleUv, int index, inout vec4 radiance) {
     distTravelled += stepVal;
     sampleUv += stepVal * rayDirectionUv;
   }
+
+  return radiance;
 }
 
 // returns the UV to start the probe from and the index which
@@ -130,10 +131,7 @@ vec4 raymarch() {
     vec2 probeUv;
     int probeIndex;
     probeToEvaluate(vUv, probeUv, probeIndex);
-    vec4 radiance2 = vec4(0.0);
-    fireRay(probeUv, probeIndex, radiance2);
-  
-    return radiance2;
+    return fireRay(probeUv, probeIndex);
   }
   
   void main() {

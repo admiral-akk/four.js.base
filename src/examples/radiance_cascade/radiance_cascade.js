@@ -393,13 +393,13 @@ export class RadianceCascade extends GameState {
     );
     const maxDepth = 6;
     let cascadeDepth = maxDepth;
+    const sqrtRayCount = Math.sqrt(this.rayCount);
+    const halfUvPerPixel = 1 / (2 * this.cascadeRT.width);
     while (cascadeDepth >= 0) {
-      const sqrtRayCount = Math.sqrt(this.rayCount);
       const sqrtRayCountAtDepth = sqrtRayCount << cascadeDepth;
       const rayCountAtDepth = this.rayCount << (2 * cascadeDepth);
       const sqrtRayCountAtNextDepth = 2 * sqrtRayCountAtDepth;
 
-      const halfUvPerPixel = 1 / (2 * this.cascadeRT.width);
       const maxDeeperUv = 1 / sqrtRayCountAtNextDepth - halfUvPerPixel;
 
       const uniforms = {
@@ -439,10 +439,10 @@ export class RadianceCascade extends GameState {
         tColor: this.colorRT,
         tSdf: this.sdfRT2,
         tCascadeZero: this.cascadeRT,
-        sqrtBaseRayCount: Math.sqrt(this.rayCount),
+        sqrtBaseRayCount: sqrtRayCount,
         baseRayCount: this.rayCount,
-        maxSteps: this.maxSteps,
-        maxDistance: Math.pow(0.5, cascadeDepth) / 2,
+        minUvRemap: halfUvPerPixel,
+        maxUvRemap: 1 / sqrtRayCount - halfUvPerPixel,
       },
       renderCascade,
       null
