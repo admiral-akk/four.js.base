@@ -93,7 +93,7 @@ class InputManager extends StateMachine {
   init(engine, game) {
     this.createColorButton("#ff0000");
     this.createColorButton("#00ff00");
-    this.createColorButton("#0000ff");
+    this.createColorButton("#000000");
     this.createColorButton("#ffffff");
   }
 
@@ -129,7 +129,7 @@ out vec4 outColor;
   void main()
   { 
       float dist = sdfDist(vUv);
-    float inRange = step(0.,dist);
+    float inRange = smoothstep (0., 0.0025,dist);
 
       vec4 current = texture2D(tTarget,vUv);
   
@@ -176,7 +176,6 @@ const setToConstant = `
 const renderCascade = `
 #define M_PI 3.1415926538
 #define TAU 6.283185307179586
-#define EPS 0.001
 
 uniform sampler2D tColor;
 uniform sampler2D tSdf;
@@ -191,23 +190,24 @@ varying vec2 vUv;
 out vec4 outColor;
 
 vec2 uvOffset(int index) {
-  float xOffset = floor(mod(float(index), float(sqrtBaseRayCount)));
-  float yOffset = floor(float(index) / float(sqrtBaseRayCount));
-  return vec2(xOffset, yOffset) /  float(sqrtBaseRayCount);
+  vec2 dim = 0.5 / vec2(textureSize(tCascadeZero, 0));
+  float xOffset = clamp(floor(mod(float(index), float(sqrtBaseRayCount))), 0., float(sqrtBaseRayCount));
+  float yOffset = clamp(floor(float(index) / float(sqrtBaseRayCount)), 0., float(sqrtBaseRayCount));
+  return dim + (vec2(xOffset, yOffset)) /  float(sqrtBaseRayCount);
 }
 
 vec4 radiance(vec2 uv) {
   vec4 rad = vec4(0.);
+  vec2 dim = 1. / vec2(textureSize(tCascadeZero, 0));
   for (int i = 0; i < baseRayCount; i++) {
-    vec2 offsetUv = uvOffset(i) + uv / float(sqrtBaseRayCount);
+    vec2 adjustedUv = uv / (float(sqrtBaseRayCount)) - dim;
+    vec2 offsetUv = uvOffset(i) + adjustedUv;
     rad += texture2D(tCascadeZero, offsetUv);
   }
   return rad / float(baseRayCount);
 }
 
   void main() {
-    vec2 off = uvOffset(12) + vUv / float(sqrtBaseRayCount);
-    outColor = vec4(off, 0., 1.);
     outColor = radiance(vUv);
   }
 `;
@@ -229,6 +229,7 @@ uniform int sqrtBaseRayCount;
 uniform int baseRayCount;
 
 uniform int maxSteps;
+uniform float minStep;
 
 // Distance we travel before trying to use
 // the higher cascade
@@ -247,51 +248,76 @@ float stepSize(vec2 uv) {
 }
 
 vec2 uvOffset(int index, int depth) {
-  float sqrtNumRays = float(sqrtBaseRayCount << cascadeDepth);
+  float sqrtNumRays = float(sqrtBaseRayCount << depth);
   float xOffset = floor(mod(float(index), sqrtNumRays));
   float yOffset = floor(float(index) / sqrtNumRays);
-  return vec2(xOffset, yOffset) + 0.5 / sqrtNumRays;
+  return (vec2(xOffset, yOffset) + 0.5) / sqrtNumRays;
 }
 
 vec4 sampleCascade(vec2 sampleUv, int index) {
   int startIndex = baseRayCount * index - sqrtBaseRayCount / 2;
   int endIndex = baseRayCount * index + sqrtBaseRayCount / 2;
-  float sqrtNumRaysDeeper = 1. + float(sqrtBaseRayCount << (cascadeDepth + 1));
+  float sqrtNumRaysDeeper =  float(sqrtBaseRayCount << (cascadeDepth + 1));
 
-  vec2 downscaledUv = sampleUv / sqrtNumRaysDeeper;
+  vec2 size = vec2(textureSize(tPrevCascade,0 ));
+  vec2 pixelsPerBox = size /  sqrtNumRaysDeeper;
+
+  vec2 rescale = size /  sqrtNumRaysDeeper;
+  vec2 dim = 1. / vec2(textureSize(tPrevCascade,0 ));
+
+  vec2 downscaledUv = ((size - 1.) / size) * (sampleUv) / sqrtNumRaysDeeper;
 
   vec4 radiance = vec4(0.);
-  for (int i = startIndex; i < endIndex; i++) {
-    radiance += texture2D(tPrevCascade,downscaledUv + uvOffset(i, cascadeDepth + 1));
+  for (int i = startIndex; i < startIndex + 1; i++) {
+    radiance += texture2D(tPrevCascade, downscaledUv + uvOffset(i, cascadeDepth + 1));
   }
   return radiance / float(sqrtBaseRayCount);
-  // first, figure out the 4 places to read from
 }
 
 void fireRay(vec2 sampleUv, int index, inout vec4 radiance) {
   int rayCount = baseRayCount << (2 * cascadeDepth);
   float oneOverRayCount = 1.0 / float(rayCount);
   float tauOverRayCount = TAU * oneOverRayCount;
-  float angle = tauOverRayCount * (float(index )+ 0.5);
+  float angle = tauOverRayCount * (float(index)+ 0.5);
   vec2 rayDirectionUv = vec2(cos(angle), -sin(angle));
   float distTravelled = 0.;
   for (int step = 0; step < maxSteps; step++) {
     if (outOfBounds(sampleUv)) {
+      radiance += vec4(0.,0.,1.,1.);
       break;
     }
     float stepVal = stepSize(sampleUv);
-    if (EPS > stepVal) {
-      radiance += texture2D(tColor, sampleUv);
+    if (stepVal < 0.) {
+  float sqrtNumRays = float(sqrtBaseRayCount << cascadeDepth);
+      float x = mod(float(index), sqrtNumRays) / sqrtNumRays;
+      float y = floor(float(index) / sqrtNumRays) / sqrtNumRays;
+      radiance += vec4(x,y, 0., 1.);
+      //radiance += texture2D(tColor, sampleUv);
       break;
     }
-    sampleUv += stepVal * rayDirectionUv;
     distTravelled += stepVal;
+    sampleUv += stepVal * rayDirectionUv;
     if (distTravelled >= maxDistance) {
       // sample from the higher cascade level
-      radiance += sampleCascade(sampleUv, index);
+      //radiance += vec4(0.,0.,1.,0.);
+      //radiance += 100.;
+      //*sampleCascade(sampleUv, index);
       break;
     }
   }
+}
+
+void cascadeRange(int index, int currentDepth, out ivec3 fullSample, out ivec2 halfSample) {
+  int center = 4 * index;
+  int bot = center - 1;
+  int bot2 = center - 2;
+  if (bot < 0) {
+    int indexCountAtNextDepth = baseRayCount << (2 * currentDepth + 2);
+    bot += indexCountAtNextDepth;
+    bot2 += indexCountAtNextDepth;
+  }
+  fullSample = ivec3(bot, center, center + 1);
+  halfSample = ivec2(bot2, center + 2);
 }
 
 // returns the UV to start the probe from and the index which
@@ -310,38 +336,17 @@ vec3 probeToEvaluate(vec2 uv) {
 
 
 vec4 raymarch() {
-  int rayCount = baseRayCount << (2 * cascadeDepth);
-  bool isLastLayer = false;
-  float partial = 0.125;
-  float intervalStart = isLastLayer ? 0.0 : partial;
-  float intervalEnd = isLastLayer ? partial : 2.;
-  ivec2 texSize = textureSize(tSdf, 0);
-  vec2 resolution = vec2(texSize);
-  float minStep = min(1. / float(texSize.x), 1. / float(texSize.y));
-  float oneOverRayCount = 1.0 / float(baseRayCount);
-  float tauOverRayCount = TAU * oneOverRayCount;
+    vec3 probeData = probeToEvaluate(vUv);
+    vec4 radiance2 = vec4(0.0);
+    int index = int(probeData.z);
+    vec2 startUv = probeData.xy;
+    fireRay(startUv, index, radiance2);
   
-  vec2 resolutionUv = floor(0.25 * vUv * resolution) * 4.0 / resolution;
-  vec4 radiance = vec4(0.0);
-
-  vec3 probeData = probeToEvaluate(vUv);
-
-  
-  
-  for (int i = 0; i < baseRayCount; i++) {
-    fireRay(vUv, i, radiance);
-  } 
-  vec4 radiance2 = vec4(0.0);
-  int index = int(probeData.z);
-  vec2 startUv = probeData.xy;
-  fireRay(startUv, index, radiance2);
-  
-  return radiance2;
+    return radiance2;
   }
   
   void main() {
     outColor = raymarch();
-    //outColor = vec4(probeToEvaluate(vUv), 1.0);
   }
 `;
 
@@ -439,9 +444,9 @@ export class RadianceCascade extends GameState {
       type: THREE.FloatType,
       format: THREE.RedFormat,
     };
-    this.sdfRT = engine.renderer.newRenderTarget(1, {});
-    this.sdfRT2 = engine.renderer.newRenderTarget(1, {});
-    this.spareSdfRT2 = engine.renderer.newRenderTarget(1, {});
+    this.sdfRT = engine.renderer.newRenderTarget(1, sdfRTConfig);
+    this.sdfRT2 = engine.renderer.newRenderTarget(1, sdfRTConfig);
+    this.spareSdfRT2 = engine.renderer.newRenderTarget(1, sdfRTConfig);
 
     engine.renderer.applyPostProcess(
       {
@@ -553,23 +558,26 @@ export class RadianceCascade extends GameState {
   }
 
   render(renderer) {
-    const maxDepth = 6;
+    const maxDepth = 1;
     let cascadeDepth = maxDepth;
-    while (cascadeDepth >= 0) {
-      renderer.applyPostProcess(
-        {
-          tColor: this.colorRT,
-          tSdf: this.sdfRT2,
-          tPrevCascade: this.cascadeRT,
-          cascadeDepth: cascadeDepth,
-          sqrtBaseRayCount: Math.sqrt(this.rayCount),
-          baseRayCount: this.rayCount,
-          maxSteps: this.maxSteps,
-          maxDistance: Math.pow(2, cascadeDepth) * Math.sqrt(2),
-        },
-        cascadeRayMarch,
-        this.spareCascadeRT
-      );
+    while (cascadeDepth >= 1) {
+      const uniforms = {
+        tColor: this.colorRT,
+        tSdf: this.sdfRT2,
+        cascadeDepth: cascadeDepth,
+        sqrtBaseRayCount: Math.sqrt(this.rayCount),
+        baseRayCount: this.rayCount,
+        minStep: 1 / this.cascadeRT.width,
+        maxSteps: this.maxSteps,
+        maxDistance: Math.pow(2, cascadeDepth - maxDepth - 2),
+      };
+      if (cascadeDepth < maxDepth) {
+        uniforms.tPrevCascade = this.cascadeRT;
+      } else {
+        delete uniforms.tPrevCascade;
+      }
+
+      renderer.applyPostProcess(uniforms, cascadeRayMarch, this.spareCascadeRT);
 
       [this.spareCascadeRT, this.cascadeRT] = [
         this.cascadeRT,
@@ -577,7 +585,6 @@ export class RadianceCascade extends GameState {
       ];
       cascadeDepth--;
     }
-    renderer.applyPostProcess({ tInput: this.sdfRT2 }, renderTextureFrag, null);
     renderer.applyPostProcess(
       {
         tColor: this.colorRT,
@@ -589,6 +596,11 @@ export class RadianceCascade extends GameState {
         maxDistance: Math.pow(0.5, cascadeDepth) / 2,
       },
       renderCascade,
+      null
+    );
+    renderer.applyPostProcess(
+      { tInput: this.cascadeRT },
+      renderTextureFrag,
       null
     );
   }
