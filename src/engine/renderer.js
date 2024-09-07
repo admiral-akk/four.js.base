@@ -14,44 +14,25 @@ class ScaledRenderTarget extends WebGLRenderTarget {
   constructor(renderer, ratio, options) {
     super(1, 1, options);
     this.ratio = ratio;
+    if (options.fixedSize) {
+      this.fixedSize = options.fixedSize;
+    }
     this.updateSize(renderer);
   }
 
   updateSize(renderer) {
-    renderer.getSize(_vector2);
-    const pixelRatio = renderer.getPixelRatio();
-    this.setSize(
-      _vector2.x * this.ratio * pixelRatio,
-      _vector2.y * this.ratio * pixelRatio
-    );
-    this.setSize(1024, 1024);
-  }
-}
-
-class CustomUniforms {
-  constructor(uniforms) {
-    for (const key in uniforms) {
-      const value = uniforms[key];
-      if (!value.hasOwnProperty("value")) {
-        uniforms[key] = { value: value };
-      }
-    }
-
-    for (const key in uniforms) {
-      const valueWrapper = uniforms[key];
-      if (
-        Object.getPrototypeOf(valueWrapper.value).constructor ===
-        ScaledRenderTarget
-      ) {
-        valueWrapper.value = valueWrapper.value.texture;
-      }
-    }
-
-    for (const key in uniforms) {
+    if (this.fixedSize) {
+      this.setSize(this.fixedSize.x, this.fixedSize.y);
+    } else {
+      renderer.getSize(_vector2);
+      const pixelRatio = renderer.getPixelRatio();
+      this.setSize(
+        _vector2.x * this.ratio * pixelRatio,
+        _vector2.y * this.ratio * pixelRatio
+      );
     }
   }
 }
-
 class CustomerRenderer extends WebGLRenderer {
   constructor(windowManager) {
     const canvas = document.querySelector("canvas.webgl");
