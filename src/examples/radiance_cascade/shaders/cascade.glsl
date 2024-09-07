@@ -20,6 +20,7 @@ uniform int rayCountAtNextDepth;
 uniform int sqrtRayCountAtNextDepth;
 
 uniform float tauOverRayCount;
+uniform float tauOverRayCountAtNextDepth;
 
 // To stop it from going indefinitely
 // though minstep should handle this.
@@ -71,29 +72,42 @@ void sampleCascadeIndex(vec2 mappedSampleUv, int cascadeIndex, float scale, inou
   radiance += scale * texture2D(tPrevCascade, mappedSampleUv + offset);
 }
 
+vec2 toDirection(int index, float tauOverCount) {
+  float angle = tauOverCount * (float(index) + 0.5);
+  return vec2(cos(angle), -sin(angle));
+}
+
+vec2 sampleCascadeStartUv(vec2 sampleUv, int cascadeIndex) {
+  vec2 newUv = sampleUv + maxDistance * toDirection(cascadeIndex, tauOverRayCountAtNextDepth);
+  sampleUvMapped(newUv);
+  return newUv;
+}
+
 vec4 sampleCascade(vec2 sampleUv, int index) {
   ivec2 halfSample;
   ivec3 fullSample;
   cascadeRange(index, fullSample, halfSample);
 
-  sampleUvMapped(sampleUv);
 
   vec4 radiance = vec4(0.);
-  sampleCascadeIndex(sampleUv, fullSample.x, 0.25, radiance);
-  sampleCascadeIndex(sampleUv, fullSample.y, 0.25, radiance);
-  sampleCascadeIndex(sampleUv, fullSample.z, 0.25, radiance);
-  sampleCascadeIndex(sampleUv, halfSample.x, 0.125, radiance);
-  sampleCascadeIndex(sampleUv, halfSample.y, 0.125, radiance);
+  sampleCascadeIndex(sampleCascadeStartUv(sampleUv, fullSample.x), fullSample.x, 0.25, radiance);
+  sampleCascadeIndex(sampleCascadeStartUv(sampleUv, fullSample.y), fullSample.y, 0.25, radiance);
+  sampleCascadeIndex(sampleCascadeStartUv(sampleUv, fullSample.z), fullSample.z, 0.25, radiance);
+  sampleCascadeIndex(sampleCascadeStartUv(sampleUv, halfSample.x), halfSample.x, 0.125, radiance);
+  sampleCascadeIndex(sampleCascadeStartUv(sampleUv, halfSample.y), halfSample.y, 0.125, radiance);
   return radiance;
 }
 
 vec4 fireRay(vec2 sampleUv, int index) {
+  vec2 originalSample = sampleUv;
   vec4 radiance = vec4(0.0);
-  float angle = tauOverRayCount * (float(index) + 0.5);
-  vec2 rayDirectionUv = vec2(cos(angle), -sin(angle));
+  vec2 rayDirectionUv = toDirection(index, tauOverRayCount);
   float distTravelled = 0.;
   for (int step = 0; step < maxSteps; step++) {
     if (outOfBounds(sampleUv)) {
+      // Can't sample cascade here, because at the top level, the edge is blended
+      // with the center
+      //radiance += sampleCascade(originalSample, index);
       break;
     }
     float stepVal = texture2D(tSdf, sampleUv).x + minStep;
@@ -105,7 +119,7 @@ vec4 fireRay(vec2 sampleUv, int index) {
     }
     if (distTravelled >= maxDistance) {
       // sample from the higher cascade level
-      radiance += sampleCascade(sampleUv, index);
+      radiance += sampleCascade(originalSample, index);
       break;
     }
     distTravelled += stepVal;

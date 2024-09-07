@@ -13,6 +13,19 @@ import cascadeShader from "./shaders/cascade.glsl";
 import renderCascade from "./shaders/renderCascade.glsl";
 import lineUpdate from "./shaders/lineUpdate.glsl";
 
+import GUI from "lil-gui";
+const gui = new GUI();
+
+const myObject = {
+  maxCascadeDepth: 6,
+  cascadeDepthToRender: 0,
+  renderStage: "renderCascade",
+};
+
+gui.add(myObject, "maxCascadeDepth").min(0).max(9).step(1);
+gui.add(myObject, "cascadeDepthToRender").min(0).max(6).step(1);
+gui.add(myObject, "renderStage", ["color", "sdf", "cascade", "renderCascade"]);
+
 class Command {
   constructor() {
     this.type = Object.getPrototypeOf(this).constructor;
@@ -123,14 +136,11 @@ export class RadianceCascade extends GameState {
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
 
-    this.distanceFieldRT = engine.renderer.newRenderTarget(1, {});
-    this.spareDistanceFieldRT = engine.renderer.newRenderTarget(1, {});
-
     this.cascadeRT = engine.renderer.newRenderTarget(1, {
-      fixedSize: new THREE.Vector2(1024, 1024),
+      fixedSize: new THREE.Vector2(4 * 1024, 4 * 1024),
     });
     this.spareCascadeRT = engine.renderer.newRenderTarget(1, {
-      fixedSize: new THREE.Vector2(1024, 1024),
+      fixedSize: new THREE.Vector2(4 * 1024, 4 * 1024),
     });
 
     const sdfRTConfig = {
@@ -214,7 +224,7 @@ export class RadianceCascade extends GameState {
       setToConstant,
       this.cascadeRT
     );
-    const maxDepth = 6;
+    const maxDepth = myObject.maxCascadeDepth;
     let cascadeDepth = maxDepth;
     const sqrtRayCount = Math.sqrt(this.rayCount);
     const halfUvPerPixel = 1 / (2 * this.cascadeRT.width);
@@ -222,6 +232,7 @@ export class RadianceCascade extends GameState {
       const sqrtRayCountAtDepth = sqrtRayCount << cascadeDepth;
       const rayCountAtDepth = this.rayCount << (2 * cascadeDepth);
       const sqrtRayCountAtNextDepth = 2 * sqrtRayCountAtDepth;
+      const rayCountAtNextDepth = 4 * rayCountAtDepth;
 
       const maxDeeperUv = 1 / sqrtRayCountAtNextDepth - halfUvPerPixel;
 
@@ -231,17 +242,18 @@ export class RadianceCascade extends GameState {
         rayCountAtDepth: rayCountAtDepth,
         sqrtRayCountAtDepth: sqrtRayCountAtDepth,
         tauOverRayCount: (2 * Math.PI) / rayCountAtDepth,
-        rayCountAtNextDepth: 4 * rayCountAtDepth,
+        tauOverRayCountAtNextDepth: (2 * Math.PI) / rayCountAtNextDepth,
+        rayCountAtNextDepth: rayCountAtNextDepth,
         sqrtRayCountAtNextDepth: sqrtRayCountAtNextDepth,
         cascadeDepth: cascadeDepth,
         sqrtBaseRayCount: sqrtRayCount,
         baseRayCount: this.rayCount,
         minDeeperUv: halfUvPerPixel,
         maxDeeperUv: maxDeeperUv,
-        minStep: 1 / this.cascadeRT.width,
+        minStep: 0.5 / this.cascadeRT.width,
         maxSteps: this.maxSteps,
         tPrevCascade: this.cascadeRT,
-        maxDistance: Math.pow(2, cascadeDepth - maxDepth - 2),
+        maxDistance: Math.pow(2, cascadeDepth - maxDepth) * Math.sqrt(2),
       };
 
       renderer.applyPostProcess(uniforms, cascadeShader, this.spareCascadeRT);

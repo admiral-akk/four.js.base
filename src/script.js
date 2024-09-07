@@ -5,14 +5,11 @@ import { CustomerRenderer } from "./engine/renderer.js";
 import Stats from "stats-js";
 import { generateLoadingManager } from "./engine/loader.js";
 import { InputManager } from "./engine/input.js";
-import GUI from "lil-gui";
 import { GameEngine } from "./engine/engine.js";
 import { RadianceCascade } from "./examples/radiance_cascade/radiance_cascade.js";
 import { addCustomArrayMethods } from "./utils/array.js";
 
 addCustomArrayMethods();
-
-const gui = new GUI();
 
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
