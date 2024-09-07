@@ -27,13 +27,9 @@ out vec4 outColor;
       vec4 current = texture2D(tTarget,vUv);
       float dist = sdfDist(vUv);
       if (isSdf) {
-      outColor = vec4(min(dist, current.x), vec3(0.));
-
+        outColor = vec4(min(dist, current.x), vec3(0.));
       } else {
         float inRange = smoothstep (0., 0.0025,dist);
-
         outColor = inRange * current + (1. - inRange) * vec4(color, 1.);
-  
-
       }
   }
