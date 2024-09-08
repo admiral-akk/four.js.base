@@ -14,14 +14,6 @@ uniform sampler2D tColor;
 uniform sampler2D tSdf;
 uniform sampler2D tPrevCascade;
 
-// higher means fewer probes, more angles
-uniform int cascadeDepth;
-
-// the ray count at cascadeDepth = 0;
-uniform int baseRayCount;
-uniform int sqrtBaseRayCount;
-
-uniform int rayCountAtDepth;
 uniform int sqrtRayCountAtDepth;
 
 uniform int rayCountAtNextDepth;
