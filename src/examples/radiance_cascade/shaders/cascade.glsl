@@ -225,7 +225,7 @@ vec4 raymarch() {
     vec2 probeUv;
     int probeIndex;
     probeToEvaluate(vUv, probeUv, probeIndex);
-    return fireRay2(probeUv, probeIndex);
+    return fireRay(probeUv, probeIndex);
 }
   
   void main() {
