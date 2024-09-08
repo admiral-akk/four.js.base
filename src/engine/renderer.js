@@ -81,7 +81,7 @@ class CustomerRenderer extends WebGLRenderer {
     this.setRenderTarget(oldTarget);
   }
 
-  applyPostProcess(uniforms, fragShader, outputBuffer) {
+  applyPostProcess(uniforms, fragShader, outputBuffer, defines = null) {
     for (const key in uniforms) {
       const value = uniforms[key];
       if (!value.hasOwnProperty("value")) {
@@ -98,23 +98,22 @@ class CustomerRenderer extends WebGLRenderer {
         valueWrapper.value = valueWrapper.value.texture;
       }
     }
-
-    const gradientPass = new FullScreenQuad(
-      new ShaderMaterial({
-        uniforms: uniforms,
-        vertexShader: `
-        varying vec2 vUv;
-    
-        void main() {
-    
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-    
-        }`,
-        fragmentShader: fragShader,
-        glslVersion: GLSL3,
-      })
-    );
+    const mat = new ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: `
+      varying vec2 vUv;
+  
+      void main() {
+  
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+  
+      }`,
+      fragmentShader: fragShader,
+      glslVersion: GLSL3,
+    });
+    mat.defines = defines;
+    const gradientPass = new FullScreenQuad(mat);
     const temp = this.getRenderTarget();
     this.setRenderTarget(outputBuffer);
     gradientPass.render(this);

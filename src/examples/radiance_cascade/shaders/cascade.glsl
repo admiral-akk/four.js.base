@@ -2,6 +2,14 @@
 #define TAU 6.283185307179586
 #define EPS 0.00005
 
+#if (LINE_SEGMENT_COUNT > 0)
+struct LineSegment { 
+  vec4 color;
+  vec4 startEnd;
+};
+uniform LineSegment lineSegments[ LINE_SEGMENT_COUNT ];
+#endif
+
 uniform sampler2D tColor;
 uniform sampler2D tSdf;
 uniform sampler2D tPrevCascade;
@@ -98,6 +106,72 @@ vec4 sampleCascade(vec2 sampleUv, int index) {
   return radiance;
 }
 
+float crossVec2(in vec2 a, in vec2 b) {
+return a.x * b.y - b.x * a.y;
+}
+
+#if LINE_SEGMENT_COUNT > 0
+
+float hitLineDistance(vec2 sampleUv, vec2 dir, LineSegment segment) {
+  vec2 start = segment.startEnd.xy;
+  vec2 end = segment.startEnd.zw;
+
+  vec2 delta = end - start;
+
+  float denom = crossVec2(delta, dir);
+  if (denom == 0.) {
+    return 100.;
+  }
+  float dist = crossVec2((sampleUv - start), delta) / crossVec2(delta, dir);
+
+  if (dist < 0.) {
+    return 100.;
+  }
+
+  vec2 lineHit = dist * dir + sampleUv;
+  vec2 lineHitDelta = lineHit - start;
+
+  float t = dot(lineHitDelta, delta) / dot(delta,delta);
+  if (t > 1. || t < 0.) {
+    return 100.;
+  } 
+  return dist;
+}
+
+#endif
+
+vec4 fireRay2(vec2 sampleUv, int index) {
+  vec2 originalSample = sampleUv;
+  vec4 radiance = vec4(0.0);
+  vec2 rayDirectionUv = toDirection(index, tauOverRayCount);
+  float distTravelled = 0.;
+  int step = maxSteps;
+
+  int hitIndex = -1;
+  float closestDist = 50.;
+
+  #if (LINE_SEGMENT_COUNT > 0)
+  for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
+    float dist = hitLineDistance(sampleUv,  rayDirectionUv,  lineSegments[i]);
+    if (dist < closestDist) {
+      hitIndex = i;
+      closestDist = dist;
+    }
+  }
+  #endif
+  if (closestDist < maxDistance) {
+  #if (LINE_SEGMENT_COUNT > 0)
+     radiance += lineSegments[hitIndex].color;
+  #endif
+    // hit something, do some stuff
+  } else {
+      radiance += sampleCascade(originalSample, index);
+    // missed everything, see how far to edge?
+  }
+  return radiance;
+
+}
+
 vec4 fireRay(vec2 sampleUv, int index) {
   vec2 originalSample = sampleUv;
   vec4 radiance = vec4(0.0);
@@ -151,8 +225,8 @@ vec4 raymarch() {
     vec2 probeUv;
     int probeIndex;
     probeToEvaluate(vUv, probeUv, probeIndex);
-    return fireRay(probeUv, probeIndex);
-  }
+    return fireRay2(probeUv, probeIndex);
+}
   
   void main() {
     outColor = raymarch();
