@@ -103,7 +103,8 @@ vec4 fireRay(vec2 sampleUv, int index) {
   vec4 radiance = vec4(0.0);
   vec2 rayDirectionUv = toDirection(index, tauOverRayCount);
   float distTravelled = 0.;
-  for (int step = 0; step < maxSteps; step++) {
+  int step = maxSteps;
+  while (--step > 0) {
     if (outOfBounds(sampleUv)) {
       // Can't sample cascade here, because at the top level, the edge is blended
       // with the center
@@ -124,6 +125,11 @@ vec4 fireRay(vec2 sampleUv, int index) {
     }
     distTravelled += stepVal;
     sampleUv += stepVal * rayDirectionUv;
+  }
+
+  if (step == 0) {
+      // sample from the higher cascade level
+      radiance += sampleCascade(originalSample, index);
   }
 
   return radiance;

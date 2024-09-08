@@ -132,15 +132,17 @@ export class RadianceCascade extends GameState {
     this.color = "#dddddd";
     this.pixelRadius = 0.075;
     this.rayCount = 16;
-    this.maxSteps = 120;
+    this.maxSteps = 32;
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
 
+    const cascadeTextureSize = 4 * 1024;
+
     this.cascadeRT = engine.renderer.newRenderTarget(1, {
-      fixedSize: new THREE.Vector2(4 * 1024, 4 * 1024),
+      fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
     });
     this.spareCascadeRT = engine.renderer.newRenderTarget(1, {
-      fixedSize: new THREE.Vector2(4 * 1024, 4 * 1024),
+      fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
     });
 
     const sdfRTConfig = {
@@ -236,6 +238,9 @@ export class RadianceCascade extends GameState {
 
       const maxDeeperUv = 1 / sqrtRayCountAtNextDepth - halfUvPerPixel;
 
+      const maxDistance =
+        Math.pow(2, cascadeDepth - maxDepth - 2) * Math.sqrt(2);
+
       const uniforms = {
         tColor: this.colorRT,
         tSdf: this.sdfRT,
@@ -253,7 +258,7 @@ export class RadianceCascade extends GameState {
         minStep: 0.5 / this.cascadeRT.width,
         maxSteps: this.maxSteps,
         tPrevCascade: this.cascadeRT,
-        maxDistance: Math.pow(2, cascadeDepth - maxDepth) * Math.sqrt(2),
+        maxDistance: maxDistance,
       };
 
       renderer.applyPostProcess(uniforms, cascadeShader, this.spareCascadeRT);
