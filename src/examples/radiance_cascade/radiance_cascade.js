@@ -19,12 +19,14 @@ import { Vector4 } from "three";
 const gui = new GUI();
 
 const myObject = {
-  maxCascadeDepth: 6,
+  startDepth: 6,
+  finalDepth: 6,
   cascadeDepthToRender: 0,
   renderStage: "renderCascade",
 };
 
-gui.add(myObject, "maxCascadeDepth").min(0).max(9).step(1);
+gui.add(myObject, `startDepth`, 0, 9, 1).name("Start Depth");
+gui.add(myObject, "finalDepth").min(0).max(9).step(1);
 gui.add(myObject, "cascadeDepthToRender").min(0).max(6).step(1);
 gui.add(myObject, "renderStage", ["color", "sdf", "cascade", "renderCascade"]);
 
@@ -160,7 +162,7 @@ export class RadianceCascade extends GameState {
     this.colorRT = engine.renderer.newRenderTarget(1, {});
     this.spareRT = engine.renderer.newRenderTarget(1, {});
 
-    const cascadeTextureSize = 1024;
+    const cascadeTextureSize = 4 * 1024;
 
     this.cascadeRT = engine.renderer.newRenderTarget(1, {
       fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
@@ -314,8 +316,7 @@ export class RadianceCascade extends GameState {
 
       const maxDeeperUv = 1 / sqrtRayCountAtNextDepth - halfUvPerPixel;
 
-      const maxDistance =
-        Math.pow(2, cascadeDepth - maxDepth - 3) * Math.sqrt(2);
+      const maxDistance = Math.pow(2, cascadeDepth - maxDepth) * Math.sqrt(2);
 
       const uniforms = {
         tColor: this.colorRT,
@@ -371,13 +372,15 @@ export class RadianceCascade extends GameState {
       this.cascadeRT
     );
 
-    const startDepth = 1;
+    const startDepth = myObject.startDepth;
     let depth = startDepth;
-    const finalDepth = 0;
+    const finalDepth =
+      myObject.renderStage == "renderCascade" ? 0 : myObject.finalDepth;
     while (depth >= finalDepth) {
       const rayCount = 4 << depth;
       const xSize = Math.ceil(Math.sqrt(rayCount));
       const pixelCountPerProbe = Math.floor(this.cascadeRT.width / xSize);
+      const halfUvPerPixel = 1 / (2 * this.cascadeRT.width);
 
       const deeperRayCount = 2 * rayCount;
       const deepXSize = Math.ceil(Math.sqrt(deeperRayCount));
@@ -385,15 +388,13 @@ export class RadianceCascade extends GameState {
         Math.floor(this.cascadeRT.width / deepXSize) / this.cascadeRT.width;
       const maxDeeperUv = deeperUvPerProbe - halfUvPerPixel;
 
-      const maxDistance =
-        depth == startDepth
-          ? Math.sqrt(2)
-          : Math.pow(2, depth - startDepth) / this.cascadeRT.width;
+      const maxDistance = Math.sqrt(2) * Math.pow(2, depth - startDepth);
       renderer.applyPostProcess(
         {
           lineSegments: this.lineSegments,
           tPrevCascade: this.cascadeRT,
           rayCount: rayCount,
+          halfUvPerPixel: halfUvPerPixel,
           tauOverRayCount: (2 * Math.PI) / rayCount,
           tauOverDeeperRayCount: (2 * Math.PI) / deeperRayCount,
           xSize: xSize,
@@ -417,16 +418,34 @@ export class RadianceCascade extends GameState {
       ];
       depth--;
     }
-    renderer.applyPostProcess(
-      {
-        tCascadeZero: this.cascadeRT,
-        sqrtBaseRayCount: 2,
-        baseRayCount: 4,
-        minUvRemap: halfUvPerPixel,
-        maxUvRemap: 0.5 - halfUvPerPixel,
-      },
-      renderCascade,
-      null
-    );
+    switch (myObject.renderStage) {
+      case "cascade":
+        renderer.applyPostProcess(
+          {
+            tInput: this.cascadeRT,
+          },
+          `
+uniform sampler2D tInput;
+varying vec2 vUv; 
+out vec4 outColor;
+void main() {  outColor = texture2D(tInput, vUv); }`,
+          null
+        );
+        break;
+      default:
+      case "renderCascade":
+        renderer.applyPostProcess(
+          {
+            tCascadeZero: this.cascadeRT,
+            sqrtBaseRayCount: 2,
+            baseRayCount: 4,
+            minUvRemap: halfUvPerPixel,
+            maxUvRemap: 0.5 - halfUvPerPixel,
+          },
+          renderCascade,
+          null
+        );
+        break;
+    }
   }
 }

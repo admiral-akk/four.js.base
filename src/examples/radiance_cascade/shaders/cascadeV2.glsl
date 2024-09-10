@@ -14,6 +14,8 @@ uniform float tauOverDeeperRayCount;
 uniform float minDeeperUv;
 uniform float maxDeeperUv;
 
+uniform float halfUvPerPixel;
+
 uniform int rayCount;
 uniform int xSize;
 uniform float invPixelCountPerProbe;
@@ -28,7 +30,10 @@ varying vec2 vUv;
 out vec4 outColor;
 
 bool outOfBounds(vec2 uv) {
-  return uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0;
+  return uv.x < 0. 
+      || uv.x > 1.0  
+      || uv.y < 0. 
+      || uv.y > 1.0;
 }
 
 float crossVec2(in vec2 a, in vec2 b) {
@@ -77,16 +82,16 @@ void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
     int xIndex = int(floor(pixel.x * invPixelCountPerProbe));
     int yIndex = int(floor(pixel.y * invPixelCountPerProbe));
 
-    probeIndex = xIndex  + yIndex * xSize;
-    probeUv = mod(uv * float(xSize), vec2(1.));
-    if (xIndex >= xSize || yIndex >= xSize || probeIndex >=  rayCount) {
+    probeIndex = xIndex + yIndex * xSize;
+    probeUv = clamp(uv * float(xSize) - vec2(xIndex,yIndex), 0., 1.);
+    if (xIndex >= xSize || yIndex >= xSize || probeIndex >= rayCount) {
         probeIndex = -1;
     }
 }
 
 vec2 offsetForIndex(int deepIndex) {
     float xIndex = mod(float(deepIndex), float(deepXSize));
-    float yIndex = floor(float(deepIndex)/ float(deepXSize));
+    float yIndex = floor(float(deepIndex) / float(deepXSize));
     return vec2(xIndex, yIndex) * deeperUvPerProbe;
 }
 
@@ -95,25 +100,41 @@ vec2 remapProbeUv(vec2 probeUv) {
 }
 
 vec4 sampleCascadeTexture(vec2 uv) {
-    if (outOfBounds(uv)) {
-        return vec4(0.);
-    } else {
         return texture2D(tPrevCascade, uv);
+}
+
+float distToOutOfBounds(vec2 start, vec2 dir) {
+  if (dir.x == 0.) {
+    if (dir.y > 0.) {
+      return  (1. - start.y) / dir.y;
+    } else {
+      return -start.y / dir.y;
     }
+  }
+  
+  if (dir.y == 0.) {
+    if (dir.x > 0.) {
+      return  (1. - start.x) / dir.x;
+    } else {
+      return  -start.x / dir.x;
+    }
+  }
+  
+  float xDist = max((1. - start.x) / dir.x, -start.x / dir.x);
+  float yDist = max((1. - start.y) / dir.y, -start.y / dir.y);
+  return min(xDist, yDist);
 }
 
 vec4 sampleCascade(int probeIndex, vec2 probeUv) {
-    vec2 offset1 = offsetForIndex(2 * probeIndex);
-    vec2 offset2 = offsetForIndex(2 * probeIndex + 1);
+    vec2 remappedUv = remapProbeUv(probeUv);
 
-    vec2 remappedUv1 = remapProbeUv(probeUv + maxDistance * toDirection(2 * probeIndex, tauOverDeeperRayCount));
-    vec2 remappedUv2 = remapProbeUv(probeUv + maxDistance * toDirection(2 * probeIndex + 1, tauOverDeeperRayCount));
+    vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
+    vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
 
-    vec4 rad = 0.5 * (
-            sampleCascadeTexture(offset1 + remapProbeUv(probeUv)) 
-            + sampleCascadeTexture(offset2 + remapProbeUv(probeUv))
+    return 0.5 * (
+            sampleCascadeTexture(sampleUv1) 
+            + sampleCascadeTexture(sampleUv2)
             );
-    return  rad;
 }
 
 vec4 castRay(int probeIndex, vec2 probeUv) {
@@ -132,16 +153,21 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
         }
     }
     #endif
-    if (closestDist < maxDistance) {
+
+    vec4 lineColor = vec4(0.);
+    vec4 cascadeSample = sampleCascade(probeIndex, originalSample);
     #if (LINE_SEGMENT_COUNT > 0)
-        return lineSegments[hitIndex].color;
+    lineColor = lineSegments[hitIndex].color * float(closestDist < 10.) ;
     #endif
-    // hit something, do some stuff
-    } else {
-        return sampleCascade(probeIndex, originalSample);
-        // missed everything, see how far to edge?
+    float distToEdge = distToOutOfBounds(probeUv, rayDirectionUv) ;
+    if (closestDist < maxDistance) {
+      return lineColor;
+      float lineWeight = clamp((1. - closestDist / maxDistance ) ,0., 1.);
+      return lineWeight * lineColor + (1. - lineWeight) * cascadeSample;
+    } else if (distToEdge >= maxDistance) {
+      return cascadeSample;
     }
-    return vec4(0., 0., 0., 1.);
+    return vec4(0.,0.,0.,0.);
 }
 
 void main() {
@@ -153,5 +179,6 @@ void main() {
     } else {
         outColor = vec4(0.,1.,0.,1.);
     }
+
 
 }

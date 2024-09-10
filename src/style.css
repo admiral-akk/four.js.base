@@ -34,8 +34,9 @@ body {
 .lil-gui {
   --background-color: #000;
   --widget-color: #0af;
-  --padding: 2px;
-  --widget-height: 2;
+  --padding: 5px;
+  --name-width: 65%;
+  --width: 600px;
 }
 
 /* font sizing */

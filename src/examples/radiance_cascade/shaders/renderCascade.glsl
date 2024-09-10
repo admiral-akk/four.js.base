@@ -17,15 +17,15 @@ vec2 cascadeUvOffset(int cascadeIndex) {
   return vec2(x, y) / indexCount;
 }
 
-void sampleUvMapped(inout vec2 sampleUv) {
-  sampleUv = minUvRemap + (maxUvRemap - minUvRemap) * sampleUv;
+vec2 sampleUvMapped(vec2 sampleUv) {
+  return minUvRemap + (maxUvRemap - minUvRemap) * sampleUv;
 }
 
 vec4 radiance(vec2 uv) {
   vec4 rad = vec4(0.);
-  sampleUvMapped(uv);
+  vec2 remapped = sampleUvMapped(uv);
   for (int i = 0; i < baseRayCount; i++) {
-    vec2 offsetUv = cascadeUvOffset(i) + uv;
+    vec2 offsetUv = cascadeUvOffset(i) + remapped;
     rad += texture2D(tCascadeZero, offsetUv);
   }
   return rad / float(baseRayCount);
