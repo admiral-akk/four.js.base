@@ -16,6 +16,10 @@ uniform float maxDeeperUv;
 
 uniform float halfUvPerPixel;
 
+uniform int finalDepth;
+uniform int currentDepth;
+uniform int startDepth;
+
 uniform int rayCount;
 uniform int xSize;
 uniform float invPixelCountPerProbe;
@@ -29,12 +33,6 @@ varying vec2 vUv;
 
 out vec4 outColor;
 
-bool outOfBounds(vec2 uv) {
-  return uv.x < 0. 
-      || uv.x > 1.0  
-      || uv.y < 0. 
-      || uv.y > 1.0;
-}
 
 float crossVec2(in vec2 a, in vec2 b) {
 return a.x * b.y - b.x * a.y;
@@ -96,11 +94,12 @@ vec2 offsetForIndex(int deepIndex) {
 }
 
 vec2 remapProbeUv(vec2 probeUv) {
-  return minDeeperUv + (maxDeeperUv - minDeeperUv) * probeUv;
+  vec2 rescaledProbeUv = halfUvPerPixel + (1. - halfUvPerPixel) * probeUv;
+  return deeperUvPerProbe * rescaledProbeUv;
 }
 
 vec4 sampleCascadeTexture(vec2 uv) {
-        return texture2D(tPrevCascade, uv);
+  return texture2D(tPrevCascade, uv);
 }
 
 float distToOutOfBounds(vec2 start, vec2 dir) {
@@ -139,7 +138,6 @@ vec4 sampleCascade(int probeIndex, vec2 probeUv) {
 
 vec4 castRay(int probeIndex, vec2 probeUv) {
     vec2 rayDirectionUv = toDirection(probeIndex, tauOverRayCount);
-    vec2 originalSample = probeUv;
 
     int hitIndex = -1;
     float closestDist = 50.;
@@ -155,17 +153,14 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
     #endif
 
     vec4 lineColor = vec4(0.);
-    vec4 cascadeSample = sampleCascade(probeIndex, originalSample);
     #if (LINE_SEGMENT_COUNT > 0)
     lineColor = lineSegments[hitIndex].color * float(closestDist < 10.) ;
     #endif
     float distToEdge = distToOutOfBounds(probeUv, rayDirectionUv) ;
     if (closestDist < maxDistance) {
       return lineColor;
-      float lineWeight = clamp((1. - closestDist / maxDistance ) ,0., 1.);
-      return lineWeight * lineColor + (1. - lineWeight) * cascadeSample;
     } else if (distToEdge >= maxDistance) {
-      return cascadeSample;
+      return sampleCascade(probeIndex, probeUv);
     }
     return vec4(0.,0.,0.,0.);
 }
@@ -179,6 +174,5 @@ void main() {
     } else {
         outColor = vec4(0.,1.,0.,1.);
     }
-
 
 }

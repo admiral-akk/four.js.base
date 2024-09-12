@@ -19,17 +19,52 @@ import { Vector4 } from "three";
 const gui = new GUI();
 
 const myObject = {
-  startDepth: 6,
-  finalDepth: 6,
-  cascadeDepthToRender: 0,
-  renderStage: "renderCascade",
+  startDepth: 5,
+  finalDepth: 4,
+  renderStage: "cascade",
 };
 
-gui.add(myObject, `startDepth`, 0, 9, 1).name("Start Depth");
-gui.add(myObject, "finalDepth").min(0).max(9).step(1);
-gui.add(myObject, "cascadeDepthToRender").min(0).max(6).step(1);
-gui.add(myObject, "renderStage", ["color", "sdf", "cascade", "renderCascade"]);
+const configString = "config";
 
+const readConfig = () => {
+  const config = localStorage.getItem(configString);
+  if (config) {
+    const parsedConfig = JSON.parse(config);
+
+    for (var key of Object.keys(parsedConfig)) {
+      myObject[key] = parsedConfig[key];
+    }
+  }
+  console.log(myObject);
+};
+
+const clearConfig = () => {
+  const config = localStorage.getItem(configString);
+  if (config) {
+    localStorage.removeItem(configString);
+  }
+};
+
+const saveConfig = () => {
+  localStorage.setItem(configString, JSON.stringify(myObject));
+  console.log(myObject);
+};
+
+readConfig();
+
+const buttons = {
+  clearConfig: clearConfig,
+};
+
+gui
+  .add(myObject, `startDepth`, 0, 9, 1)
+  .name("Start Depth")
+  .onChange(saveConfig);
+gui.add(myObject, "finalDepth").min(0).max(9).step(1).onChange(saveConfig);
+gui
+  .add(myObject, "renderStage", ["cascade", "renderCascade"])
+  .onChange(saveConfig);
+gui.add(buttons, "clearConfig").name("Clear Config");
 class Command {
   constructor() {
     this.type = Object.getPrototypeOf(this).constructor;
@@ -185,8 +220,19 @@ export class RadianceCascade extends GameState {
       setToConstant,
       this.sdfRT
     );
+    const storedLines = localStorage.getItem("lines");
 
-    this.lineSegments = { value: [] };
+    if (storedLines) {
+      this.lineSegments = JSON.parse(storedLines);
+    } else {
+      this.lineSegments = { value: [] };
+    }
+
+    buttons.clearLines = () => {
+      this.lineSegments.value.length = 0;
+      localStorage.setItem("lines", JSON.stringify(this.lineSegments));
+    };
+    gui.add(buttons, "clearLines").name("Clear Lines");
   }
 
   startLine(engine, start) {
@@ -195,6 +241,7 @@ export class RadianceCascade extends GameState {
       color: new Vector4(color.r, color.g, color.b, 1),
       startEnd: new Vector4(start.x, start.y, start.x, start.y),
     });
+    localStorage.setItem("lines", JSON.stringify(this.lineSegments));
   }
 
   updateLine(engine, end) {
@@ -205,6 +252,7 @@ export class RadianceCascade extends GameState {
       end.x,
       end.y
     );
+    localStorage.setItem("lines", JSON.stringify(this.lineSegments));
   }
 
   applyDrag(engine, [start, end]) {
@@ -394,13 +442,16 @@ export class RadianceCascade extends GameState {
           lineSegments: this.lineSegments,
           tPrevCascade: this.cascadeRT,
           rayCount: rayCount,
+          currentDepth: depth,
+          startDepth: startDepth,
+          finalDepth: finalDepth,
           halfUvPerPixel: halfUvPerPixel,
           tauOverRayCount: (2 * Math.PI) / rayCount,
           tauOverDeeperRayCount: (2 * Math.PI) / deeperRayCount,
           xSize: xSize,
           invPixelCountPerProbe: 1 / pixelCountPerProbe,
-          minDeeperUv: halfUvPerPixel,
-          maxDeeperUv: maxDeeperUv,
+          minDeeperUv: halfUvPerPixel - halfUvPerPixel,
+          maxDeeperUv: maxDeeperUv + halfUvPerPixel,
           maxDistance: maxDistance,
           deepXSize: deepXSize,
           deeperUvPerProbe: deeperUvPerProbe,
