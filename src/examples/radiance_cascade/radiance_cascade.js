@@ -155,8 +155,8 @@ class InputManager extends StateMachine {
         new UIContainerParams({
           id: "my-id",
           position: new AbsolutePosition({
-            centerX: 0.1,
-            centerY: this.buttons.length * 0.2 + 0.1,
+            centerX: this.buttons.length * 0.2 + 0.1,
+            centerY: 0.9,
           }),
           size: new AspectSize({ width: 0.1, aspectRatio: 1 }),
           style: { "background-color": color },

@@ -1,3 +1,5 @@
+#define EPS 0.1
+
 #if (LINE_SEGMENT_COUNT > 0)
 struct LineSegment { 
   vec4 color;
@@ -47,11 +49,11 @@ float hitLineDistance(vec2 sampleUv, vec2 dir, LineSegment segment) {
 
   float denom = crossVec2(delta, dir);
   if (denom == 0.) {
-    return 100.;
+    return 1000.;
   }
   float dist = crossVec2((sampleUv - start), delta) / crossVec2(delta, dir);
 
-  if (dist < 0.) {
+  if (dist <= 0.) {
     return 100.;
   }
 
@@ -65,6 +67,18 @@ float hitLineDistance(vec2 sampleUv, vec2 dir, LineSegment segment) {
   return dist;
 }
 
+
+void hitLines(vec2 sampleUv, vec2 dir, out int hitIndex, out float hitDistance) {
+  hitIndex = -1;
+  hitDistance = 100.;
+    for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
+        float dist = hitLineDistance(sampleUv,  dir,  lineSegments[i]);
+        if (dist < hitDistance) {
+            hitIndex = i;
+            hitDistance = dist;
+        }
+    }
+}
 #endif
 
 vec2 toDirection(int index, float tauOverIndexRayCount) {
@@ -72,19 +86,9 @@ vec2 toDirection(int index, float tauOverIndexRayCount) {
   return vec2(cos(angle), -sin(angle));
 }
 
-// returns the UV to start the probe from and the index which
-// indicates the direction
-void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
-    vec2 pixel = uv * vec2(textureSize(tPrevCascade, 0));
-    
-    int xIndex = int(floor(pixel.x * invPixelCountPerProbe));
-    int yIndex = int(floor(pixel.y * invPixelCountPerProbe));
-
-    probeIndex = xIndex + yIndex * xSize;
-    probeUv = clamp(uv * float(xSize) - vec2(xIndex,yIndex), 0., 1.);
-    if (xIndex >= xSize || yIndex >= xSize || probeIndex >= rayCount) {
-        probeIndex = -1;
-    }
+vec2 remapProbeUv(vec2 probeUv) {
+  float rescaler = (deeperUvPerProbe - 2. * halfUvPerPixel) / (1. - 2. * halfUvPerPixel ) ;
+  return rescaler * (probeUv - halfUvPerPixel) + halfUvPerPixel;
 }
 
 vec2 offsetForIndex(int deepIndex) {
@@ -93,13 +97,21 @@ vec2 offsetForIndex(int deepIndex) {
     return vec2(xIndex, yIndex) * deeperUvPerProbe;
 }
 
-vec2 remapProbeUv(vec2 probeUv) {
-  vec2 rescaledProbeUv = halfUvPerPixel + (1. - halfUvPerPixel) * probeUv;
-  return deeperUvPerProbe * rescaledProbeUv;
-}
 
 vec4 sampleCascadeTexture(vec2 uv) {
   return texture2D(tPrevCascade, uv);
+}
+
+vec4 sampleCascade(int probeIndex, vec2 probeUv) {
+    vec2 remappedUv = remapProbeUv(probeUv);
+
+    vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
+    vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
+
+    return 0.5 * (
+            sampleCascadeTexture(sampleUv1) 
+            + sampleCascadeTexture(sampleUv2)
+            );
 }
 
 float distToOutOfBounds(vec2 start, vec2 dir) {
@@ -124,36 +136,22 @@ float distToOutOfBounds(vec2 start, vec2 dir) {
   return min(xDist, yDist);
 }
 
-vec4 sampleCascade(int probeIndex, vec2 probeUv) {
-    vec2 remappedUv = remapProbeUv(probeUv);
-
-    vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
-    vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
-
-    return 0.5 * (
-            sampleCascadeTexture(sampleUv1) 
-            + sampleCascadeTexture(sampleUv2)
-            );
-}
-
 vec4 castRay(int probeIndex, vec2 probeUv) {
     vec2 rayDirectionUv = toDirection(probeIndex, tauOverRayCount);
 
-    int hitIndex = -1;
-    float closestDist = 50.;
+    int hitIndex;
+    float closestDist;
 
     #if (LINE_SEGMENT_COUNT > 0)
-    for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
-        float dist = hitLineDistance(probeUv,  rayDirectionUv,  lineSegments[i]);
-        if (dist < closestDist) {
-            hitIndex = i;
-            closestDist = dist;
-        }
-    }
+    hitLines(probeUv,  rayDirectionUv, hitIndex, closestDist);
     #endif
 
     vec4 lineColor = vec4(0.);
     #if (LINE_SEGMENT_COUNT > 0)
+    if (closestDist == 100.) {
+
+    }
+
     lineColor = lineSegments[hitIndex].color * float(closestDist < 10.) ;
     #endif
     float distToEdge = distToOutOfBounds(probeUv, rayDirectionUv) ;
@@ -165,6 +163,26 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
     return vec4(0.,0.,0.,0.);
 }
 
+// returns the UV to start the probe from and the index which
+// indicates the direction
+void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
+    vec2 pixel = uv * vec2(textureSize(tPrevCascade, 0));
+    
+    int xIndex = int(floor(pixel.x * invPixelCountPerProbe));
+    int yIndex = int(floor(pixel.y * invPixelCountPerProbe));
+
+    probeIndex = xIndex + yIndex * xSize;
+
+    float scaler = (float(xSize) - 2. * halfUvPerPixel) / (1. - 2. * halfUvPerPixel);
+    vec2 rescaled = (uv - halfUvPerPixel) * scaler + halfUvPerPixel;
+
+    probeUv = rescaled - vec2(xIndex,yIndex);
+    if (xIndex >= xSize || yIndex >= xSize || probeIndex >= rayCount) {
+        probeIndex = -1;
+    }
+}
+
+
 void main() {
     vec2 probeUv;
     int probeIndex;
@@ -174,5 +192,4 @@ void main() {
     } else {
         outColor = vec4(0.,1.,0.,1.);
     }
-
 }
