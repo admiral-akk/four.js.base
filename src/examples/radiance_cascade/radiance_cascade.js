@@ -21,6 +21,7 @@ const gui = new GUI();
 const myObject = {
   startDepth: 5,
   finalDepth: 4,
+  renderMode: 0,
   renderStage: "cascade",
 };
 
@@ -61,6 +62,7 @@ gui
   .name("Start Depth")
   .onChange(saveConfig);
 gui.add(myObject, "finalDepth").min(0).max(9).step(1).onChange(saveConfig);
+gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui
   .add(myObject, "renderStage", ["cascade", "renderCascade"])
   .onChange(saveConfig);
@@ -429,12 +431,15 @@ export class RadianceCascade extends GameState {
       const xSize = Math.ceil(Math.sqrt(rayCount));
       const pixelCountPerProbe = Math.floor(this.cascadeRT.width / xSize);
       const halfUvPerPixel = 1 / (2 * this.cascadeRT.width);
+      const uvPerProbe =
+        Math.floor(this.cascadeRT.width / xSize) / this.cascadeRT.width;
 
       const deeperRayCount = 2 * rayCount;
       const deepXSize = Math.ceil(Math.sqrt(deeperRayCount));
       const deeperUvPerProbe =
         Math.floor(this.cascadeRT.width / deepXSize) / this.cascadeRT.width;
       const maxDeeperUv = deeperUvPerProbe - halfUvPerPixel;
+      const probeSeperationUv = 1 / pixelCountPerProbe;
 
       const maxDistance = Math.sqrt(2) * Math.pow(2, depth - startDepth);
       renderer.applyPostProcess(
@@ -449,12 +454,16 @@ export class RadianceCascade extends GameState {
           tauOverRayCount: (2 * Math.PI) / rayCount,
           tauOverDeeperRayCount: (2 * Math.PI) / deeperRayCount,
           xSize: xSize,
+          pixelCountPerProbe: pixelCountPerProbe,
           invPixelCountPerProbe: 1 / pixelCountPerProbe,
           minDeeperUv: halfUvPerPixel - halfUvPerPixel,
           maxDeeperUv: maxDeeperUv + halfUvPerPixel,
           maxDistance: maxDistance,
+          uvPerProbe: uvPerProbe,
           deepXSize: deepXSize,
+          probeSeperationUv: probeSeperationUv,
           deeperUvPerProbe: deeperUvPerProbe,
+          renderMode: myObject.renderMode,
         },
         renderCascadeV2,
         this.spareCascadeRT,
@@ -492,6 +501,7 @@ void main() {  outColor = texture2D(tInput, vUv); }`,
             baseRayCount: 4,
             minUvRemap: halfUvPerPixel,
             maxUvRemap: 0.5 - halfUvPerPixel,
+            renderMode: myObject.renderMode,
           },
           renderCascade,
           null

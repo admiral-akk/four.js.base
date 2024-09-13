@@ -16,6 +16,9 @@ uniform float tauOverDeeperRayCount;
 uniform float minDeeperUv;
 uniform float maxDeeperUv;
 
+uniform float probeSeperationUv;
+
+
 uniform float halfUvPerPixel;
 
 uniform int finalDepth;
@@ -23,13 +26,16 @@ uniform int currentDepth;
 uniform int startDepth;
 
 uniform int rayCount;
+uniform int pixelCountPerProbe;
 uniform int xSize;
 uniform float invPixelCountPerProbe;
 
 uniform int deepXSize;
 uniform float deeperUvPerProbe;
+uniform float uvPerProbe;
 
 uniform float maxDistance;
+uniform int renderMode;
 
 varying vec2 vUv;
 
@@ -87,8 +93,7 @@ vec2 toDirection(int index, float tauOverIndexRayCount) {
 }
 
 vec2 remapProbeUv(vec2 probeUv) {
-  float rescaler = (deeperUvPerProbe - 2. * halfUvPerPixel) / (1. - 2. * halfUvPerPixel ) ;
-  return rescaler * (probeUv - halfUvPerPixel) + halfUvPerPixel;
+  return probeUv * deeperUvPerProbe;
 }
 
 vec2 offsetForIndex(int deepIndex) {
@@ -104,9 +109,16 @@ vec4 sampleCascadeTexture(vec2 uv) {
 
 vec4 sampleCascade(int probeIndex, vec2 probeUv) {
     vec2 remappedUv = remapProbeUv(probeUv);
+    if (renderMode == 7) {
+      return vec4(remapProbeUv(probeUv), 0.,1.);
+      return vec4(float(remappedUv.x >= deeperUvPerProbe - 4. * halfUvPerPixel ), 0., 0.,1.);
+    }
 
     vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
     vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
+    if (renderMode == 8) {
+      return vec4(sampleUv1, 0.,1.);
+    }
 
     return 0.5 * (
             sampleCascadeTexture(sampleUv1) 
@@ -141,6 +153,12 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
 
     int hitIndex;
     float closestDist;
+    if (renderMode == 2) {
+      return vec4(probeUv, 0.,1.);
+    }
+    if (renderMode == 3) {
+      return vec4(float(probeIndex) / float(rayCount - 1), 0., 0.,1.);
+    }
 
     #if (LINE_SEGMENT_COUNT > 0)
     hitLines(probeUv,  rayDirectionUv, hitIndex, closestDist);
@@ -148,13 +166,23 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
 
     vec4 lineColor = vec4(0.);
     #if (LINE_SEGMENT_COUNT > 0)
-    if (closestDist == 100.) {
-
+    if (renderMode == 4) {
+      return vec4(float(closestDist < 10.) * (1. - closestDist), 0., 0.,1.);
     }
+    if (renderMode == 5) {
+      return vec4(float(hitIndex + 1) / float(LINE_SEGMENT_COUNT), 0., 0.,1.);
+    }
+
 
     lineColor = lineSegments[hitIndex].color * float(closestDist < 10.) ;
     #endif
     float distToEdge = distToOutOfBounds(probeUv, rayDirectionUv) ;
+    if (renderMode == 6) {
+      return vec4(float(distToEdge >= maxDistance), 0., 0.,1.);
+    }
+    if (renderMode >= 7 && renderMode <= 9) {
+      return sampleCascade(probeIndex, probeUv);
+    }
     if (closestDist < maxDistance) {
       return lineColor;
     } else if (distToEdge >= maxDistance) {
@@ -171,12 +199,20 @@ void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
     int xIndex = int(floor(pixel.x * invPixelCountPerProbe));
     int yIndex = int(floor(pixel.y * invPixelCountPerProbe));
 
+    // indicates direction
     probeIndex = xIndex + yIndex * xSize;
+    
+    // [0, size - 1]
+    vec2 pixelFloored = floor(uv * vec2(textureSize(tPrevCascade, 0)));
+    vec2 pixelFlooredModded = mod(pixelFloored, float(pixelCountPerProbe));
+    vec2 pixelFlooredRescaled = (1. - 2. * halfUvPerPixel) * (pixelFlooredModded / float(pixelCountPerProbe)) + halfUvPerPixel;
+    // 
 
     float scaler = (float(xSize) - 2. * halfUvPerPixel) / (1. - 2. * halfUvPerPixel);
     vec2 rescaled = (uv - halfUvPerPixel) * scaler + halfUvPerPixel;
 
-    probeUv = rescaled - vec2(xIndex,yIndex);
+    probeUv = pixelFlooredRescaled;
+    probeUv = uv / uvPerProbe - vec2(xIndex,yIndex);
     if (xIndex >= xSize || yIndex >= xSize || probeIndex >= rayCount) {
         probeIndex = -1;
     }
@@ -191,5 +227,9 @@ void main() {
         outColor = castRay(probeIndex, probeUv);
     } else {
         outColor = vec4(0.,1.,0.,1.);
+    }
+
+    if (renderMode == 1) {
+      outColor = vec4(vUv, 0.,1.);
     }
 }
