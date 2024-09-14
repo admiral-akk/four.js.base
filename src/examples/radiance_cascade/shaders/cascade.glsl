@@ -1,5 +1,3 @@
-#define EPS 0.1
-
 #if (LINE_SEGMENT_COUNT > 0)
 struct LineSegment { 
   vec4 color;
@@ -9,15 +7,7 @@ uniform LineSegment lineSegments[ LINE_SEGMENT_COUNT ];
 #endif
 
 uniform sampler2D tPrevCascade;
-
 uniform float tauOverRayCount;
-uniform float tauOverDeeperRayCount;
-
-uniform float minDeeperUv;
-uniform float maxDeeperUv;
-
-uniform float probeSeperationUv;
-
 
 uniform float halfUvPerPixel;
 
@@ -26,7 +16,6 @@ uniform int currentDepth;
 uniform int startDepth;
 
 uniform int rayCount;
-uniform int pixelCountPerProbe;
 uniform int xSize;
 uniform float invPixelCountPerProbe;
 
@@ -47,9 +36,13 @@ return a.x * b.y - b.x * a.y;
 }
 #if LINE_SEGMENT_COUNT > 0
 
-float hitLineDistance(vec2 sampleUv, vec2 dir, LineSegment segment) {
-  vec2 start = segment.startEnd.xy;
-  vec2 end = segment.startEnd.zw;
+
+float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
+  vec2 start = segmentStartEnd.xy;
+  vec2 end = segmentStartEnd.zw;
+
+  vec2 sampleUv = sampleStartEnd.xy;
+  vec2 dir = sampleStartEnd.zw;
 
   vec2 delta = end - start;
 
@@ -78,7 +71,7 @@ void hitLines(vec2 sampleUv, vec2 dir, out int hitIndex, out float hitDistance) 
   hitIndex = -1;
   hitDistance = 100.;
     for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
-        float dist = hitLineDistance(sampleUv,  dir,  lineSegments[i]);
+        float dist = hitLineDistance(vec4(sampleUv,  dir),  lineSegments[i].startEnd);
         if (dist < hitDistance) {
             hitIndex = i;
             hitDistance = dist;
