@@ -38,32 +38,25 @@ return a.x * b.y - b.x * a.y;
 
 
 float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
-  vec2 start = segmentStartEnd.xy;
-  vec2 end = segmentStartEnd.zw;
+  vec2 p = sampleStartEnd.xy;
+  vec2 r = sampleStartEnd.zw - sampleStartEnd.xy;
+  vec2 q = segmentStartEnd.xy;
+  vec2 s = segmentStartEnd.zw - segmentStartEnd.xy;
 
-  vec2 sampleUv = sampleStartEnd.xy;
-  vec2 dir = sampleStartEnd.zw;
+  float r_s = crossVec2(r,s);
 
-  vec2 delta = end - start;
-
-  float denom = crossVec2(delta, dir);
-  if (denom == 0.) {
+  if (r_s == 0.) {
     return 1000.;
   }
-  float dist = crossVec2((sampleUv - start), delta) / crossVec2(delta, dir);
 
-  if (dist <= 0.) {
+  float t = crossVec2((q - p), s) / r_s;
+  float u = crossVec2(p-q, r) / (-r_s);
+
+  if (t < 0. || t > 1. || u < 0. || u > 1.) {
     return 100.;
   }
 
-  vec2 lineHit = dist * dir + sampleUv;
-  vec2 lineHitDelta = lineHit - start;
-
-  float t = dot(lineHitDelta, delta) / dot(delta,delta);
-  if (t > 1. || t < 0.) {
-    return 100.;
-  } 
-  return dist;
+  return t;
 }
 
 
@@ -71,7 +64,7 @@ void hitLines(vec2 sampleUv, vec2 dir, out int hitIndex, out float hitDistance) 
   hitIndex = -1;
   hitDistance = 100.;
     for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
-        float dist = hitLineDistance(vec4(sampleUv,  dir),  lineSegments[i].startEnd);
+        float dist = hitLineDistance(vec4(sampleUv, sampleUv + maxDistance * dir),  lineSegments[i].startEnd);
         if (dist < hitDistance) {
             hitIndex = i;
             hitDistance = dist;
@@ -176,7 +169,7 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
     if (renderMode >= 7 && renderMode <= 9) {
       return sampleCascade(probeIndex, probeUv);
     }
-    if (closestDist < maxDistance) {
+    if (closestDist < 10.) {
       return lineColor;
     } else if (distToEdge >= maxDistance) {
       return sampleCascade(probeIndex, probeUv);
