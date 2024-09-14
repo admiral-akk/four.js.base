@@ -10,7 +10,7 @@ import { State, StateMachine } from "../../utils/stateMachine";
 import * as THREE from "three";
 
 import renderCascade from "./shaders/renderCascade.glsl";
-import renderCascadeV2 from "./shaders/cascadeV2.glsl";
+import calculateCascade from "./shaders/cascade.glsl";
 
 import GUI from "lil-gui";
 import { Vector4 } from "three";
@@ -322,7 +322,7 @@ export class RadianceCascade extends GameState {
     while (depth >= finalDepth) {
       renderer.applyPostProcess(
         this.calculateUniforms(depth),
-        renderCascadeV2,
+        calculateCascade,
         this.spareCascadeRT,
         {
           LINE_SEGMENT_COUNT: this.lineSegments.value.length,
