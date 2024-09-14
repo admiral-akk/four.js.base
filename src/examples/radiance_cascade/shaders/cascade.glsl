@@ -63,13 +63,14 @@ float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
 void hitLines(vec2 sampleUv, vec2 dir, out int hitIndex, out float hitDistance) {
   hitIndex = -1;
   hitDistance = 100.;
-    for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
-        float dist = hitLineDistance(vec4(sampleUv, sampleUv + maxDistance * dir),  lineSegments[i].startEnd);
-        if (dist < hitDistance) {
-            hitIndex = i;
-            hitDistance = dist;
-        }
-    }
+  vec4 sampleStartEnd = vec4(sampleUv, sampleUv + maxDistance * dir);
+  for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
+      float dist = hitLineDistance(sampleStartEnd,  lineSegments[i].startEnd);
+      if (dist < hitDistance) {
+          hitIndex = i;
+          hitDistance = dist;
+      }
+  }
 }
 #endif
 
