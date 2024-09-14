@@ -1,4 +1,4 @@
-uniform sampler2D tCascadeZero;
+uniform sampler2D tPrevCascade;
 
 uniform int sqrtBaseRayCount;
 uniform int baseRayCount;
@@ -26,7 +26,7 @@ vec4 radiance(vec2 uv) {
   vec2 remapped = sampleUvMapped(uv);
   for (int i = 0; i < baseRayCount; i++) {
     vec2 offsetUv = cascadeUvOffset(i) + remapped;
-    rad += texture2D(tCascadeZero, offsetUv);
+    rad += texture2D(tPrevCascade, offsetUv);
   }
   return rad / float(baseRayCount);
 }

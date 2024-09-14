@@ -81,6 +81,31 @@ class CustomerRenderer extends WebGLRenderer {
     this.setRenderTarget(oldTarget);
   }
 
+  renderTexture(rt) {
+    this.applyPostProcess(
+      {
+        tInput: rt,
+      },
+      `
+          uniform sampler2D tInput;
+          varying vec2 vUv; 
+          out vec4 outColor;
+          void main() {  outColor = texture2D(tInput, vUv); }`,
+      null
+    );
+  }
+
+  setTextureToConstant(rt, constant) {
+    this.applyPostProcess(
+      { constant: constant },
+      `
+        uniform vec4 constant;
+        out vec4 outColor;
+        void main() {  outColor = constant; }`,
+      rt
+    );
+  }
+
   applyPostProcess(uniforms, fragShader, outputBuffer, defines = null) {
     for (const key in uniforms) {
       const value = uniforms[key];

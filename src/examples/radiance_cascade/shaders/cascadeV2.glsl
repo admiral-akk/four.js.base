@@ -201,17 +201,6 @@ void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
 
     // indicates direction
     probeIndex = xIndex + yIndex * xSize;
-    
-    // [0, size - 1]
-    vec2 pixelFloored = floor(uv * vec2(textureSize(tPrevCascade, 0)));
-    vec2 pixelFlooredModded = mod(pixelFloored, float(pixelCountPerProbe));
-    vec2 pixelFlooredRescaled = (1. - 2. * halfUvPerPixel) * (pixelFlooredModded / float(pixelCountPerProbe)) + halfUvPerPixel;
-    // 
-
-    float scaler = (float(xSize) - 2. * halfUvPerPixel) / (1. - 2. * halfUvPerPixel);
-    vec2 rescaled = (uv - halfUvPerPixel) * scaler + halfUvPerPixel;
-
-    probeUv = pixelFlooredRescaled;
     probeUv = uv / uvPerProbe - vec2(xIndex,yIndex);
     if (xIndex >= xSize || yIndex >= xSize || probeIndex >= rayCount) {
         probeIndex = -1;
