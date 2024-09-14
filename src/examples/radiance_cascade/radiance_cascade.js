@@ -16,6 +16,7 @@ import GUI from "lil-gui";
 import { Vector4 } from "three";
 const gui = new GUI();
 
+const cascadeTextureSize = 4 * 1024;
 const myObject = {
   fogStepSize: 0.01,
   startDepth: 5,
@@ -62,11 +63,19 @@ gui
   .max(0.1)
   .step(0.001)
   .onChange(saveConfig);
-gui
-  .add(myObject, `startDepth`, 0, 9, 1)
-  .name("Start Depth")
+const finalDepth = gui
+  .add(myObject, "finalDepth")
+  .min(-1)
+  .max(9)
+  .step(1)
   .onChange(saveConfig);
-gui.add(myObject, "finalDepth").min(-1).max(9).step(1).onChange(saveConfig);
+gui
+  .add(myObject, `startDepth`, 0, Math.floor(Math.log2(cascadeTextureSize)), 1)
+  .name("Start Depth")
+  .onChange(saveConfig)
+  .onChange((v) => {
+    finalDepth.max(myObject.startDepth);
+  });
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(myObject, "hasMinDistance").onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
@@ -196,7 +205,6 @@ export class RadianceCascade extends GameState {
     this.input = new InputManager(this);
     this.input.init(engine, this);
     this.color = "#dddddd";
-    const cascadeTextureSize = 4 * 1024;
 
     this.cascadeRT = engine.renderer.newRenderTarget(1, {
       fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
@@ -291,7 +299,11 @@ export class RadianceCascade extends GameState {
     const maxDeeperUv = deeperUvPerProbe - halfUvPerPixel;
     const probeSeperationUv = 1 / pixelCountPerProbe;
 
-    const maxDistance = Math.sqrt(2) * Math.pow(2, depth - startDepth);
+    const baseDistance = Math.SQRT2 / this.cascadeRT.width;
+    const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
+
+    const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
+    const minDistance = 0 != depth ? maxDistance / 3 : 0;
 
     return {
       fogStepSize: myObject.fogStepSize,
@@ -307,8 +319,7 @@ export class RadianceCascade extends GameState {
       invPixelCountPerProbe: 1 / pixelCountPerProbe,
       minDeeperUv: halfUvPerPixel - halfUvPerPixel,
       maxDeeperUv: maxDeeperUv + halfUvPerPixel,
-      minDistance:
-        myObject.hasMinDistance && startDepth != depth ? maxDistance / 3 : 0,
+      minDistance: minDistance,
       maxDistance: maxDistance,
       uvPerProbe: uvPerProbe,
       deepXSize: deepXSize,
