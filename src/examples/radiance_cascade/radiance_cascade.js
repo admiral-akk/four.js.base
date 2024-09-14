@@ -17,9 +17,11 @@ import { Vector4 } from "three";
 const gui = new GUI();
 
 const myObject = {
+  fogStepSize: 0.01,
   startDepth: 5,
   finalDepth: 4,
   renderMode: 0,
+  hasMinDistance: false,
 };
 
 const configString = "config";
@@ -55,11 +57,18 @@ const buttons = {
 };
 
 gui
+  .add(myObject, "fogStepSize")
+  .min(0.001)
+  .max(0.1)
+  .step(0.001)
+  .onChange(saveConfig);
+gui
   .add(myObject, `startDepth`, 0, 9, 1)
   .name("Start Depth")
   .onChange(saveConfig);
 gui.add(myObject, "finalDepth").min(-1).max(9).step(1).onChange(saveConfig);
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
+gui.add(myObject, "hasMinDistance").onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
 class Command {
   constructor() {
@@ -285,6 +294,7 @@ export class RadianceCascade extends GameState {
     const maxDistance = Math.sqrt(2) * Math.pow(2, depth - startDepth);
 
     return {
+      fogStepSize: myObject.fogStepSize,
       lineSegments: this.lineSegments,
       tPrevCascade: this.cascadeRT,
       rayCount: rayCount,
@@ -297,6 +307,8 @@ export class RadianceCascade extends GameState {
       invPixelCountPerProbe: 1 / pixelCountPerProbe,
       minDeeperUv: halfUvPerPixel - halfUvPerPixel,
       maxDeeperUv: maxDeeperUv + halfUvPerPixel,
+      minDistance:
+        myObject.hasMinDistance && startDepth != depth ? maxDistance / 3 : 0,
       maxDistance: maxDistance,
       uvPerProbe: uvPerProbe,
       deepXSize: deepXSize,

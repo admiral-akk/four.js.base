@@ -15,6 +15,8 @@ uniform int finalDepth;
 uniform int currentDepth;
 uniform int startDepth;
 
+uniform float fogStepSize;
+
 uniform int rayCount;
 uniform int xSize;
 uniform float invPixelCountPerProbe;
@@ -23,6 +25,7 @@ uniform int deepXSize;
 uniform float deeperUvPerProbe;
 uniform float uvPerProbe;
 
+uniform float minDistance;
 uniform float maxDistance;
 uniform int renderMode;
 
@@ -59,11 +62,28 @@ float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
   return t;
 }
 
+float opacityAt(vec2 sampleUv) {
+  return clamp(1. - length(sampleUv - vec2(0.4)), 0., 1.);
+}
+
+vec4 calculateFog(vec2 start, vec2 end, in vec4 hitColor) {
+  return hitColor;
+  // pretend there's a cloud in the middle?
+  // need uniform step size
+  float distTravelled = fogStepSize;
+  vec2 dir = normalize(start - end);
+  while (distTravelled < length(start - end)) {
+    vec2 samplePoint = end + dir * distTravelled;
+    hitColor *= opacityAt(samplePoint) * hitColor;
+    distTravelled += fogStepSize;
+  }
+  return hitColor;
+}
 
 void hitLines(vec2 sampleUv, vec2 dir, out int hitIndex, out float hitDistance) {
   hitIndex = -1;
   hitDistance = 100.;
-  vec4 sampleStartEnd = vec4(sampleUv, sampleUv + maxDistance * dir);
+  vec4 sampleStartEnd = vec4(sampleUv + minDistance * dir, sampleUv + maxDistance * dir);
   for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
       float dist = hitLineDistance(sampleStartEnd,  lineSegments[i].startEnd);
       if (dist < hitDistance) {
@@ -171,7 +191,7 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
       return sampleCascade(probeIndex, probeUv);
     }
     if (closestDist < 10.) {
-      return lineColor;
+      return calculateFog(probeUv, rayDirectionUv, lineColor);
     } else if (distToEdge >= maxDistance) {
       return sampleCascade(probeIndex, probeUv);
     }
