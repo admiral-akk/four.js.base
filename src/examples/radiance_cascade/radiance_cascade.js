@@ -18,11 +18,9 @@ const gui = new GUI();
 
 const cascadeTextureSize = 4 * 1024;
 const myObject = {
-  fogStepSize: 0.01,
   startDepth: 5,
   finalDepth: 4,
   renderMode: 0,
-  hasMinDistance: false,
 };
 
 const configString = "config";
@@ -62,13 +60,15 @@ const finalDepth = gui
   .min(-1)
   .max(9)
   .step(1)
-  .onChange(saveConfig);
-gui
-  .add(myObject, `startDepth`, 0, Math.floor(Math.log2(cascadeTextureSize)), 1)
-  .name("Start Depth")
   .onChange(saveConfig)
-  .onChange((v) => {
+  .listen();
+gui
+  .add(myObject, "startDepth", 1, Math.floor(Math.log2(cascadeTextureSize)), 1)
+  .name("Start Depth")
+  .onChange(() => {
     finalDepth.max(myObject.startDepth);
+    myObject.finalDepth = Math.min(myObject.startDepth, myObject.finalDepth);
+    saveConfig();
   });
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
