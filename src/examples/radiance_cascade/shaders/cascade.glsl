@@ -23,6 +23,7 @@ struct DebugInfo {
   int startDepth;
   int finalDepth;
   int renderMode; 
+  bool bilinearFix;
 };
 
 uniform CascadeConfig current;
@@ -139,10 +140,6 @@ float distToOutOfBounds(vec2 start, vec2 dir) {
   return min(xDist, yDist);
 }
 
-vec2 higherProbeUv(vec2 probeUv) {
-  return probeUv ;
-}
-
 vec4 castRay(int probeIndex, vec2 probeUv) {
     vec2 rayDirectionUv = toDirection(probeIndex);
 
@@ -186,6 +183,26 @@ vec4 castRay(int probeIndex, vec2 probeUv) {
     return vec4(0.,0.,0.,0.);
 }
 
+vec4 bilinearFix(int probeIndex, vec2 probeUv) {
+  vec2 probeTL = (floor(probeUv * deeper.probeCount) ) / deeper.probeCount;
+  vec2 delta = 1. / vec2(deeper.probeCount);
+  vec2 probeTR = probeTL + vec2(delta.x, 0.);
+  vec2 probeBL = probeTL + vec2(0., delta.y);
+  vec2 probeBR = probeTL + delta;
+
+  vec4 radTL = castRay(probeIndex, probeTL);
+  vec4 radTR = castRay(probeIndex, probeTR);
+  vec4 radBL = castRay(probeIndex, probeBL);
+  vec4 radBR = castRay(probeIndex, probeBR);
+
+  vec2 weights = (probeUv - probeTL) / delta;
+
+  vec4 top = mix(radTL, radTR, vec4(weights.x));
+  vec4 bot = mix(radBL, radBR, vec4(weights.x));
+
+  return mix(top, bot, vec4(weights.y));
+}
+
 // returns the UV to start the probe from and the index which
 // indicates the direction
 void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
@@ -210,7 +227,13 @@ void main() {
     int probeIndex;
     probeToEvaluate(vUv, probeUv, probeIndex);
     if (probeIndex >= 0) {
-        outColor = castRay(probeIndex, probeUv);
+        if (debug.bilinearFix && !(current.depth == float(debug.startDepth))) {
+          outColor =  bilinearFix(probeIndex, probeUv);
+
+        } else {
+
+          outColor =  castRay(probeIndex, probeUv);
+        }
     } else {
         outColor = vec4(0.,1.,0.,1.);
     }

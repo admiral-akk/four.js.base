@@ -16,11 +16,12 @@ import GUI from "lil-gui";
 import { Vector4 } from "three";
 const gui = new GUI();
 
-const cascadeTextureSize = 4 * 1024;
+const cascadeTextureSize = Math.pow(2, 10);
 const myObject = {
   startDepth: 5,
   finalDepth: 4,
   renderMode: 0,
+  bilinearFix: false,
 };
 
 const configString = "config";
@@ -36,7 +37,7 @@ const readConfig = () => {
   }
   console.log(myObject);
 };
-
+readConfig();
 const clearConfig = () => {
   const config = localStorage.getItem(configString);
   if (config) {
@@ -58,7 +59,7 @@ const buttons = {
 const finalDepth = gui
   .add(myObject, "finalDepth")
   .min(-1)
-  .max(9)
+  .max(Math.min(myObject.startDepth, 9))
   .step(1)
   .onChange(saveConfig)
   .listen();
@@ -71,6 +72,7 @@ gui
     saveConfig();
   });
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
+gui.add(myObject, "bilinearFix").onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
 class Command {
   constructor() {
@@ -279,7 +281,7 @@ export class RadianceCascade extends GameState {
     const startDepth = myObject.startDepth;
     const rayCount = 4 << depth;
     const xSize = Math.ceil(Math.sqrt(rayCount));
-    const baseDistance = Math.SQRT2 / this.cascadeRT.width;
+    const baseDistance = (2 * Math.SQRT2) / this.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
     const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
@@ -289,7 +291,7 @@ export class RadianceCascade extends GameState {
       depth: depth,
       rayCount: rayCount,
       xSize: xSize,
-      minDistance: 0 != depth ? maxDistance / 3 : 0,
+      minDistance: 0 != depth ? maxDistance / 4 : 0,
       maxDistance: maxDistance,
     };
 
@@ -303,7 +305,7 @@ export class RadianceCascade extends GameState {
       depth: depth + 1,
       rayCount: deeperRayCount,
       xSize: deeperXSize,
-      minDistance: deeperMaxDistance / 3,
+      minDistance: deeperMaxDistance / 4,
       maxDistance: deeperMaxDistance,
     };
 
@@ -311,6 +313,7 @@ export class RadianceCascade extends GameState {
       startDepth: startDepth,
       finalDepth: Math.max(0, myObject.finalDepth),
       renderMode: myObject.renderMode,
+      bilinearFix: myObject.bilinearFix,
     };
 
     return {
