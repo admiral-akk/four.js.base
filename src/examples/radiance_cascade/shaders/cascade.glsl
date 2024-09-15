@@ -24,6 +24,7 @@ struct DebugInfo {
   int finalDepth;
   int renderMode; 
   bool bilinearFix;
+  bool offsetBoth;
 };
 
 uniform CascadeConfig current;
@@ -64,10 +65,10 @@ float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
   return t;
 }
 
-void hitLines(vec2 sampleUv, vec2 dir, out int hitIndex, out float hitDistance) {
+void hitLines(vec2 start, vec2 end,  out int hitIndex, out float hitDistance) {
   hitIndex = -1;
   hitDistance = 100.;
-  vec4 sampleStartEnd = vec4(sampleUv + current.minDistance * dir, sampleUv + current.maxDistance * dir);
+  vec4 sampleStartEnd = vec4(start, end);
   for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
       float dist = hitLineDistance(sampleStartEnd,  lineSegments[i].startEnd);
       if (dist < hitDistance) {
@@ -140,20 +141,17 @@ float distToOutOfBounds(vec2 start, vec2 dir) {
   return min(xDist, yDist);
 }
 
-vec4 castRay(int probeIndex, vec2 probeUv) {
+vec4 castRay(int probeIndex, vec2 probeUv, vec2 start, vec2 end) {
     vec2 rayDirectionUv = toDirection(probeIndex);
 
     int hitIndex;
     float closestDist;
-    if (debug.renderMode == 2) {
-      return vec4(probeUv, 0.,1.);
-    }
     if (debug.renderMode == 3) {
       return vec4(float(probeIndex) / (current.rayCount - 1.), 0., 0.,1.);
     }
 
     #if (LINE_SEGMENT_COUNT > 0)
-    hitLines(probeUv,  rayDirectionUv, hitIndex, closestDist);
+    hitLines(start, end,   hitIndex, closestDist);
     #endif
 
     vec4 lineColor = vec4(0.);
@@ -190,10 +188,19 @@ vec4 bilinearFix(int probeIndex, vec2 probeUv) {
   vec2 probeBL = probeTL + vec2(0., delta.y);
   vec2 probeBR = probeTL + delta;
 
-  vec4 radTL = castRay(probeIndex, probeTL);
-  vec4 radTR = castRay(probeIndex, probeTR);
-  vec4 radBL = castRay(probeIndex, probeBL);
-  vec4 radBR = castRay(probeIndex, probeBR);
+  vec2 rayDirectionUv = toDirection(probeIndex);
+  vec2 start = probeUv + current.minDistance * rayDirectionUv;
+  vec2 end = probeUv + current.maxDistance * rayDirectionUv;
+
+  vec2 startTL = debug.offsetBoth ? start + (probeTL - probeUv) : start;
+  vec2 startTR = debug.offsetBoth ? start + (probeTR - probeUv) : start;
+  vec2 startBL = debug.offsetBoth ? start + (probeBL - probeUv) : start;
+  vec2 startBR = debug.offsetBoth ? start + (probeBR - probeUv) : start;
+
+  vec4 radTL = castRay(probeIndex, probeTL, startTL, end + (probeTL - probeUv));
+  vec4 radTR = castRay(probeIndex, probeTR, startTR, end + (probeTR - probeUv));
+  vec4 radBL = castRay(probeIndex, probeBL, startBL, end + (probeBL - probeUv));
+  vec4 radBR = castRay(probeIndex, probeBR, startBR, end + (probeBR - probeUv));
 
   vec2 weights = (probeUv - probeTL) / delta;
 
@@ -231,8 +238,11 @@ void main() {
           outColor =  bilinearFix(probeIndex, probeUv);
 
         } else {
+          vec2 rayDirectionUv = toDirection(probeIndex);
+          vec2 start = probeUv + current.minDistance * rayDirectionUv;
+          vec2 end = probeUv + current.maxDistance * rayDirectionUv;
 
-          outColor =  castRay(probeIndex, probeUv);
+          outColor =  castRay(probeIndex, probeUv, start, end);
         }
     } else {
         outColor = vec4(0.,1.,0.,1.);

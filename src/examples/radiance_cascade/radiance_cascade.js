@@ -22,6 +22,7 @@ const myObject = {
   finalDepth: 4,
   renderMode: 0,
   bilinearFix: false,
+  offsetBoth: false,
 };
 
 const configString = "config";
@@ -52,8 +53,15 @@ const saveConfig = () => {
 
 readConfig();
 
+let pendingImage = false;
+
+const saveImage = () => {
+  pendingImage = true;
+};
+
 const buttons = {
   clearConfig: clearConfig,
+  saveImage: saveImage,
 };
 
 const finalDepth = gui
@@ -73,7 +81,10 @@ gui
   });
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(myObject, "bilinearFix").onChange(saveConfig);
+gui.add(myObject, "offsetBoth").onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
+gui.add(buttons, "saveImage").name("Save Image");
+
 class Command {
   constructor() {
     this.type = Object.getPrototypeOf(this).constructor;
@@ -305,7 +316,7 @@ export class RadianceCascade extends GameState {
       depth: depth + 1,
       rayCount: deeperRayCount,
       xSize: deeperXSize,
-      minDistance: deeperMaxDistance / 4,
+      minDistance: deeperMaxDistance / 3,
       maxDistance: deeperMaxDistance,
     };
 
@@ -314,6 +325,7 @@ export class RadianceCascade extends GameState {
       finalDepth: Math.max(0, myObject.finalDepth),
       renderMode: myObject.renderMode,
       bilinearFix: myObject.bilinearFix,
+      offsetBoth: myObject.offsetBoth,
     };
 
     return {
@@ -359,6 +371,20 @@ export class RadianceCascade extends GameState {
       default:
         renderer.renderTexture(this.cascadeRT);
         break;
+    }
+    if (pendingImage) {
+      let canvas = document.getElementById("webgl");
+
+      var image = canvas.toDataURL();
+      // Create a link
+      var aDownloadLink = document.createElement("a");
+      // Add the name of the file to the link
+      aDownloadLink.download = "canvas_image.png";
+      // Attach the data to the link
+      aDownloadLink.href = image;
+      // Get the code to click the download link
+      aDownloadLink.click();
+      pendingImage = false;
     }
   }
 }
