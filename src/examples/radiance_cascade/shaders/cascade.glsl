@@ -30,11 +30,6 @@ uniform CascadeConfig deeper;
 uniform DebugInfo debug;
 uniform sampler2D tPrevCascade;
 
-
-uniform int startDepth;
-uniform int finalDepth;
-
-
 varying vec2 vUv;
 
 out vec4 outColor;
