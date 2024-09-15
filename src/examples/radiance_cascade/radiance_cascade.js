@@ -16,8 +16,8 @@ import GUI from "lil-gui";
 import { Vector4 } from "three";
 const gui = new GUI();
 
-const cascadeTextureSize = Math.pow(2, 10);
 const myObject = {
+  textureSize: 10,
   startDepth: 5,
   finalDepth: 4,
   renderMode: 0,
@@ -63,7 +63,6 @@ const buttons = {
   clearConfig: clearConfig,
   saveImage: saveImage,
 };
-
 const finalDepth = gui
   .add(myObject, "finalDepth")
   .min(-1)
@@ -71,14 +70,15 @@ const finalDepth = gui
   .step(1)
   .onChange(saveConfig)
   .listen();
-gui
-  .add(myObject, "startDepth", 1, Math.floor(Math.log2(cascadeTextureSize)), 1)
+const startDepth = gui
+  .add(myObject, "startDepth", 1, myObject.textureSize + 2, 1)
   .name("Start Depth")
   .onChange(() => {
     finalDepth.max(myObject.startDepth);
     myObject.finalDepth = Math.min(myObject.startDepth, myObject.finalDepth);
     saveConfig();
-  });
+  })
+  .listen();
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(myObject, "bilinearFix").onChange(saveConfig);
 gui.add(myObject, "offsetBoth").onChange(saveConfig);
@@ -212,12 +212,47 @@ export class RadianceCascade extends GameState {
     this.input.init(engine, this);
     this.color = "#dddddd";
 
+    const cascadeTextureSize = Math.pow(2, myObject.textureSize);
     this.cascadeRT = engine.renderer.newRenderTarget(1, {
       fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
     });
     this.spareCascadeRT = engine.renderer.newRenderTarget(1, {
       fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
     });
+
+    gui
+      .add(myObject, "textureSize", 5, 12, 1)
+      .name("Texture Size")
+      .onChange(() => {
+        const cascadeTextureSize = Math.pow(2, myObject.textureSize);
+        myObject.finalDepth = Math.min(
+          myObject.finalDepth,
+          myObject.textureSize
+        );
+        myObject.startDepth = Math.min(
+          myObject.startDepth,
+          myObject.textureSize
+        );
+        startDepth.max(myObject.textureSize + 2);
+        finalDepth.max(Math.min(myObject.startDepth, myObject.textureSize));
+        myObject.startDepth = Math.min(
+          myObject.startDepth,
+          myObject.textureSize
+        );
+        myObject.finalDepth = Math.min(
+          myObject.startDepth,
+          myObject.finalDepth
+        );
+        this.cascadeRT.fixedSize = new THREE.Vector2(
+          cascadeTextureSize,
+          cascadeTextureSize
+        );
+        this.spareCascadeRT.fixedSize = new THREE.Vector2(
+          cascadeTextureSize,
+          cascadeTextureSize
+        );
+        engine.renderer.refreshSize();
+      });
 
     const storedLines = localStorage.getItem("lines");
 

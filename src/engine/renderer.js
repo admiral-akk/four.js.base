@@ -60,6 +60,12 @@ class CustomerRenderer extends WebGLRenderer {
     return this.renderTargets[len - 1];
   }
 
+  refreshSize() {
+    const size = new Vector2();
+    this.getSize(size);
+    this.updateSize({ width: size.x, height: size.y });
+  }
+
   updateSize({ width, height }) {
     this.setSize(width, height);
     this.setPixelRatio(Math.min(window.devicePixelRatio, 2));
