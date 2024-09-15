@@ -57,12 +57,6 @@ const buttons = {
   clearConfig: clearConfig,
 };
 
-gui
-  .add(myObject, "fogStepSize")
-  .min(0.001)
-  .max(0.1)
-  .step(0.001)
-  .onChange(saveConfig);
 const finalDepth = gui
   .add(myObject, "finalDepth")
   .min(-1)
@@ -77,7 +71,6 @@ gui
     finalDepth.max(myObject.startDepth);
   });
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
-gui.add(myObject, "hasMinDistance").onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
 class Command {
   constructor() {
@@ -283,52 +276,49 @@ export class RadianceCascade extends GameState {
   }
 
   calculateUniforms(depth) {
-    const halfUvPerPixel = 1 / (2 * this.cascadeRT.width);
     const startDepth = myObject.startDepth;
-    const finalDepth = Math.max(0, myObject.finalDepth);
     const rayCount = 4 << depth;
     const xSize = Math.ceil(Math.sqrt(rayCount));
-    const pixelCountPerProbe = Math.floor(this.cascadeRT.width / xSize);
-    const uvPerProbe =
-      Math.floor(this.cascadeRT.width / xSize) / this.cascadeRT.width;
-
-    const deeperRayCount = 2 * rayCount;
-    const deepXSize = Math.ceil(Math.sqrt(deeperRayCount));
-    const deeperUvPerProbe =
-      Math.floor(this.cascadeRT.width / deepXSize) / this.cascadeRT.width;
-    const maxDeeperUv = deeperUvPerProbe - halfUvPerPixel;
-    const probeSeperationUv = 1 / pixelCountPerProbe;
-
     const baseDistance = Math.SQRT2 / this.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
     const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
-    const minDistance = 0 != depth ? maxDistance / 3 : 0;
+
+    const cascadeConfig = {
+      probeCount: Math.floor(this.cascadeRT.width / xSize),
+      depth: depth,
+      rayCount: rayCount,
+      xSize: xSize,
+      minDistance: 0 != depth ? maxDistance / 3 : 0,
+      maxDistance: maxDistance,
+    };
+
+    const deeperRayCount = 2 * cascadeConfig.rayCount;
+    const deeperXSize = Math.ceil(Math.sqrt(deeperRayCount));
+    const deeperMaxDistance =
+      baseDistance * Math.pow(2, multiplier * (depth + 1));
+
+    const deeperCascadeConfig = {
+      probeCount: Math.floor(this.cascadeRT.width / deeperXSize),
+      depth: depth + 1,
+      rayCount: deeperRayCount,
+      xSize: deeperXSize,
+      minDistance: deeperMaxDistance / 3,
+      maxDistance: deeperMaxDistance,
+    };
+
+    const debugInfo = {
+      startDepth: startDepth,
+      finalDepth: Math.max(0, myObject.finalDepth),
+      renderMode: myObject.renderMode,
+    };
 
     return {
-      fogStepSize: myObject.fogStepSize,
+      current: cascadeConfig,
+      deeper: deeperCascadeConfig,
+      debug: debugInfo,
       lineSegments: this.lineSegments,
       tPrevCascade: this.cascadeRT,
-      rayCount: rayCount,
-      currentDepth: depth,
-      startDepth: startDepth,
-      finalDepth: finalDepth,
-      halfUvPerPixel: halfUvPerPixel,
-      tauOverRayCount: (2 * Math.PI) / rayCount,
-      xSize: xSize,
-      invPixelCountPerProbe: 1 / pixelCountPerProbe,
-      minDeeperUv: halfUvPerPixel - halfUvPerPixel,
-      maxDeeperUv: maxDeeperUv + halfUvPerPixel,
-      minDistance: minDistance,
-      maxDistance: maxDistance,
-      uvPerProbe: uvPerProbe,
-      deepXSize: deepXSize,
-      deeperUvPerProbe: deeperUvPerProbe,
-      renderMode: myObject.renderMode,
-      sqrtBaseRayCount: 2,
-      baseRayCount: 4,
-      minUvRemap: halfUvPerPixel,
-      maxUvRemap: 0.5 - halfUvPerPixel,
     };
   }
 
