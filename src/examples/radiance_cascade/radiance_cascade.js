@@ -21,6 +21,7 @@ const myObject = {
   startDepth: 5,
   finalDepth: 4,
   renderMode: 0,
+  lineThickness: 0.001,
   bilinearFix: false,
   offsetBoth: false,
 };
@@ -82,6 +83,12 @@ const startDepth = gui
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(myObject, "bilinearFix").onChange(saveConfig);
 gui.add(myObject, "offsetBoth").onChange(saveConfig);
+gui
+  .add(myObject, "lineThickness")
+  .min(0.0001)
+  .max(0.05)
+  .step(0.0001)
+  .onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
 gui.add(buttons, "saveImage").name("Save Image");
 
@@ -92,9 +99,10 @@ class Command {
 }
 
 class UpdateColorCommand extends Command {
-  constructor(color) {
+  constructor(color, wallType) {
     super();
     this.color = color;
+    this.wallType = wallType;
   }
 }
 
@@ -129,6 +137,7 @@ class DragInputState extends State {
 
     this.curr = start;
   }
+
   update(engine, game, input) {
     const state = engine.input.getState();
     const { mouse } = state;
@@ -169,7 +178,7 @@ class InputManager extends StateMachine {
     this.pushState(new OpenInputState());
   }
 
-  createColorButton(color) {
+  createColorButton(color, wallType) {
     this.buttons.push(
       this.ui.compose([
         new UIContainerParams({
@@ -182,17 +191,18 @@ class InputManager extends StateMachine {
           style: { "background-color": color },
         }),
         new UIButtonParams({
-          command: new UpdateColorCommand(color),
+          command: new UpdateColorCommand(color, wallType),
         }),
       ])
     );
   }
 
   init(engine, game) {
-    this.createColorButton("#ff0000");
-    this.createColorButton("#00ff00");
-    this.createColorButton("#000000");
-    this.createColorButton("#ffffff");
+    this.createColorButton("#ff0000", 0);
+    this.createColorButton("#00ff00", 0);
+    this.createColorButton("#000000", 0);
+    this.createColorButton("#ffffff", 0);
+    this.createColorButton("#ffffff", 1);
   }
 
   update(engine, game) {
@@ -252,6 +262,7 @@ export class RadianceCascade extends GameState {
           cascadeTextureSize
         );
         engine.renderer.refreshSize();
+        saveConfig();
       });
 
     const storedLines = localStorage.getItem("lines");
@@ -266,6 +277,8 @@ export class RadianceCascade extends GameState {
       this.lineSegments.value.length = 0;
       localStorage.setItem("lines", JSON.stringify(this.lineSegments));
     };
+
+    console.log(this.lineSegments);
     gui.add(buttons, "clearLines").name("Clear Lines");
   }
 
@@ -274,8 +287,10 @@ export class RadianceCascade extends GameState {
     this.lineSegments.value.push({
       color: new Vector4(color.r, color.g, color.b, 1),
       startEnd: new Vector4(start.x, start.y, start.x, start.y),
+      wallType: this.wallType,
     });
     localStorage.setItem("lines", JSON.stringify(this.lineSegments));
+    console.log(this.lineSegments);
   }
 
   updateLine(engine, end) {
@@ -295,6 +310,7 @@ export class RadianceCascade extends GameState {
       switch (command.type) {
         case UpdateColorCommand:
           this.color = command.color;
+          this.wallType = command.wallType;
           break;
         case StartDragCommand:
           {
@@ -327,9 +343,10 @@ export class RadianceCascade extends GameState {
     const startDepth = myObject.startDepth;
     const rayCount = 4 << depth;
     const xSize = Math.ceil(Math.sqrt(rayCount));
-    const baseDistance = (2 * Math.SQRT2) / this.cascadeRT.width;
+    const baseDistance = Math.SQRT2 / this.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
+    const minDistance = baseDistance * Math.pow(2, multiplier * (depth - 1));
     const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
 
     const cascadeConfig = {
@@ -337,7 +354,7 @@ export class RadianceCascade extends GameState {
       depth: depth,
       rayCount: rayCount,
       xSize: xSize,
-      minDistance: 0 != depth ? maxDistance / 4 : 0,
+      minDistance: 0 != depth ? minDistance : 0,
       maxDistance: maxDistance,
     };
 
@@ -351,7 +368,7 @@ export class RadianceCascade extends GameState {
       depth: depth + 1,
       rayCount: deeperRayCount,
       xSize: deeperXSize,
-      minDistance: deeperMaxDistance / 3,
+      minDistance: deeperMaxDistance / 2,
       maxDistance: deeperMaxDistance,
     };
 
@@ -367,6 +384,7 @@ export class RadianceCascade extends GameState {
       current: cascadeConfig,
       deeper: deeperCascadeConfig,
       debug: debugInfo,
+      lineThickness: myObject.lineThickness,
       lineSegments: this.lineSegments,
       tPrevCascade: this.cascadeRT,
     };

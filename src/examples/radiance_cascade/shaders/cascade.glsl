@@ -5,6 +5,7 @@
 struct LineSegment { 
   vec4 color;
   vec4 startEnd;
+  int wallType;
 };
 uniform LineSegment lineSegments[ LINE_SEGMENT_COUNT ];
 #endif
@@ -26,6 +27,8 @@ struct DebugInfo {
   bool bilinearFix;
   bool offsetBoth;
 };
+
+uniform float lineThickness;
 
 uniform CascadeConfig current;
 uniform CascadeConfig deeper;
@@ -65,16 +68,19 @@ float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
   return t;
 }
 
-void hitLines(vec2 start, vec2 end,  out int hitIndex, out float hitDistance) {
+void hitLines(vec2 start, vec2 end, int prevHit, out int hitIndex, out float hitDistance) {
   hitIndex = -1;
   hitDistance = 100.;
   vec4 sampleStartEnd = vec4(start, end);
   for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
+    if (i != prevHit) {
       float dist = hitLineDistance(sampleStartEnd,  lineSegments[i].startEnd);
       if (dist < hitDistance) {
           hitIndex = i;
           hitDistance = dist;
       }
+
+    }
   }
 }
 #endif
@@ -102,22 +108,39 @@ vec4 sampleCascadeTexture(vec2 uv) {
 
 vec4 sampleCascade(int probeIndex, vec2 probeUv) {
     vec2 remappedUv = remapProbeUv(probeUv);
-    if (debug.renderMode == 7) {
-      return vec4(remapProbeUv(probeUv), 0.,1.);
-      return vec4(float(remappedUv.x >= deeper.probeCount / vec2(textureSize(tPrevCascade, 0)).x - 4. * vec2(textureSize(tPrevCascade, 0)).x / 2. ), 0., 0.,1.);
-    }
 
     vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
     vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
-    if (debug.renderMode == 8) {
-      return vec4(sampleUv1, 0.,1.);
-    }
 
     return 0.5 * (
             sampleCascadeTexture(sampleUv1) 
             + sampleCascadeTexture(sampleUv2)
             );
 }
+
+vec4 genericSampleCascade(vec2 dir, vec2 end) {
+  if (current.depth == float(debug.startDepth)) {
+    return vec4(0.);
+  }
+  vec2 probeUv = end - current.maxDistance * dir;
+  vec2 remappedUv = remapProbeUv(probeUv);
+  float angleStep =  TAU / deeper.rayCount ;
+  float angle = mod(atan(dir.y, -dir.x) + PI , TAU);
+  float offsetAngle = angle  - 0.5 * angleStep;
+  int prevProbeIndex = int(floor(offsetAngle / angleStep));
+  int nextProbeIndex = prevProbeIndex + 1;
+  vec4 weights = vec4(angle - angleStep * (float(prevProbeIndex) + 0.5)) / angleStep ;
+  if (prevProbeIndex < 0) {
+    prevProbeIndex = int(deeper.rayCount)  - 1;
+  }
+  vec2 sampleUv1 = remappedUv + offsetForIndex(prevProbeIndex);
+  vec2 sampleUv2 = remappedUv + offsetForIndex(nextProbeIndex);
+  return mix(
+           sampleCascadeTexture(sampleUv1) ,
+           sampleCascadeTexture(sampleUv2), 
+           weights
+          );
+} 
 
 float distToOutOfBounds(vec2 start, vec2 dir) {
   if (dir.x == 0.) {
@@ -142,47 +165,80 @@ float distToOutOfBounds(vec2 start, vec2 dir) {
 }
 
 vec4 castRay(int probeIndex, vec2 probeUv, vec2 start, vec2 end) {
-    vec2 rayDirectionUv = toDirection(probeIndex);
-
+  int bounces = 0;
+  int prevHit = -1;
+  float minDist = current.minDistance;
+  float maxDist = current.maxDistance;
+  vec2 initialDir = normalize(end - start);
+  while (bounces < 4) {
     int hitIndex;
     float closestDist;
-    if (debug.renderMode == 3) {
-      return vec4(float(probeIndex) / (current.rayCount - 1.), 0., 0.,1.);
-    }
-
-    #if (LINE_SEGMENT_COUNT > 0)
-    hitLines(start, end,   hitIndex, closestDist);
-    #endif
-
+    int type = -1;
     vec4 lineColor = vec4(0.);
     #if (LINE_SEGMENT_COUNT > 0)
-    if (debug.renderMode == 4) {
-      return vec4(float(closestDist < 10.) * (1. - closestDist), 0., 0.,1.);
-    }
-    if (debug.renderMode == 5) {
-      return vec4(float(hitIndex + 1) / float(LINE_SEGMENT_COUNT), 0., 0.,1.);
-    }
-
-
-    lineColor = lineSegments[hitIndex].color * float(closestDist < 10.) ;
+      hitLines(start, end, prevHit, hitIndex, closestDist);
+      lineColor = lineSegments[hitIndex].color * float(closestDist < 10.) ;
+      type = lineSegments[hitIndex].wallType;
     #endif
-    float distToEdge = distToOutOfBounds(probeUv, rayDirectionUv) ;
-    if (debug.renderMode == 6) {
-      return vec4(float(distToEdge >= current.maxDistance), 0., 0.,1.);
+    vec2 dir = normalize(end - start);
+    float distToEdge = distToOutOfBounds(probeUv, dir) ;
+    if (closestDist < 1. && closestDist > 0. ) {
+      if (type == 1) {
+        // find the point of intersection, reflect the ray about the line,
+        // continue
+    #if (LINE_SEGMENT_COUNT > 0)
+        vec2 a = lineSegments[hitIndex].startEnd.xy;
+        vec2 b = lineSegments[hitIndex].startEnd.zw;
+        start += (end - start) * closestDist;
+
+        vec2 ba = b - a;
+        vec2 ca = end - a;
+        vec2 d = dot(normalize(ba),ca) * normalize(ba)  + a; 
+        end = 2. * d - end;
+        prevHit = hitIndex;
+        dir = normalize(end - start);
+    if (debug.renderMode == 5) {
+          return vec4((dir + 1.)/ 2.,0.,1.);
     }
-    if (debug.renderMode >= 7 && debug.renderMode <= 9) {
-      return sampleCascade(probeIndex, probeUv);
+    if (debug.renderMode == 10) {
+      return vec4(end, 0., 1.);
     }
-    if (closestDist < 10.) {
-      return lineColor;
+    if (debug.renderMode == 11) {
+      return vec4(start, 0., 1.);
+    }
+    if (debug.renderMode == 9) {
+      return vec4(closestDist, 0., 0., 1.);
+    }
+
+    #endif
+        bounces++;
+      } else {
+        if (bounces > 0) {
+    if (debug.renderMode > 5) {
+      return vec4(0.);
+    }
+    }
+    if (debug.renderMode >= 5) {
+      return vec4(0.);
+    }
+        return lineColor;
+      }
     } else if (distToEdge >= current.maxDistance) {
+      if (debug.renderMode != 0) {
+        
+        return vec4(0.,0.,0.,0.);
+      }
+      return genericSampleCascade(dir, end);
       return sampleCascade(probeIndex, probeUv);
+    } else {
+      return vec4(0.,0.,0.,0.);
+    }
     }
     return vec4(0.,0.,0.,0.);
 }
 
 vec4 bilinearFix(int probeIndex, vec2 probeUv) {
-  vec2 probeTL = (floor(probeUv * deeper.probeCount) ) / deeper.probeCount;
+  vec2 probeTL = floor(probeUv * deeper.probeCount) / deeper.probeCount;
   vec2 delta = 1. / vec2(deeper.probeCount);
   vec2 probeTR = probeTL + vec2(delta.x, 0.);
   vec2 probeBL = probeTL + vec2(0., delta.y);
@@ -235,12 +291,20 @@ void main() {
     probeToEvaluate(vUv, probeUv, probeIndex);
     if (probeIndex >= 0) {
         if (debug.bilinearFix && !(current.depth == float(debug.startDepth))) {
-          outColor =  bilinearFix(probeIndex, probeUv);
-
+          outColor = bilinearFix(probeIndex, probeUv);
         } else {
           vec2 rayDirectionUv = toDirection(probeIndex);
           vec2 start = probeUv + current.minDistance * rayDirectionUv;
           vec2 end = probeUv + current.maxDistance * rayDirectionUv;
+          if (debug.renderMode == 1) {
+            outColor = vec4((normalize(end-start) + 1.) / 2., 0.,1.);
+          }
+          if (debug.renderMode == 8) {
+            vec2 dir = normalize(end-start);
+            float angle = mod(atan(dir.y, -dir.x) + PI , TAU);
+            outColor = vec4(angle / TAU, 0., 0.,1.);
+            return;
+          }
 
           outColor =  castRay(probeIndex, probeUv, start, end);
         }
