@@ -21,6 +21,7 @@ const myObject = {
   startDepth: 5,
   finalDepth: 4,
   renderMode: 0,
+  continousBilinearFix: false,
 };
 
 const configString = "config";
@@ -75,6 +76,7 @@ const startDepth = gui
     saveConfig();
   })
   .listen();
+gui.add(myObject, "continousBilinearFix").onChange(saveConfig);
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
 gui.add(buttons, "saveImage").name("Save Image");
@@ -358,6 +360,7 @@ export class RadianceCascade extends GameState {
     };
 
     const debugInfo = {
+      continousBilinearFix: myObject.continousBilinearFix,
       finalDepth: Math.max(0, myObject.finalDepth),
       renderMode: myObject.renderMode,
     };
