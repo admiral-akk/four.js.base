@@ -188,6 +188,10 @@ vec4 sampleTexture(ivec3 sampleTarget, ivec2 probeDirection) {
   return 0.5 * ( texture2D(tPrevCascade, sampleUv1) +  texture2D(tPrevCascade, sampleUv2)  );
 }
 
+vec4 sampleSky(vec2 dir) {
+  return vec4(0.);
+}
+
 vec4 castRay(ivec2 probeIndex2, vec2 start, vec2 end, ivec3 sampleTarget) {
   int bounces = 0;
   int prevHit = -1;
@@ -204,39 +208,10 @@ vec4 castRay(ivec2 probeIndex2, vec2 start, vec2 end, ivec3 sampleTarget) {
     vec2 dir = normalize(end - start);
     float distToEdge = distToOutOfBounds(start, dir) ;
     if (closestDist < 1. && closestDist > 0. ) {
-      if (type == 1) {
-        // find the point of intersection, reflect the ray about the line,
-        // continue
-    #if (LINE_SEGMENT_COUNT > 0)
-        vec2 a = lineSegments[hitIndex].startEnd.xy;
-        vec2 b = lineSegments[hitIndex].startEnd.zw;
-        start += (end - start) * closestDist;
-
-        vec2 ba = b - a;
-        vec2 ca = end - a;
-        vec2 d = dot(normalize(ba),ca) * normalize(ba)  + a; 
-        end = 2. * d - end;
-        prevHit = hitIndex;
-        dir = normalize(end - start);
-    if (debug.renderMode == 5) {
-          return vec4((dir + 1.)/ 2.,0.,1.);
-    }
-    if (debug.renderMode == 10) {
-      return vec4(end, 0., 1.);
-    }
-    if (debug.renderMode == 11) {
-      return vec4(start, 0., 1.);
-    }
-    if (debug.renderMode == 9) {
-      return vec4(closestDist, 0., 0., 1.);
-    }
-
-    #endif
-        bounces++;
-      } else {
         return lineColor;
-      }
-    } else  {
+    } else if (distToEdge < length(end - start)) {
+      return sampleSky(dir);
+    } else {
       return sampleTexture(sampleTarget, probeIndex2);
     } 
     }
@@ -341,39 +316,15 @@ void main() {
     vec2 probeUv = probeIndexToUv(probeIndex2);
     vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
     if (probeIndex2.x >= 0) {
-        if (debug.bilinearFix && !(current.depth == float(debug.startDepth))) {
-          if (probeIndex2.x >= 0) {
+        if (!(current.depth == float(debug.startDepth))) {
             outColor = bilinearFix(probeIndex2, directionIndex);
-          }
         } else {
           vec2 start = probeUv + current.minDistance * rayDirectionUv;
           vec2 end = probeUv + current.maxDistance * rayDirectionUv;
-          if (debug.renderMode == 1) {
-            outColor = vec4((normalize(end-start) + 1.) / 2., 0.,1.);
-          }
-          if (debug.renderMode == 8) {
-            vec2 dir = normalize(end-start);
-            float angle = mod(atan(dir.y, -dir.x) + PI , TAU);
-            outColor = vec4(angle / TAU, 0., 0.,1.);
-            return;
-          }
 
           outColor = castRay(directionIndex, start, end, 2 * probeIndex2);
         }
     } else {
         outColor = vec4(1.,1.,0.,1.);
-    }
-
-    if (debug.renderMode == 13) {
-      outColor = vec4((probeDirectionToDir(directionIndex) + 1.) / 2.,0.,1.);
-    }
-    if (debug.renderMode == 14) {
-      outColor = vec4(probeIndexToUv(probeIndex2),0.,1.);
-    }
-    if (debug.renderMode == 15) {
-      outColor = vec4(vUv, 0.,1.);
-    }
-    if (debug.renderMode == 1) {
-      outColor = vec4(vUv, 0.,1.);
     }
 }
