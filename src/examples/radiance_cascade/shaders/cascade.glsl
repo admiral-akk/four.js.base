@@ -14,7 +14,6 @@ struct CascadeConfig {
   float probeCount;
   float depth;
   float rayCount;
-  int xSize;
   float minDistance;
   float maxDistance;
 };
@@ -92,12 +91,13 @@ vec2 toDirection(int index) {
 }
 
 vec2 remapProbeUv(vec2 probeUv) {
-  return probeUv * deeper.probeCount / vec2(textureSize(tPrevCascade, 0));
+  return (probeUv * (deeper.probeCount - 1.) + 0.5) / vec2(textureSize(tPrevCascade, 0));
 }
 
 vec2 offsetForIndex(int deepIndex) {
-    float xIndex = mod(float(deepIndex), float(deeper.xSize));
-    float yIndex = floor(float(deepIndex) / float(deeper.xSize));
+  float width = float(textureSize(tPrevCascade, 0).x);
+    float xIndex = mod(float(deepIndex), width / float(deeper.probeCount));
+    float yIndex = floor(float(deepIndex) / ( width / float(deeper.probeCount)));
     return vec2(xIndex, yIndex) * deeper.probeCount / vec2(textureSize(tPrevCascade, 0));
 }
 
@@ -107,15 +107,15 @@ vec4 sampleCascadeTexture(vec2 uv) {
 }
 
 vec4 sampleCascade(int probeIndex, vec2 probeUv) {
-    vec2 remappedUv = remapProbeUv(probeUv);
+  vec2 remappedUv = remapProbeUv(probeUv);
 
-    vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
-    vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
+  vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
+  vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
 
-    return 0.5 * (
-            sampleCascadeTexture(sampleUv1) 
-            + sampleCascadeTexture(sampleUv2)
-            );
+  return 0.5 * (
+          sampleCascadeTexture(sampleUv1) 
+          + sampleCascadeTexture(sampleUv2)
+          );
 }
 
 vec4 genericSampleCascade(vec2 dir, vec2 end) {
@@ -164,12 +164,33 @@ float distToOutOfBounds(vec2 start, vec2 dir) {
   return min(xDist, yDist);
 }
 
-vec4 castRay(int probeIndex, vec2 probeUv, vec2 start, vec2 end) {
+vec2 probeIndexToUv(ivec3 probeIndex) {
+  float delta = 1. / float(probeIndex.z);
+  return vec2(probeIndex.xy) * delta + 0.5 * delta;
+}
+
+vec2 probeDirectionToDir(ivec2 probeDirection) {
+  float tauOverIndexRayCount = TAU / float(probeDirection.y);
+  float angle = tauOverIndexRayCount * (float(probeDirection.x) + 0.5);
+  return vec2(cos(angle), -sin(angle));
+}
+
+vec2 mapToTextureUv(ivec3 sampleTarget) {
+  vec2 delta = 1. / vec2(textureSize(tPrevCascade, 0));
+  return  vec2(sampleTarget.xy) * delta + 0.5 * delta;
+}
+
+vec4 sampleTexture(ivec3 sampleTarget, ivec2 probeDirection) {
+  vec2 remappedUv = mapToTextureUv(sampleTarget);
+  vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeDirection.x);
+  vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeDirection.x + 1);
+
+  return 0.5 * ( texture2D(tPrevCascade, sampleUv1) +  texture2D(tPrevCascade, sampleUv2)  );
+}
+
+vec4 castRay(ivec2 probeIndex2, vec2 start, vec2 end, ivec3 sampleTarget) {
   int bounces = 0;
   int prevHit = -1;
-  float minDist = current.minDistance;
-  float maxDist = current.maxDistance;
-  vec2 initialDir = normalize(end - start);
   while (bounces < 4) {
     int hitIndex;
     float closestDist;
@@ -177,11 +198,11 @@ vec4 castRay(int probeIndex, vec2 probeUv, vec2 start, vec2 end) {
     vec4 lineColor = vec4(0.);
     #if (LINE_SEGMENT_COUNT > 0)
       hitLines(start, end, prevHit, hitIndex, closestDist);
-      lineColor = lineSegments[hitIndex].color * float(closestDist < 10.) ;
+      lineColor = lineSegments[hitIndex].color ;
       type = lineSegments[hitIndex].wallType;
     #endif
     vec2 dir = normalize(end - start);
-    float distToEdge = distToOutOfBounds(probeUv, dir) ;
+    float distToEdge = distToOutOfBounds(start, dir) ;
     if (closestDist < 1. && closestDist > 0. ) {
       if (type == 1) {
         // find the point of intersection, reflect the ray about the line,
@@ -213,52 +234,52 @@ vec4 castRay(int probeIndex, vec2 probeUv, vec2 start, vec2 end) {
     #endif
         bounces++;
       } else {
-        if (bounces > 0) {
-    if (debug.renderMode > 5) {
-      return vec4(0.);
-    }
-    }
-    if (debug.renderMode >= 5) {
-      return vec4(0.);
-    }
         return lineColor;
       }
-    } else if (distToEdge >= current.maxDistance) {
-      if (debug.renderMode != 0) {
-        
-        return vec4(0.,0.,0.,0.);
-      }
-      return genericSampleCascade(dir, end);
-      return sampleCascade(probeIndex, probeUv);
-    } else {
-      return vec4(0.,0.,0.,0.);
-    }
+    } else  {
+      return sampleTexture(sampleTarget, probeIndex2);
+    } 
     }
     return vec4(0.,0.,0.,0.);
 }
 
-vec4 bilinearFix(int probeIndex, vec2 probeUv) {
-  vec2 probeTL = floor(probeUv * deeper.probeCount) / deeper.probeCount;
-  vec2 delta = 1. / vec2(deeper.probeCount);
-  vec2 probeTR = probeTL + vec2(delta.x, 0.);
-  vec2 probeBL = probeTL + vec2(0., delta.y);
-  vec2 probeBR = probeTL + delta;
+vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
+  vec2 probeUv = probeIndexToUv(probeIndex);
 
-  vec2 rayDirectionUv = toDirection(probeIndex);
+  ivec3 indexTL = ivec3((probeIndex.x - 1) / 2, (probeIndex.y - 1) / 2, int(deeper.probeCount));
+  vec2 probeTL = probeIndexToUv(indexTL);
+  ivec3 indexTR = indexTL + ivec3(1, 0, 0);
+  vec2 probeTR = probeIndexToUv(indexTR);
+  ivec3 indexBL = indexTL + ivec3(0, 1, 0);
+  vec2 probeBL = probeIndexToUv(indexBL);
+  ivec3 indexBR = indexTL + ivec3(1, 1, 0);
+  vec2 probeBR = probeIndexToUv(indexBR);
+  vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
   vec2 start = probeUv + current.minDistance * rayDirectionUv;
   vec2 end = probeUv + current.maxDistance * rayDirectionUv;
 
-  vec2 startTL = debug.offsetBoth ? start + (probeTL - probeUv) : start;
-  vec2 startTR = debug.offsetBoth ? start + (probeTR - probeUv) : start;
-  vec2 startBL = debug.offsetBoth ? start + (probeBL - probeUv) : start;
-  vec2 startBR = debug.offsetBoth ? start + (probeBR - probeUv) : start;
+  vec4 radTL = castRay(directionIndex, start, end + (probeTL - probeUv), indexTL);
+  vec4 radTR = castRay(directionIndex, start, end + (probeTR - probeUv), indexTR);
+  vec4 radBL = castRay(directionIndex, start, end + (probeBL - probeUv), indexBL);
+  vec4 radBR = castRay(directionIndex, start, end + (probeBR - probeUv), indexBR);
 
-  vec4 radTL = castRay(probeIndex, probeTL, startTL, end + (probeTL - probeUv));
-  vec4 radTR = castRay(probeIndex, probeTR, startTR, end + (probeTR - probeUv));
-  vec4 radBL = castRay(probeIndex, probeBL, startBL, end + (probeBL - probeUv));
-  vec4 radBR = castRay(probeIndex, probeBR, startBR, end + (probeBR - probeUv));
+  vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
 
-  vec2 weights = (probeUv - probeTL) / delta;
+  if (probeIndex.x == 0) {
+    weights.x = 1.;
+  }
+
+  if (probeIndex.y == 0) {
+    weights.y = 1.;
+  }
+
+  if (probeIndex.x == probeIndex.z - 1) {
+    weights.x = 0.;
+  }
+
+  if (probeIndex.y == probeIndex.z - 1) {
+    weights.y = 0.;
+  }
 
   vec4 top = mix(radTL, radTR, vec4(weights.x));
   vec4 bot = mix(radBL, radBR, vec4(weights.x));
@@ -274,26 +295,57 @@ void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
     int xIndex = int(floor(pixel.x / current.probeCount));
     int yIndex = int(floor(pixel.y / current.probeCount));
 
+    int xSize = int(float(textureSize(tPrevCascade, 0).x) / current.probeCount);
+
     // indicates direction
-    probeIndex = xIndex + yIndex * current.xSize;
+    probeIndex = xIndex + yIndex * xSize;
     probeUv = uv / (current.probeCount / vec2(textureSize(tPrevCascade, 0))) - vec2(xIndex,yIndex);
-    if (xIndex >= current.xSize || 
-        yIndex >= current.xSize || 
+    if (xIndex >= xSize || 
+        yIndex >= xSize || 
         float(probeIndex) >= current.rayCount) {
         probeIndex = -1;
     }
 }
 
+void discreteProbeToEvaluate(vec2 uv, out ivec3 probeIndex, out ivec2 probeDirection) {
+    vec2 pixel = uv * vec2(textureSize(tPrevCascade, 0));
+
+    int xSize = int(float(textureSize(tPrevCascade, 0).x) / current.probeCount);
+    int ySize = max(1, int(current.rayCount) / xSize);
+
+    probeIndex = ivec3(
+        int(mod(pixel.x, current.probeCount)), 
+        int(mod(pixel.y, current.probeCount)), 
+        int(current.probeCount));
+
+    int xIndex = int(floor(pixel.x / current.probeCount));
+    int yIndex = int(floor(pixel.y / current.probeCount));
+    probeDirection = ivec2(xIndex + yIndex *xSize, int(current.rayCount));
+    
+    if (xIndex >= xSize || 
+        yIndex >= ySize || 
+        probeDirection.x >= probeDirection.y) {
+        probeIndex = ivec3(-1);
+    }
+}
 
 void main() {
-    vec2 probeUv;
-    int probeIndex;
-    probeToEvaluate(vUv, probeUv, probeIndex);
-    if (probeIndex >= 0) {
+    ivec3 probeIndex2;
+    ivec2 directionIndex;
+    discreteProbeToEvaluate(vUv, probeIndex2, directionIndex);
+
+    if (probeIndex2.x < 0) {
+        outColor = vec4(1.,1.,0.,1.);
+    }
+
+    vec2 probeUv = probeIndexToUv(probeIndex2);
+    vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
+    if (probeIndex2.x >= 0) {
         if (debug.bilinearFix && !(current.depth == float(debug.startDepth))) {
-          outColor = bilinearFix(probeIndex, probeUv);
+          if (probeIndex2.x >= 0) {
+            outColor = bilinearFix(probeIndex2, directionIndex);
+          }
         } else {
-          vec2 rayDirectionUv = toDirection(probeIndex);
           vec2 start = probeUv + current.minDistance * rayDirectionUv;
           vec2 end = probeUv + current.maxDistance * rayDirectionUv;
           if (debug.renderMode == 1) {
@@ -306,12 +358,21 @@ void main() {
             return;
           }
 
-          outColor =  castRay(probeIndex, probeUv, start, end);
+          outColor = castRay(directionIndex, start, end, 2 * probeIndex2);
         }
     } else {
-        outColor = vec4(0.,1.,0.,1.);
+        outColor = vec4(1.,1.,0.,1.);
     }
 
+    if (debug.renderMode == 13) {
+      outColor = vec4((probeDirectionToDir(directionIndex) + 1.) / 2.,0.,1.);
+    }
+    if (debug.renderMode == 14) {
+      outColor = vec4(probeIndexToUv(probeIndex2),0.,1.);
+    }
+    if (debug.renderMode == 15) {
+      outColor = vec4(vUv, 0.,1.);
+    }
     if (debug.renderMode == 1) {
       outColor = vec4(vUv, 0.,1.);
     }

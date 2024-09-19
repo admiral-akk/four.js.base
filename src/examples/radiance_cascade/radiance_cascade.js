@@ -23,7 +23,6 @@ const myObject = {
   renderMode: 0,
   lineThickness: 0.001,
   bilinearFix: false,
-  offsetBoth: false,
 };
 
 const configString = "config";
@@ -82,7 +81,6 @@ const startDepth = gui
   .listen();
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(myObject, "bilinearFix").onChange(saveConfig);
-gui.add(myObject, "offsetBoth").onChange(saveConfig);
 gui
   .add(myObject, "lineThickness")
   .min(0.0001)
@@ -342,32 +340,37 @@ export class RadianceCascade extends GameState {
   calculateUniforms(depth) {
     const startDepth = myObject.startDepth;
     const rayCount = 4 << depth;
-    const xSize = Math.ceil(Math.sqrt(rayCount));
-    const baseDistance = Math.SQRT2 / this.cascadeRT.width;
+    const baseProbeWidth = this.cascadeRT.width / 2;
+    const probeCount = baseProbeWidth >> depth;
+    const baseDistance = (2 * Math.SQRT2) / this.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
     const minDistance = baseDistance * Math.pow(2, multiplier * (depth - 1));
     const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
 
+    const xSize = Number.isInteger(Math.sqrt(rayCount))
+      ? Math.sqrt(rayCount)
+      : Math.sqrt(rayCount << 1);
+
     const cascadeConfig = {
-      probeCount: Math.floor(this.cascadeRT.width / xSize),
-      depth: depth,
       rayCount: rayCount,
-      xSize: xSize,
+      probeCount: probeCount,
+      depth: depth,
       minDistance: 0 != depth ? minDistance : 0,
       maxDistance: maxDistance,
     };
 
     const deeperRayCount = 2 * cascadeConfig.rayCount;
-    const deeperXSize = Math.ceil(Math.sqrt(deeperRayCount));
     const deeperMaxDistance =
       baseDistance * Math.pow(2, multiplier * (depth + 1));
 
+    const deeperXSize = Number.isInteger(Math.sqrt(deeperRayCount))
+      ? Math.sqrt(deeperRayCount)
+      : Math.sqrt(deeperRayCount << 1);
     const deeperCascadeConfig = {
-      probeCount: Math.floor(this.cascadeRT.width / deeperXSize),
+      rayCount: rayCount << 1,
+      probeCount: probeCount >> 1,
       depth: depth + 1,
-      rayCount: deeperRayCount,
-      xSize: deeperXSize,
       minDistance: deeperMaxDistance / 2,
       maxDistance: deeperMaxDistance,
     };
@@ -377,7 +380,6 @@ export class RadianceCascade extends GameState {
       finalDepth: Math.max(0, myObject.finalDepth),
       renderMode: myObject.renderMode,
       bilinearFix: myObject.bilinearFix,
-      offsetBoth: myObject.offsetBoth,
     };
 
     return {
