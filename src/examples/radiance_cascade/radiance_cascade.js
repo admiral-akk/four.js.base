@@ -368,12 +368,12 @@ export class RadianceCascade extends GameState {
     };
 
     const debugInfo = {
-      startDepth: startDepth,
       finalDepth: Math.max(0, myObject.finalDepth),
       renderMode: myObject.renderMode,
     };
 
     return {
+      startDepth: startDepth,
       current: cascadeConfig,
       deeper: deeperCascadeConfig,
       debug: debugInfo,

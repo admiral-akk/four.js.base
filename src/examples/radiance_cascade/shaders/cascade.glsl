@@ -20,11 +20,11 @@ struct CascadeConfig {
 
 
 struct DebugInfo {
-  int startDepth;
   int finalDepth;
   int renderMode; 
 };
 
+uniform int startDepth;
 uniform CascadeConfig current;
 uniform CascadeConfig deeper;
 uniform DebugInfo debug;
@@ -252,7 +252,7 @@ void main() {
     vec2 probeUv = probeIndexToUv(probeIndex2);
     vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
     if (probeIndex2.x >= 0) {
-        if (!(current.depth == float(debug.startDepth))) {
+        if (!(current.depth == float(startDepth))) {
             outColor = bilinearFix(probeIndex2, directionIndex);
         } else {
           vec2 start = probeUv + current.minDistance * rayDirectionUv;
