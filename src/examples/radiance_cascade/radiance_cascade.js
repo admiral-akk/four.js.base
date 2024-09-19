@@ -21,8 +21,6 @@ const myObject = {
   startDepth: 5,
   finalDepth: 4,
   renderMode: 0,
-  lineThickness: 0.001,
-  bilinearFix: false,
 };
 
 const configString = "config";
@@ -80,13 +78,6 @@ const startDepth = gui
   })
   .listen();
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
-gui.add(myObject, "bilinearFix").onChange(saveConfig);
-gui
-  .add(myObject, "lineThickness")
-  .min(0.0001)
-  .max(0.05)
-  .step(0.0001)
-  .onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
 gui.add(buttons, "saveImage").name("Save Image");
 
@@ -377,7 +368,6 @@ export class RadianceCascade extends GameState {
       current: cascadeConfig,
       deeper: deeperCascadeConfig,
       debug: debugInfo,
-      lineThickness: myObject.lineThickness,
       lineSegments: this.lineSegments,
       tPrevCascade: this.cascadeRT,
     };
