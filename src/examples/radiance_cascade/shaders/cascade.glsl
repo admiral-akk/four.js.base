@@ -18,7 +18,6 @@ struct CascadeConfig {
   float maxDistance;
 };
 
-
 struct DebugInfo {
   int finalDepth;
   int renderMode; 
