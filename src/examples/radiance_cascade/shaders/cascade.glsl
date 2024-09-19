@@ -124,10 +124,10 @@ vec2 mapToTextureUv(ivec3 sampleTarget) {
   return vec2(sampleTarget.xy) * delta + 0.5 * delta;
 }
 
-vec4 sampleTexture(ivec3 sampleTarget, ivec2 probeDirection) {
+vec4 sampleTexture(ivec3 sampleTarget, ivec2 sampleDirections) {
   vec2 remappedUv = mapToTextureUv(sampleTarget);
-  vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeDirection.x);
-  vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeDirection.x + 1);
+  vec2 sampleUv1 = remappedUv + offsetForIndex(sampleDirections.x);
+  vec2 sampleUv2 = remappedUv + offsetForIndex(sampleDirections.y);
 
   return 0.5 * ( texture2D(tPrevCascade, sampleUv1) +  texture2D(tPrevCascade, sampleUv2)  );
 }
@@ -140,7 +140,7 @@ bool outOfBounds(vec2 uv) {
   return uv.x > 1. || uv.x < 0. || uv.y > 1. || uv.y < 0.;
 }
 
-vec4 castRay(ivec2 directionIndex, vec2 start, vec2 end, ivec3 sampleTarget) {
+vec4 castRay(vec2 start, vec2 end, ivec3 sampleTarget, ivec2 sampleDirections) {
     vec2 dir = normalize(end - start);
     if (outOfBounds(start)) {
       return sampleSky(dir);
@@ -158,7 +158,7 @@ vec4 castRay(ivec2 directionIndex, vec2 start, vec2 end, ivec3 sampleTarget) {
     } else if (distToEdge < length(end - start)) {
       return sampleSky(dir);
     } else {
-      return sampleTexture(sampleTarget, directionIndex);
+      return sampleTexture(sampleTarget, sampleDirections);
     } 
 }
 
@@ -177,10 +177,12 @@ vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
   vec2 start = probeUv + current.minDistance * rayDirectionUv;
   vec2 end = probeUv + current.maxDistance * rayDirectionUv;
 
-  vec4 radTL = castRay(directionIndex, start, end + (probeTL - probeUv), indexTL);
-  vec4 radTR = castRay(directionIndex, start, end + (probeTR - probeUv), indexTR);
-  vec4 radBL = castRay(directionIndex, start, end + (probeBL - probeUv), indexBL);
-  vec4 radBR = castRay(directionIndex, start, end + (probeBR - probeUv), indexBR);
+  ivec2 sampleDirections = ivec2(2 * directionIndex.x , 2 * directionIndex.x + 1);
+
+  vec4 radTL = castRay(start, end + (probeTL - probeUv), indexTL, sampleDirections);
+  vec4 radTR = castRay(start, end + (probeTR - probeUv), indexTR, sampleDirections);
+  vec4 radBL = castRay(start, end + (probeBL - probeUv), indexBL, sampleDirections);
+  vec4 radBR = castRay(start, end + (probeBR - probeUv), indexBR, sampleDirections);
 
   vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
 
@@ -242,9 +244,9 @@ void main() {
     if (probeIndex.x >= 0) {
         if (current.depth == float(startDepth)) {
           vec2 end = probeUv + current.maxDistance * rayDirectionUv;
-          outColor = castRay(directionIndex, probeUv, end, ivec3(-1));
+          outColor = castRay(probeUv, end, ivec3(-1), ivec2(-1));
         } else {
-            outColor = bilinearFix(probeIndex, directionIndex);
+          outColor = bilinearFix(probeIndex, directionIndex);
         }
     } else {
         outColor = vec4(1.,1.,0.,1.);
