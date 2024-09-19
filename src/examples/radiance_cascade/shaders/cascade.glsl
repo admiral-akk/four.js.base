@@ -198,26 +198,6 @@ vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
   return mix(top, bot, vec4(weights.y));
 }
 
-// returns the UV to start the probe from and the index which
-// indicates the direction
-void probeToEvaluate(vec2 uv, out vec2 probeUv, out int probeIndex) {
-    vec2 pixel = uv * vec2(textureSize(tPrevCascade, 0));
-    
-    int xIndex = int(floor(pixel.x / current.probeCount));
-    int yIndex = int(floor(pixel.y / current.probeCount));
-
-    int xSize = int(float(textureSize(tPrevCascade, 0).x) / current.probeCount);
-
-    // indicates direction
-    probeIndex = xIndex + yIndex * xSize;
-    probeUv = uv / (current.probeCount / vec2(textureSize(tPrevCascade, 0))) - vec2(xIndex,yIndex);
-    if (xIndex >= xSize || 
-        yIndex >= xSize || 
-        float(probeIndex) >= current.rayCount) {
-        probeIndex = -1;
-    }
-}
-
 void discreteProbeToEvaluate(vec2 uv, out ivec3 probeIndex, out ivec2 probeDirection) {
     vec2 pixel = uv * vec2(textureSize(tPrevCascade, 0));
 
@@ -263,4 +243,5 @@ void main() {
     } else {
         outColor = vec4(1.,1.,0.,1.);
     }
+    outColor.w = 1.;
 }

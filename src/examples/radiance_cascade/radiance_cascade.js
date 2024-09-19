@@ -342,7 +342,7 @@ export class RadianceCascade extends GameState {
     const rayCount = 4 << depth;
     const baseProbeWidth = this.cascadeRT.width / 2;
     const probeCount = baseProbeWidth >> depth;
-    const baseDistance = (2 * Math.SQRT2) / this.cascadeRT.width;
+    const baseDistance = (1 * Math.SQRT2) / this.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
     const minDistance = baseDistance * Math.pow(2, multiplier * (depth - 1));
