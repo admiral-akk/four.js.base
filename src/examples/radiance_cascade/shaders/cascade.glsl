@@ -136,7 +136,15 @@ vec4 sampleSky(vec2 dir) {
   return vec4(0.);
 }
 
+bool outOfBounds(vec2 uv) {
+  return uv.x > 1. || uv.x < 0. || uv.y > 1. || uv.y < 0.;
+}
+
 vec4 castRay(ivec2 directionIndex, vec2 start, vec2 end, ivec3 sampleTarget) {
+    vec2 dir = normalize(end - start);
+    if (outOfBounds(start)) {
+      return sampleSky(dir);
+    }
     int hitIndex;
     float closestDist;
     vec4 lineColor = vec4(0.);
@@ -144,7 +152,6 @@ vec4 castRay(ivec2 directionIndex, vec2 start, vec2 end, ivec3 sampleTarget) {
       hitLines(start, end, -1, hitIndex, closestDist);
       lineColor = lineSegments[hitIndex].color;
     #endif
-    vec2 dir = normalize(end - start);
     float distToEdge = distToOutOfBounds(start, dir) ;
     if (closestDist < 1. && closestDist > 0. ) {
         return lineColor;
