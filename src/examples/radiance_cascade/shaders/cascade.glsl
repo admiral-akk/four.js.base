@@ -222,24 +222,23 @@ void discreteProbeToEvaluate(vec2 uv, out ivec3 probeIndex, out ivec2 probeDirec
 }
 
 void main() {
-    ivec3 probeIndex2;
+    ivec3 probeIndex;
     ivec2 directionIndex;
-    discreteProbeToEvaluate(vUv, probeIndex2, directionIndex);
+    discreteProbeToEvaluate(vUv, probeIndex, directionIndex);
 
-    if (probeIndex2.x < 0) {
+    if (probeIndex.x < 0) {
         outColor = vec4(1.,1.,0.,1.);
     }
 
-    vec2 probeUv = probeIndexToUv(probeIndex2);
+    vec2 probeUv = probeIndexToUv(probeIndex);
     vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
-    if (probeIndex2.x >= 0) {
-        if (!(current.depth == float(startDepth))) {
-            outColor = bilinearFix(probeIndex2, directionIndex);
-        } else {
-          vec2 start = probeUv + current.minDistance * rayDirectionUv;
+    if (probeIndex.x >= 0) {
+        if (current.depth == float(startDepth)) {
           vec2 end = probeUv + current.maxDistance * rayDirectionUv;
 
-          outColor = castRay(directionIndex, start, end, 2 * probeIndex2);
+          outColor = castRay(directionIndex, probeUv, end, ivec3(-1));
+        } else {
+            outColor = bilinearFix(probeIndex, directionIndex);
         }
     } else {
         outColor = vec4(1.,1.,0.,1.);

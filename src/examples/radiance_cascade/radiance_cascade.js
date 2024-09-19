@@ -345,7 +345,7 @@ export class RadianceCascade extends GameState {
       xSize: this.cascadeRT.width / probeCount,
       ySize: 2,
       depth: depth,
-      minDistance: 0 != depth ? minDistance : 0,
+      minDistance: depth > 0 ? minDistance : 0,
       maxDistance: maxDistance,
     };
 
@@ -358,7 +358,7 @@ export class RadianceCascade extends GameState {
       xSize: this.cascadeRT.width / (probeCount >> 1),
       ySize: 2,
       depth: depth + 1,
-      minDistance: deeperMaxDistance / 2,
+      minDistance: maxDistance,
       maxDistance: deeperMaxDistance,
     };
 
