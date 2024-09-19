@@ -38,12 +38,10 @@ varying vec2 vUv;
 
 out vec4 outColor;
 
-
 float crossVec2(in vec2 a, in vec2 b) {
   return a.x * b.y - b.x * a.y;
 }
 #if LINE_SEGMENT_COUNT > 0
-
 
 float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
   vec2 p = sampleStartEnd.xy;
@@ -84,63 +82,12 @@ void hitLines(vec2 start, vec2 end, int prevHit, out int hitIndex, out float hit
 }
 #endif
 
-vec2 toDirection(int index) {
-  float tauOverIndexRayCount = TAU / current.rayCount;
-  float angle = tauOverIndexRayCount * (float(index) + 0.5);
-  return vec2(cos(angle), -sin(angle));
-}
-
-vec2 remapProbeUv(vec2 probeUv) {
-  return (probeUv * (deeper.probeCount - 1.) + 0.5) / vec2(textureSize(tPrevCascade, 0));
-}
-
 vec2 offsetForIndex(int deepIndex) {
   float width = float(textureSize(tPrevCascade, 0).x);
     float xIndex = mod(float(deepIndex), width / float(deeper.probeCount));
     float yIndex = floor(float(deepIndex) / ( width / float(deeper.probeCount)));
     return vec2(xIndex, yIndex) * deeper.probeCount / vec2(textureSize(tPrevCascade, 0));
 }
-
-
-vec4 sampleCascadeTexture(vec2 uv) {
-  return texture2D(tPrevCascade, uv);
-}
-
-vec4 sampleCascade(int probeIndex, vec2 probeUv) {
-  vec2 remappedUv = remapProbeUv(probeUv);
-
-  vec2 sampleUv1 = remappedUv + offsetForIndex(2 * probeIndex);
-  vec2 sampleUv2 = remappedUv + offsetForIndex(2 * probeIndex + 1);
-
-  return 0.5 * (
-          sampleCascadeTexture(sampleUv1) 
-          + sampleCascadeTexture(sampleUv2)
-          );
-}
-
-vec4 genericSampleCascade(vec2 dir, vec2 end) {
-  if (current.depth == float(debug.startDepth)) {
-    return vec4(0.);
-  }
-  vec2 probeUv = end - current.maxDistance * dir;
-  vec2 remappedUv = remapProbeUv(probeUv);
-  float angleStep =  TAU / deeper.rayCount ;
-  float angle = mod(atan(dir.y, -dir.x) + PI , TAU);
-  float offsetAngle = angle  - 0.5 * angleStep;
-  int prevProbeIndex = int(floor(offsetAngle / angleStep));
-  int nextProbeIndex = prevProbeIndex + 1;
-  vec4 weights = vec4(angle - angleStep * (float(prevProbeIndex) + 0.5)) / angleStep ;
-  if (prevProbeIndex < 0) {
-    prevProbeIndex = int(deeper.rayCount)  - 1;
-  }
-  vec2 sampleUv1 = remappedUv + offsetForIndex(prevProbeIndex);
-  vec2 sampleUv2 = remappedUv + offsetForIndex(nextProbeIndex);
-  return mix(
-           sampleCascadeTexture(sampleUv1) ,
-           sampleCascadeTexture(sampleUv2), 
-           weights
-          );
-} 
 
 float distToOutOfBounds(vec2 start, vec2 dir) {
   if (dir.x == 0.) {
