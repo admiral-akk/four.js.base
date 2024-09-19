@@ -34,7 +34,6 @@ const readConfig = () => {
       myObject[key] = parsedConfig[key];
     }
   }
-  console.log(myObject);
 };
 readConfig();
 const clearConfig = () => {
@@ -46,7 +45,6 @@ const clearConfig = () => {
 
 const saveConfig = () => {
   localStorage.setItem(configString, JSON.stringify(myObject));
-  console.log(myObject);
 };
 
 readConfig();
@@ -266,8 +264,6 @@ export class RadianceCascade extends GameState {
       this.lineSegments.value.length = 0;
       localStorage.setItem("lines", JSON.stringify(this.lineSegments));
     };
-
-    console.log(this.lineSegments);
     gui.add(buttons, "clearLines").name("Clear Lines");
   }
 
@@ -279,7 +275,6 @@ export class RadianceCascade extends GameState {
       wallType: this.wallType,
     });
     localStorage.setItem("lines", JSON.stringify(this.lineSegments));
-    console.log(this.lineSegments);
   }
 
   updateLine(engine, end) {
