@@ -235,7 +235,6 @@ void main() {
     if (probeIndex.x >= 0) {
         if (current.depth == float(startDepth)) {
           vec2 end = probeUv + current.maxDistance * rayDirectionUv;
-
           outColor = castRay(directionIndex, probeUv, end, ivec3(-1));
         } else {
             outColor = bilinearFix(probeIndex, directionIndex);
