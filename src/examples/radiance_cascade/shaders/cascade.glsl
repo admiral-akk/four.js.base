@@ -13,6 +13,8 @@ uniform LineSegment lineSegments[ LINE_SEGMENT_COUNT ];
 struct CascadeConfig { 
   float probeCount;
   float depth;
+  int xSize;
+  int ySize;
   float rayCount;
   float minDistance;
   float maxDistance;
@@ -79,9 +81,9 @@ void hitLines(vec2 start, vec2 end, int prevHit, out int hitIndex, out float hit
 
 vec2 offsetForIndex(int deepIndex) {
   float width = float(textureSize(tPrevCascade, 0).x);
-    float xIndex = mod(float(deepIndex), width / float(deeper.probeCount));
-    float yIndex = floor(float(deepIndex) / ( width / float(deeper.probeCount)));
-    return vec2(xIndex, yIndex) * deeper.probeCount / vec2(textureSize(tPrevCascade, 0));
+  float xIndex = mod(float(deepIndex), width / float(deeper.probeCount));
+  float yIndex = floor(float(deepIndex) / ( width / float(deeper.probeCount)));
+  return vec2(xIndex, yIndex) * deeper.probeCount / vec2(textureSize(tPrevCascade, 0));
 }
 
 float distToOutOfBounds(vec2 start, vec2 dir) {
@@ -119,7 +121,7 @@ vec2 probeDirectionToDir(ivec2 probeDirection) {
 
 vec2 mapToTextureUv(ivec3 sampleTarget) {
   vec2 delta = 1. / vec2(textureSize(tPrevCascade, 0));
-  return  vec2(sampleTarget.xy) * delta + 0.5 * delta;
+  return vec2(sampleTarget.xy) * delta + 0.5 * delta;
 }
 
 vec4 sampleTexture(ivec3 sampleTarget, ivec2 probeDirection) {
