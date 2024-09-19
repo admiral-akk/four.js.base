@@ -23,11 +23,7 @@ struct DebugInfo {
   int startDepth;
   int finalDepth;
   int renderMode; 
-  bool bilinearFix;
-  bool offsetBoth;
 };
-
-uniform float lineThickness;
 
 uniform CascadeConfig current;
 uniform CascadeConfig deeper;
@@ -41,8 +37,8 @@ out vec4 outColor;
 float crossVec2(in vec2 a, in vec2 b) {
   return a.x * b.y - b.x * a.y;
 }
-#if LINE_SEGMENT_COUNT > 0
 
+#if LINE_SEGMENT_COUNT > 0
 float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
   vec2 p = sampleStartEnd.xy;
   vec2 r = sampleStartEnd.zw - sampleStartEnd.xy;
@@ -139,18 +135,13 @@ vec4 sampleSky(vec2 dir) {
   return vec4(0.);
 }
 
-vec4 castRay(ivec2 probeIndex2, vec2 start, vec2 end, ivec3 sampleTarget) {
-  int bounces = 0;
-  int prevHit = -1;
-  while (bounces < 4) {
+vec4 castRay(ivec2 directionIndex, vec2 start, vec2 end, ivec3 sampleTarget) {
     int hitIndex;
     float closestDist;
-    int type = -1;
     vec4 lineColor = vec4(0.);
     #if (LINE_SEGMENT_COUNT > 0)
-      hitLines(start, end, prevHit, hitIndex, closestDist);
-      lineColor = lineSegments[hitIndex].color ;
-      type = lineSegments[hitIndex].wallType;
+      hitLines(start, end, -1, hitIndex, closestDist);
+      lineColor = lineSegments[hitIndex].color;
     #endif
     vec2 dir = normalize(end - start);
     float distToEdge = distToOutOfBounds(start, dir) ;
@@ -159,10 +150,8 @@ vec4 castRay(ivec2 probeIndex2, vec2 start, vec2 end, ivec3 sampleTarget) {
     } else if (distToEdge < length(end - start)) {
       return sampleSky(dir);
     } else {
-      return sampleTexture(sampleTarget, probeIndex2);
+      return sampleTexture(sampleTarget, directionIndex);
     } 
-    }
-    return vec4(0.,0.,0.,0.);
 }
 
 vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {

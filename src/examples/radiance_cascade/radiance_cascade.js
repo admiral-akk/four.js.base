@@ -348,10 +348,6 @@ export class RadianceCascade extends GameState {
     const minDistance = baseDistance * Math.pow(2, multiplier * (depth - 1));
     const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
 
-    const xSize = Number.isInteger(Math.sqrt(rayCount))
-      ? Math.sqrt(rayCount)
-      : Math.sqrt(rayCount << 1);
-
     const cascadeConfig = {
       rayCount: rayCount,
       probeCount: probeCount,
@@ -360,13 +356,9 @@ export class RadianceCascade extends GameState {
       maxDistance: maxDistance,
     };
 
-    const deeperRayCount = 2 * cascadeConfig.rayCount;
     const deeperMaxDistance =
       baseDistance * Math.pow(2, multiplier * (depth + 1));
 
-    const deeperXSize = Number.isInteger(Math.sqrt(deeperRayCount))
-      ? Math.sqrt(deeperRayCount)
-      : Math.sqrt(deeperRayCount << 1);
     const deeperCascadeConfig = {
       rayCount: rayCount << 1,
       probeCount: probeCount >> 1,
@@ -379,7 +371,6 @@ export class RadianceCascade extends GameState {
       startDepth: startDepth,
       finalDepth: Math.max(0, myObject.finalDepth),
       renderMode: myObject.renderMode,
-      bilinearFix: myObject.bilinearFix,
     };
 
     return {
