@@ -238,8 +238,8 @@ export class RadianceCascade extends GameState {
       minFilter: THREE.LinearFilter,
       generateMipmaps: false,
       format: THREE.RGBAFormat,
-      type: THREE.UnsignedByteType,
-      internalFormat: "RGBA8",
+      type: THREE.FloatType,
+      internalFormat: "RGBA32F",
       anisotropy: 1,
       colorSpace: THREE.NoColorSpace,
       depthBuffer: false,
@@ -298,7 +298,9 @@ export class RadianceCascade extends GameState {
     }
 
     gui.add(this, "clearLines").name("Clear Lines");
-    gui.add(myObject, "linePreconfig", ["x", "-", "|"]).onChange(saveConfig);
+    gui
+      .add(myObject, "linePreconfig", ["x", "+", "-", "|", "="])
+      .onChange(saveConfig);
     buttons.applyLineConfig = () => {
       this.commands.push(
         new ClearCommand(),
@@ -323,6 +325,23 @@ export class RadianceCascade extends GameState {
           this.commands.push(
             new StartDragCommand(new Vector2(0, -0.5)),
             new DragCommand(new Vector2(0, 0.5))
+          );
+          break;
+        case "+":
+          this.commands.push(
+            new StartDragCommand(new Vector2(-0.5, 0)),
+            new DragCommand(new Vector2(0.5, 0)),
+            new StartDragCommand(new Vector2(0, -0.5)),
+            new DragCommand(new Vector2(0, 0.5))
+          );
+          break;
+        case "=":
+          this.commands.push(
+            new StartDragCommand(new Vector2(-1, 0.9)),
+            new DragCommand(new Vector2(1, 0.9)),
+            new UpdateColorCommand("#000000", 0),
+            new StartDragCommand(new Vector2(0, 0)),
+            new DragCommand(new Vector2(1, 0))
           );
           break;
         default:
@@ -405,7 +424,7 @@ export class RadianceCascade extends GameState {
     const rayCount = 4 << depth;
     const baseProbeWidth = this.cascadeRT.width / 2;
     const probeCount = baseProbeWidth >> depth;
-    const baseDistance = Math.SQRT2 / this.cascadeRT.width;
+    const baseDistance = (1 * Math.SQRT2) / this.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
     const minDistance = baseDistance * Math.pow(2, multiplier * (depth - 1));

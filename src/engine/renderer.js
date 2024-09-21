@@ -96,7 +96,10 @@ class CustomerRenderer extends WebGLRenderer {
           uniform sampler2D tInput;
           varying vec2 vUv; 
           out vec4 outColor;
-          void main() {  outColor = texture2D(tInput, vUv); }`,
+          void main() {  
+            outColor = texture2D(tInput, vUv); 
+            outColor = pow(outColor, vec4(1. / 2.2));
+          }`,
       null
     );
   }
