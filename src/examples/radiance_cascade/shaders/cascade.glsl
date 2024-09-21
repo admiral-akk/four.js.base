@@ -1,5 +1,7 @@
 #define PI 3.141592654 
 #define TAU (2.0*PI)
+#define BAD_PROBE_INDEX_COLOR vec4(1.,1.,0.,1.);
+#define DEBUG_COLOR vec4(0.,1.,1.,1.);
 
 #if (LINE_SEGMENT_COUNT > 0)
 struct LineSegment { 
@@ -126,6 +128,12 @@ vec2 mapToTextureUv(ivec3 sampleTarget) {
 }
 
 vec4 sampleTexture(ivec3 sampleTarget, ivec2 sampleDirections) {
+  if (sampleTarget.x < 0 
+    || sampleTarget.x >= sampleTarget.z - 1
+    || sampleTarget.y < 0 
+    || sampleTarget.y >= sampleTarget.z - 1) {
+    return DEBUG_COLOR;
+  }
   vec2 remappedUv = mapToTextureUv(sampleTarget);
   vec2 sampleUv1 = remappedUv + offsetForIndex(sampleDirections.x);
   vec2 sampleUv2 = remappedUv + offsetForIndex(sampleDirections.y);
@@ -233,7 +241,6 @@ vec4 continousBilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
   if (probeIndex.y == probeIndex.z - 1) {
     weights.y = 0.;
   }
-
   vec4 top = mix(radTL, radTR, vec4(weights.x));
   vec4 bot = mix(radBL, radBR, vec4(weights.x));
 
@@ -247,7 +254,7 @@ vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
   ivec3 indexTL = ivec3((probeIndex.x - 1) / 2, (probeIndex.y - 1) / 2, int(deeper.probeCount));
   vec2 probeTL = probeIndexToUv(indexTL);
   ivec3 indexTR = indexTL + ivec3(1, 0, 0);
-  vec2 probeTR = probeIndexToUv(indexTR);
+  vec2 probeTR = probeIndexToUv(indexTR); 
   ivec3 indexBL = indexTL + ivec3(0, 1, 0);
   vec2 probeBL = probeIndexToUv(indexBL);
   ivec3 indexBR = indexTL + ivec3(1, 1, 0);
@@ -258,28 +265,32 @@ vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
 
   ivec2 sampleDirections = ivec2(2 * directionIndex.x , 2 * directionIndex.x + 1);
 
+  if (probeIndex.x == 0) {
+    indexTL.x = -1;
+    indexBL.x = -1;
+  }
+
+  if (probeIndex.y == 0) {
+    indexTL.y = -1;
+    indexTR.y = -1;
+  }
+
+  if (probeIndex.x == probeIndex.z - 1) {
+    indexTR.y = -1;
+    indexBR.y = -1;
+  }
+
+  if (probeIndex.y == probeIndex.z - 1) {
+    indexBL.y = -1;
+    indexBR.y = -1;
+  }
+
   vec4 radTL = castRay(start, end + (probeTL - probeUv), indexTL, sampleDirections);
   vec4 radTR = castRay(start, end + (probeTR - probeUv), indexTR, sampleDirections);
   vec4 radBL = castRay(start, end + (probeBL - probeUv), indexBL, sampleDirections);
   vec4 radBR = castRay(start, end + (probeBR - probeUv), indexBR, sampleDirections);
 
   vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
-
-  if (probeIndex.x == 0) {
-    weights.x = 1.;
-  }
-
-  if (probeIndex.y == 0) {
-    weights.y = 1.;
-  }
-
-  if (probeIndex.x == probeIndex.z - 1) {
-    weights.x = 0.;
-  }
-
-  if (probeIndex.y == probeIndex.z - 1) {
-    weights.y = 0.;
-  }
 
   vec4 top = mix(radTL, radTR, vec4(weights.x));
   vec4 bot = mix(radBL, radBR, vec4(weights.x));
@@ -300,7 +311,7 @@ void discreteProbeToEvaluate(vec2 uv, out ivec3 probeIndex, out ivec2 probeDirec
 
     int xIndex = int(floor(pixel.x / current.probeCount));
     int yIndex = int(floor(pixel.y / current.probeCount));
-    probeDirection = ivec2(xIndex + yIndex *xSize, int(current.rayCount));
+    probeDirection = ivec2(xIndex + yIndex * xSize, int(current.rayCount));
     
     if (xIndex >= xSize || 
         yIndex >= ySize || 
@@ -314,9 +325,6 @@ void main() {
     ivec2 directionIndex;
     discreteProbeToEvaluate(vUv, probeIndex, directionIndex);
 
-    if (probeIndex.x < 0) {
-        outColor = vec4(1.,1.,0.,1.);
-    }
 
     if (probeIndex.x >= 0) {
         if (current.depth == float(startDepth)) {
@@ -331,7 +339,8 @@ void main() {
           }
         }
     } else {
-        outColor = vec4(1.,1.,0.,1.);
+      outColor = BAD_PROBE_INDEX_COLOR;
     }
+    
     outColor.w = 1.;
 }

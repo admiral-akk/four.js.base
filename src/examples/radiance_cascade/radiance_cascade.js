@@ -14,6 +14,7 @@ import calculateCascade from "./shaders/cascade.glsl";
 
 import GUI from "lil-gui";
 import { Vector4 } from "three";
+import { Vector2 } from "three";
 const gui = new GUI();
 
 const myObject = {
@@ -22,6 +23,7 @@ const myObject = {
   finalDepth: 4,
   renderMode: 0,
   continousBilinearFix: false,
+  linePreconfig: "x",
 };
 
 const configString = "config";
@@ -95,11 +97,11 @@ class UpdateColorCommand extends Command {
   }
 }
 
+class ClearCommand extends Command {}
+
 class DragCommand extends Command {
-  constructor(start, prev, curr) {
+  constructor(curr) {
     super();
-    this.start = start;
-    this.prev = prev;
     this.curr = curr;
   }
 }
@@ -132,7 +134,7 @@ class DragInputState extends State {
     const { mouse } = state;
     const { pos } = mouse;
     if (!this.start.equals(pos)) {
-      game.commands.push(new DragCommand(this.start, this.curr, pos));
+      game.commands.push(new DragCommand(this.curr));
       this.curr = pos;
     }
 
@@ -201,6 +203,7 @@ class InputManager extends StateMachine {
 
 // https://learnopengl.com/Getting-started/Coordinate-Systems
 const clipToScreenSpace = (clipVec2) => {
+  console.log(clipVec2);
   return clipVec2.clone().addScalar(1).multiplyScalar(0.5);
 };
 
@@ -212,15 +215,32 @@ export class RadianceCascade extends GameState {
     this.color = "#dddddd";
 
     const cascadeTextureSize = Math.pow(2, myObject.textureSize);
-    this.cascadeRT = engine.renderer.newRenderTarget(1, {
+    const textureConfig = {
       fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
-    });
-    this.spareCascadeRT = engine.renderer.newRenderTarget(1, {
-      fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
-    });
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping,
+      magFilter: THREE.LinearFilter,
+      minFilter: THREE.LinearFilter,
+      generateMipmaps: false,
+      format: THREE.RGBAFormat,
+      type: THREE.UnsignedByteType,
+      internalFormat: "RGBA8",
+      anisotropy: 1,
+      colorSpace: THREE.NoColorSpace,
+      depthBuffer: false,
+      stencilBuffer: false,
+      resolveDepthBuffer: false,
+      resolveStencilBuffer: false,
+      depthTexture: null,
+    };
+
+    this.cascadeRT = engine.renderer.newRenderTarget(1, textureConfig);
+    this.spareCascadeRT = engine.renderer.newRenderTarget(1, textureConfig);
+
+    this.finalCascadeRT = engine.renderer.newRenderTarget(1, textureConfig);
 
     gui
-      .add(myObject, "textureSize", 5, 12, 1)
+      .add(myObject, "textureSize", 3, 12, 1)
       .name("Texture Size")
       .onChange(() => {
         const cascadeTextureSize = Math.pow(2, myObject.textureSize);
@@ -262,11 +282,44 @@ export class RadianceCascade extends GameState {
       this.lineSegments = { value: [] };
     }
 
-    buttons.clearLines = () => {
-      this.lineSegments.value.length = 0;
-      localStorage.setItem("lines", JSON.stringify(this.lineSegments));
+    gui.add(this, "clearLines").name("Clear Lines");
+    gui.add(myObject, "linePreconfig", ["x", "-", "|"]).onChange(saveConfig);
+    buttons.applyLineConfig = () => {
+      this.commands.push(
+        new ClearCommand(),
+        new UpdateColorCommand("#ffffff", 0)
+      );
+      switch (myObject.linePreconfig) {
+        case "x":
+          this.commands.push(
+            new StartDragCommand(new Vector2(-0.5, -0.5)),
+            new DragCommand(new Vector2(0.5, 0.5)),
+            new StartDragCommand(new Vector2(-0.5, 0.5)),
+            new DragCommand(new Vector2(0.5, -0.5))
+          );
+          break;
+        case "-":
+          this.commands.push(
+            new StartDragCommand(new Vector2(-0.5, 0)),
+            new DragCommand(new Vector2(0.5, 0))
+          );
+          break;
+        case "|":
+          this.commands.push(
+            new StartDragCommand(new Vector2(0, -0.5)),
+            new DragCommand(new Vector2(0, 0.5))
+          );
+          break;
+        default:
+          throw new Error("UNKNOWN CONFIG");
+      }
     };
-    gui.add(buttons, "clearLines").name("Clear Lines");
+    gui.add(buttons, "applyLineConfig").name("Apply Line Config");
+  }
+
+  clearLines() {
+    this.lineSegments.value.length = 0;
+    localStorage.setItem("lines", JSON.stringify(this.lineSegments));
   }
 
   startLine(engine, start) {
@@ -290,34 +343,41 @@ export class RadianceCascade extends GameState {
     localStorage.setItem("lines", JSON.stringify(this.lineSegments));
   }
 
+  applyCommand(engine, command) {
+    switch (command.type) {
+      case UpdateColorCommand:
+        this.color = command.color;
+        this.wallType = command.wallType;
+        break;
+      case ClearCommand:
+        this.clearLines();
+        break;
+      case StartDragCommand:
+        {
+          {
+            this.startLine(engine, clipToScreenSpace(command.start));
+          }
+        }
+        break;
+      case DragCommand:
+        {
+          this.updateLine(engine, clipToScreenSpace(command.curr));
+        }
+        break;
+      case LineCommand:
+        {
+          this.updateLine(engine, clipToScreenSpace(command.end));
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
   update(engine) {
     super.update(engine);
     this.commands.forEach((command) => {
-      switch (command.type) {
-        case UpdateColorCommand:
-          this.color = command.color;
-          this.wallType = command.wallType;
-          break;
-        case StartDragCommand:
-          {
-            {
-              this.startLine(engine, clipToScreenSpace(command.start));
-            }
-          }
-          break;
-        case DragCommand:
-          {
-            this.updateLine(engine, clipToScreenSpace(command.curr));
-          }
-          break;
-        case LineCommand:
-          {
-            this.updateLine(engine, clipToScreenSpace(command.end));
-          }
-          break;
-        default:
-          break;
-      }
+      this.applyCommand(engine, command);
     });
     // check if the color changes
     // find a line if one exists

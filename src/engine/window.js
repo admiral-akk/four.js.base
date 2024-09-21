@@ -5,6 +5,7 @@ class WindowManager {
       height: window.innerHeight,
       verticalOffset: 0,
       horizontalOffset: 0,
+      buffer: 20,
       aspect,
     };
     this.listeners = [];
@@ -13,22 +14,24 @@ class WindowManager {
     const canvasContainer = document.querySelector("div.relative");
 
     this.update = () => {
-      if (window.innerHeight * this.sizes.aspect > window.innerWidth) {
-        this.sizes.width = window.innerWidth;
-        this.sizes.height = window.innerWidth / this.sizes.aspect;
-        this.sizes.verticalOffset =
-          (window.innerHeight - this.sizes.height) / 2;
+      const { buffer } = this.sizes;
+      const adjustedHeight = window.innerHeight - 2 * buffer;
+      const adjustedWidth = window.innerWidth - 2 * buffer;
+      if (adjustedHeight * this.sizes.aspect > adjustedWidth) {
+        this.sizes.width = adjustedWidth;
+        this.sizes.height = adjustedWidth / this.sizes.aspect;
+        this.sizes.verticalOffset = (adjustedHeight - this.sizes.height) / 2;
         this.sizes.horizontalOffset = 0;
       } else {
-        this.sizes.width = window.innerHeight * this.sizes.aspect;
-        this.sizes.height = window.innerHeight;
+        this.sizes.width = adjustedHeight * this.sizes.aspect;
+        this.sizes.height = adjustedHeight;
         this.sizes.verticalOffset = 0;
-        this.sizes.horizontalOffset =
-          (window.innerWidth - this.sizes.width) / 2;
+        this.sizes.horizontalOffset = (adjustedWidth - this.sizes.width) / 2;
       }
-      canvasContainer.style.top = this.sizes.verticalOffset.toString() + "px";
+      canvasContainer.style.top =
+        (this.sizes.verticalOffset + buffer).toString() + "px";
       canvasContainer.style.left =
-        this.sizes.horizontalOffset.toString() + "px";
+        (this.sizes.horizontalOffset + buffer).toString() + "px";
 
       this.listeners.forEach((l) => {
         l.updateSize(this.sizes);
