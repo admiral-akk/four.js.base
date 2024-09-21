@@ -11,6 +11,7 @@ import * as THREE from "three";
 
 import renderCascade from "./shaders/renderCascade.glsl";
 import calculateCascade from "./shaders/cascade.glsl";
+import symmetryShader from "./shaders/symmetry.glsl";
 
 import GUI from "lil-gui";
 import { Vector4 } from "three";
@@ -18,12 +19,16 @@ import { Vector2 } from "three";
 const gui = new GUI();
 
 const myObject = {
-  textureSize: 10,
   startDepth: 5,
   finalDepth: 4,
-  renderMode: 0,
+  renderCascadeStep: true,
+  renderSymmetryStep: false,
   continousBilinearFix: false,
   linePreconfig: "x",
+  symmetryCheck: false,
+  symmetryType: 0,
+  renderMode: 0,
+  textureSize: 10,
 };
 
 const configString = "config";
@@ -62,26 +67,36 @@ const buttons = {
   clearConfig: clearConfig,
   saveImage: saveImage,
 };
+
+const startDepth = gui
+  .add(myObject, "startDepth", 1, myObject.textureSize - 2, 1)
+  .name("Start Depth");
+
 const finalDepth = gui
   .add(myObject, "finalDepth")
-  .min(-1)
+  .name("Final Depth")
+  .min(0)
   .max(Math.min(myObject.startDepth, 9))
   .step(1)
   .onChange(saveConfig)
   .listen();
-const startDepth = gui
-  .add(myObject, "startDepth", 1, myObject.textureSize - 2, 1)
-  .name("Start Depth")
+
+startDepth
   .onChange(() => {
     finalDepth.max(myObject.startDepth);
     myObject.finalDepth = Math.min(myObject.startDepth, myObject.finalDepth);
     saveConfig();
   })
   .listen();
+gui.add(myObject, "renderCascadeStep").onChange(saveConfig);
+gui.add(myObject, "renderSymmetryStep").onChange(saveConfig);
+
 gui.add(myObject, "continousBilinearFix").onChange(saveConfig);
 gui.add(myObject, "renderMode").min(0).max(15).step(1).onChange(saveConfig);
 gui.add(buttons, "clearConfig").name("Clear Config");
 gui.add(buttons, "saveImage").name("Save Image");
+gui.add(myObject, "symmetryCheck").onChange(saveConfig);
+gui.add(myObject, "symmetryType").min(0).max(3).step(1).onChange(saveConfig);
 
 class Command {
   constructor() {
@@ -458,18 +473,54 @@ export class RadianceCascade extends GameState {
       ];
       depth--;
     }
-    switch (myObject.finalDepth) {
-      case -1:
-        renderer.applyPostProcess(
-          this.calculateUniforms(0),
-          renderCascade,
-          null
-        );
-        break;
-      default:
-        renderer.renderTexture(this.cascadeRT);
-        break;
+
+    if (myObject.finalDepth == 0 && myObject.renderCascadeStep) {
+      renderer.applyPostProcess(
+        this.calculateUniforms(0),
+        renderCascade,
+        this.spareCascadeRT
+      );
+      [this.spareCascadeRT, this.cascadeRT] = [
+        this.cascadeRT,
+        this.spareCascadeRT,
+      ];
     }
+
+    if (myObject.renderSymmetryStep) {
+      let normal = 0;
+      switch (myObject.symmetryType) {
+        default:
+        case 0:
+          normal = new Vector2(1, 0);
+          break;
+        case 1:
+          normal = new Vector2(1, 1);
+          break;
+        case 2:
+          normal = new Vector2(0, 1);
+          break;
+        case 3:
+          normal = new Vector2(-1, 1);
+          break;
+      }
+
+      renderer.applyPostProcess(
+        {
+          tInput: this.cascadeRT,
+          normal: normal.normalize(),
+          diffScale: 1,
+        },
+        symmetryShader,
+        this.spareCascadeRT
+      );
+      [this.spareCascadeRT, this.cascadeRT] = [
+        this.cascadeRT,
+        this.spareCascadeRT,
+      ];
+    }
+
+    renderer.renderTexture(this.cascadeRT);
+
     if (pendingImage) {
       let canvas = document.getElementById("webgl");
 
