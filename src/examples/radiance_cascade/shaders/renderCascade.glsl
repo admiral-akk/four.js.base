@@ -40,4 +40,5 @@ vec4 radiance(vec2 uv) {
 
   void main() {
     outColor = radiance(vUv);
+    outColor.w = 1.;
   }
