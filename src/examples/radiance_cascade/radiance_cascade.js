@@ -69,7 +69,7 @@ const buttons = {
 };
 
 const startDepth = gui
-  .add(myObject, "startDepth", 1, myObject.textureSize - 2, 1)
+  .add(myObject, "startDepth", 1, myObject.textureSize - 4, 1)
   .name("Start Depth");
 
 const finalDepth = gui
@@ -267,7 +267,7 @@ export class RadianceCascade extends GameState {
           myObject.startDepth,
           myObject.textureSize
         );
-        startDepth.max(myObject.textureSize - 2);
+        startDepth.max(myObject.textureSize - 4);
         finalDepth.max(Math.min(myObject.startDepth, myObject.textureSize));
         myObject.startDepth = Math.min(
           myObject.startDepth,
