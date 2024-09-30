@@ -190,12 +190,13 @@ vec4 castRay(vec2 start, vec2 end, ivec3 sampleTarget, ivec2 sampleDirections) {
       return sampleTexture(sampleTarget, sampleDirections);
     } 
 }
-vec2 lineSegmentUv(ivec3 probeIndex, ivec2 directionIndex, float distance) {
 
+vec2 lineSegmentUv(ivec3 probeIndex, ivec2 directionIndex, float distance) {
   vec2 probeUv = probeIndexToUv(probeIndex);
   vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
   return probeUv + distance * rayDirectionUv;
 }
+
 vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
   vec2 probeUv = probeIndexToUv(probeIndex);
 
@@ -238,7 +239,47 @@ vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
   return mix(top, bot, vec4(weights.y));
 }
 
-void discreteProbeToEvaluate(vec2 uv, out ivec3 probeIndex, out ivec2 probeDirection) {
+// gets the uv needed to sample the texture for this index
+vec2 indicesToSampleUv(ivec4 probeIndex) {
+  ivec2 texSize = textureSize(tPrevCascade, 0);
+  vec2 pixelSizeInUv = 1. / vec2(texSize); 
+
+  vec2 probeOffset = (vec2(probeIndex.xy) + 0.5) * pixelSizeInUv;
+  vec2 depthOffset = vec2(0., 1. / float(1 << (probeIndex.w + 1)));
+  vec2 directionOffset = vec2(float(probeIndex.z) / float(4 << probeIndex.w), 0.);
+
+  return probeOffset + depthOffset + directionOffset;
+}
+
+// gets the uv of the probe for this index
+vec2 indicesToProbeUv(ivec4 probeIndex) {
+  float probeCount = float((int(textureSize(tPrevCascade, 0).x) / 4) >> probeIndex.w);
+  return (vec2(probeIndex.xy) + 0.5) / probeCount; 
+}
+
+// gets the index that corresponds to this texture uv
+ivec4 sampleUvToIndices(vec2 uv) {
+  int depth = -int(ceil(log2(uv.y)));
+
+  ivec2 texSize = textureSize(tPrevCascade, 0);
+
+  vec2 pixel = uv * vec2(texSize);
+
+  float probeCount = float(texSize.x >> (depth + 2));
+
+  int x = int(mod(pixel.x, probeCount));
+  int y = int(mod(pixel.y, probeCount)); 
+
+  int directionIndex = int(floor(pixel.x / probeCount));
+
+  return ivec4(x,y,directionIndex,depth);
+}
+
+void discreteProbeToEvaluate(
+      vec2 uv, 
+      out ivec3 probeIndex, 
+      out ivec2 probeDirection,
+      out ivec4 newProbeIndex) {
     vec2 pixel = uv * vec2(textureSize(tPrevCascade, 0));
 
     int xSize = int(float(textureSize(tPrevCascade, 0).x) / current.probeCount);
@@ -248,6 +289,11 @@ void discreteProbeToEvaluate(vec2 uv, out ivec3 probeIndex, out ivec2 probeDirec
         int(mod(pixel.x, current.probeCount)), 
         int(mod(pixel.y, current.probeCount)), 
         int(current.probeCount));
+    newProbeIndex = ivec4(
+        int(mod(pixel.x, current.probeCount)), 
+        int(mod(pixel.y, current.probeCount)), 
+        int(current.probeCount),
+        current.depth);
 
     int xIndex = int(floor(pixel.x / current.probeCount));
     int yIndex = int(floor(pixel.y / current.probeCount));
@@ -331,8 +377,8 @@ vec4 continousBilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
 void main() {
     ivec3 probeIndex;
     ivec2 directionIndex;
-    discreteProbeToEvaluate(vUv, probeIndex, directionIndex);
-
+    ivec4 newProbeIndex;
+    discreteProbeToEvaluate(vUv, probeIndex, directionIndex, newProbeIndex);
 
     if (probeIndex.x >= 0) {
         if (current.depth == float(startDepth)) {
@@ -347,8 +393,14 @@ void main() {
           }
         }
     } else {
+      outColor = texture2D(tPrevCascade, vUv) ;
       outColor = BAD_PROBE_INDEX_COLOR;
     }
     
     outColor.w = 1.;
+
+    ivec4 newIndex = sampleUvToIndices(vUv);
+    vec2 reversedIndex = indicesToSampleUv(newIndex);
+
+    outColor.rgb = vec3(reversedIndex,0.);
 }

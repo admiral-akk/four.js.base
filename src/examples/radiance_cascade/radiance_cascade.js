@@ -231,7 +231,7 @@ export class RadianceCascade extends GameState {
 
     const cascadeTextureSize = Math.pow(2, myObject.textureSize);
     const textureConfig = {
-      fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
+      fixedSize: new THREE.Vector2(2 * cascadeTextureSize, cascadeTextureSize),
       wrapS: THREE.ClampToEdgeWrapping,
       wrapT: THREE.ClampToEdgeWrapping,
       magFilter: THREE.LinearFilter,
