@@ -83,12 +83,6 @@ void hitLines(vec2 start, vec2 end, int prevHit, out int hitIndex, out float hit
 }
 #endif
 
-vec2 offsetForIndex(int deepIndex) {
-  float width = float(textureSize(tPrevCascade, 0).x);
-  float xIndex = mod(float(deepIndex), width / float(deeper.probeCount));
-  float yIndex = floor(float(deepIndex) / ( width / float(deeper.probeCount)));
-  return vec2(xIndex, yIndex) * deeper.probeCount / vec2(textureSize(tPrevCascade, 0));
-}
 
 float distToOutOfBounds(vec2 start, vec2 dir) {
   if (dir.x == 0.) {
@@ -112,57 +106,6 @@ float distToOutOfBounds(vec2 start, vec2 dir) {
   return min(xDist, yDist);
 }
 
-bool indexOutOfBounds(ivec3 index) {
-  return 
-    index.x < 0 ||
-    index.y < 0 ||
-    index.x > index.z - 1 ||
-    index.y > index.z - 1;
-}
-
-ivec3 clampIndex(ivec3 index) {
-  if (index.x < 0) {
-    index.x = 0;
-  }
-  if (index.y < 0) {
-    index.y = 0;
-  }
-  if (index.x > index.z - 1 ) {
-    index.x = index.z - 1 ;
-  }
-  if (index.y > index.z - 1 ) {
-    index.y = index.z - 1 ;
-  }
-  return index;
-}
-
-vec2 probeIndexToUv(ivec3 probeIndex) {
-  float delta = 1. / float(probeIndex.z);
-  return vec2(probeIndex.xy) * delta + 0.5 * delta;
-}
-
-vec2 probeDirectionToDir(ivec2 probeDirection) {
-  float tauOverIndexRayCount = TAU / float(probeDirection.y);
-  float angle = tauOverIndexRayCount * (float(probeDirection.x) + 0.5);
-  return vec2(cos(angle), -sin(angle));
-}
-
-vec2 mapToTextureUv(ivec3 sampleTarget) {
-  vec2 delta = 1. / vec2(textureSize(tPrevCascade, 0));
-  return vec2(sampleTarget.xy) * delta + 0.5 * delta;
-}
-
-vec4 sampleTexture(ivec3 sampleTarget, ivec2 sampleDirections) {
-  sampleTarget = clampIndex(sampleTarget);
-  if (indexOutOfBounds(sampleTarget)) {
-    return vec4(0.);
-  }
-  vec2 remappedUv = mapToTextureUv(sampleTarget);
-  vec2 sampleUv1 = remappedUv + offsetForIndex(sampleDirections.x);
-  vec2 sampleUv2 = remappedUv + offsetForIndex(sampleDirections.y);
-
-  return 0.5 * ( texture2D(tPrevCascade, sampleUv1) +  texture2D(tPrevCascade, sampleUv2)  );
-}
 
 // gets the uv needed to sample the texture for this index
 vec2 indicesToSampleUv(ivec4 probeIndex) {
@@ -176,7 +119,7 @@ vec2 indicesToSampleUv(ivec4 probeIndex) {
   return probeOffset + depthOffset + directionOffset;
 }
 
-vec4 sampleTexture2(ivec4 sampleTarget, ivec4 sampleTarget2) {
+vec4 sampleTexture(ivec4 sampleTarget, ivec4 sampleTarget2) {
   return 0.5 * ( 
     texture2D(tPrevCascade, indicesToSampleUv(sampleTarget)) 
     + texture2D(tPrevCascade, indicesToSampleUv(sampleTarget2))  
@@ -188,11 +131,7 @@ vec4 sampleSky(vec2 dir) {
   return  vec4(0., 0., 0.0,1.);
 }
 
-bool outOfBounds(vec2 uv) {
-  return uv.x > 1. || uv.x < 0. || uv.y > 1. || uv.y < 0.;
-}
-
-vec4 castRay(vec2 start, vec2 end, ivec3 sampleTarget, ivec2 sampleDirections) {
+vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
     vec2 dir = normalize(end - start);
     int hitIndex;
     float closestDist;
@@ -207,35 +146,10 @@ vec4 castRay(vec2 start, vec2 end, ivec3 sampleTarget, ivec2 sampleDirections) {
     } else if (distToEdge < length(end - start)) {
       return sampleSky(dir);
     } else {
-      return sampleTexture(sampleTarget, sampleDirections);
+      return sampleTexture(sampleTarget, sampleTarget2);
     } 
 }
 
-vec4 castRay2(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
-    vec2 dir = normalize(end - start);
-    int hitIndex;
-    float closestDist;
-    vec4 lineColor = vec4(0.);
-    #if (LINE_SEGMENT_COUNT > 0)
-      hitLines(start, end, -1, hitIndex, closestDist);
-      lineColor = lineSegments[hitIndex].color;
-    #endif
-    float distToEdge = distToOutOfBounds(start, dir) ;
-    if (closestDist < 1. && closestDist > 0. ) {
-        return lineColor;
-    } else if (distToEdge < length(end - start)) {
-      return sampleSky(dir);
-    } else {
-      return sampleTexture2(sampleTarget, sampleTarget2);
-    } 
-}
-
-
-vec2 lineSegmentUv(ivec3 probeIndex, ivec2 directionIndex, float distance) {
-  vec2 probeUv = probeIndexToUv(probeIndex);
-  vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
-  return probeUv + distance * rayDirectionUv;
-}
 
 // gets the uv of the probe for this index
 vec2 indicesToProbeUv(ivec4 probeIndex) {
@@ -250,53 +164,12 @@ vec2 probeDirectionToDir2(ivec4 probeIndex) {
   return vec2(cos(angle), -sin(angle));
 }
 
-vec2 lineSegmentUv2(ivec4 probeIndex, float distance) {
+vec2 lineSegmentUv(ivec4 probeIndex, float distance) {
   vec2 probeUv = indicesToProbeUv(probeIndex);
   vec2 rayDirectionUv = probeDirectionToDir2(probeIndex);
   return probeUv + distance * rayDirectionUv;
 }
 
-vec4 bilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
-  vec2 probeUv = probeIndexToUv(probeIndex);
-
-  ivec3 indexTL = ivec3(int(floor(float(probeIndex.x - 1) / 2.)), int(floor(float(probeIndex.y - 1) / 2.)), int(deeper.probeCount));
-  vec2 probeTL = probeIndexToUv(indexTL);
-  ivec3 indexTR = indexTL + ivec3(1, 0, 0);
-  vec2 probeTR = probeIndexToUv(indexTR); 
-  ivec3 indexBL = indexTL + ivec3(0, 1, 0);
-  vec2 probeBL = probeIndexToUv(indexBL);
-  ivec3 indexBR = indexTL + ivec3(1, 1, 0);
-  vec2 probeBR = probeIndexToUv(indexBR);
-  vec2 rayDirectionUv = probeDirectionToDir(directionIndex);
-  vec2 start = probeUv + current.minDistance * rayDirectionUv;
-  vec2 end = probeUv + current.maxDistance * rayDirectionUv;
-
-  ivec2 sampleDirections = ivec2(2 * directionIndex.x , 2 * directionIndex.x + 1);
-
-  vec4 radTL = castRay(start, end + (probeTL - probeUv), indexTL, sampleDirections);
-  vec4 radTR = castRay(start, end + (probeTR - probeUv), indexTR, sampleDirections);
-  vec4 radBL = castRay(start, end + (probeBL - probeUv), indexBL, sampleDirections);
-  vec4 radBR = castRay(start, end + (probeBR - probeUv), indexBR, sampleDirections);
-
-  vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
-
-  if (probeIndex.x == 0) {
-    weights.x = 1.;
-  }
-  if (probeIndex.y == 0) {
-    weights.y = 1.;
-  }
-  if (probeIndex.x == probeIndex.z - 1) {
-    weights.x = 0.;
-  }
-  if (probeIndex.y == probeIndex.z - 1) {
-    weights.y = 0.;
-  }
-  vec4 top = mix(radTL, radTR, vec4(weights.x));
-  vec4 bot = mix(radBL, radBR, vec4(weights.x));
-
-  return mix(top, bot, vec4(weights.y));
-}
 // gets the index that corresponds to this texture uv
 ivec4 sampleUvToIndices(vec2 uv) {
   int depth = -int(ceil(log2(uv.y)));
@@ -342,7 +215,7 @@ void discreteProbeToEvaluate(
 
 
 
-vec4 continousBilinearFix2(ivec4 probeIndex) { 
+vec4 continousbilinearFix(ivec4 probeIndex) { 
   vec2 probeUv = indicesToProbeUv(probeIndex);
 
   ivec4 indexTL = ivec4(
@@ -352,49 +225,48 @@ vec4 continousBilinearFix2(ivec4 probeIndex) {
     probeIndex.w + 1
   );
 
-  vec2 probeTL = indicesToProbeUv(indexTL);
   ivec4 indexTR = indexTL + ivec4(1, 0, 0, 0);
-  vec2 probeTR = indicesToProbeUv(indexTR); 
   ivec4 indexBL = indexTL + ivec4(0, 1, 0, 0);
-  vec2 probeBL = indicesToProbeUv(indexBL);
   ivec4 indexBR = indexTL + ivec4(1, 1, 0, 0);
-  vec2 probeBR = indicesToProbeUv(indexBR);
 
 
-  vec2 probeTLEnd1 = lineSegmentUv2(indexTL, deeper.minDistance);
-  vec2 probeTLEnd2 = lineSegmentUv2(indexTL + ivec4(0,0,1,0), deeper.minDistance);
+  vec2 probeTLEnd1 = lineSegmentUv(indexTL, deeper.minDistance);
+  vec2 probeTLEnd2 = lineSegmentUv(indexTL + ivec4(0,0,1,0), deeper.minDistance);
   
-  vec2 probeTREnd1 = lineSegmentUv2(indexTR, deeper.minDistance);
-  vec2 probeTREnd2 = lineSegmentUv2(indexTR + ivec4(0,0,1,0), deeper.minDistance);
+  vec2 probeTREnd1 = lineSegmentUv(indexTR, deeper.minDistance);
+  vec2 probeTREnd2 = lineSegmentUv(indexTR + ivec4(0,0,1,0), deeper.minDistance);
   
-  vec2 probeBLEnd1 = lineSegmentUv2(indexBL, deeper.minDistance);
-  vec2 probeBLEnd2 = lineSegmentUv2(indexBL + ivec4(0,0,1,0), deeper.minDistance);
+  vec2 probeBLEnd1 = lineSegmentUv(indexBL, deeper.minDistance);
+  vec2 probeBLEnd2 = lineSegmentUv(indexBL + ivec4(0,0,1,0), deeper.minDistance);
   
-  vec2 probeBREnd1 = lineSegmentUv2(indexBR, deeper.minDistance);
-  vec2 probeBREnd2 = lineSegmentUv2(indexBR + ivec4(0,0,1,0), deeper.minDistance);
+  vec2 probeBREnd1 = lineSegmentUv(indexBR, deeper.minDistance);
+  vec2 probeBREnd2 = lineSegmentUv(indexBR + ivec4(0,0,1,0), deeper.minDistance);
 
-  vec2 start = lineSegmentUv2(probeIndex,  current.minDistance);
+  vec2 start = lineSegmentUv(probeIndex,  current.minDistance);
 
 
-  vec4 radTL1 = castRay2(start, probeTLEnd1, indexTL, indexTL);
-  vec4 radTL2 = castRay2(start, probeTLEnd2, indexTL + ivec4(0,0,1,0), indexTL + ivec4(0,0,1,0));
+  vec4 radTL1 = castRay(start, probeTLEnd1, indexTL, indexTL);
+  vec4 radTL2 = castRay(start, probeTLEnd2, indexTL + ivec4(0,0,1,0), indexTL + ivec4(0,0,1,0));
   vec4 radTL = 0.5 * (radTL1 + radTL2);
 
-  vec4 radTR1 = castRay2(start, probeTREnd1, indexTR, indexTR);
-  vec4 radTR2 = castRay2(start, probeTREnd2, indexTR + ivec4(0,0,1,0), indexTR + ivec4(0,0,1,0));
+  vec4 radTR1 = castRay(start, probeTREnd1, indexTR, indexTR);
+  vec4 radTR2 = castRay(start, probeTREnd2, indexTR + ivec4(0,0,1,0), indexTR + ivec4(0,0,1,0));
   vec4 radTR = 0.5 * (radTR1 + radTR2);
 
-  vec4 radBL1 = castRay2(start, probeBLEnd1, indexBL, indexBL);
-  vec4 radBL2 = castRay2(start, probeBLEnd2, indexBL + ivec4(0,0,1,0), indexBL + ivec4(0,0,1,0));
+  vec4 radBL1 = castRay(start, probeBLEnd1, indexBL, indexBL);
+  vec4 radBL2 = castRay(start, probeBLEnd2, indexBL + ivec4(0,0,1,0), indexBL + ivec4(0,0,1,0));
   vec4 radBL = 0.5 * (radBL1 + radBL2);
 
-  vec4 radBR1 = castRay2(start, probeBREnd1, indexBR, indexBR);
-  vec4 radBR2 = castRay2(start, probeBREnd2, indexBR + ivec4(0,0,1,0), indexBR + ivec4(0,0,1,0));
+  vec4 radBR1 = castRay(start, probeBREnd1, indexBR, indexBR);
+  vec4 radBR2 = castRay(start, probeBREnd2, indexBR + ivec4(0,0,1,0), indexBR + ivec4(0,0,1,0));
   vec4 radBR = 0.5 * (radBR1 + radBR2);
 
   ivec2 texSize = textureSize(tPrevCascade, 0);
 
   int probeCount = texSize.x >> (probeIndex.w + 2);
+
+  vec2 probeTL = indicesToProbeUv(indexTL);
+  vec2 probeBR = indicesToProbeUv(indexBR);
 
   vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
   if (probeIndex.x == 0) {
@@ -417,75 +289,8 @@ vec4 continousBilinearFix2(ivec4 probeIndex) {
 
 }
 
-vec4 continousBilinearFix(ivec3 probeIndex, ivec2 directionIndex) { 
-  vec2 probeUv = probeIndexToUv(probeIndex);
 
-  ivec2 deeperDirIndex1 = ivec2(2 * directionIndex.x, 2*directionIndex.y);
-  ivec2 deeperDirIndex2 = deeperDirIndex1 + ivec2(1,0);
-
-    ivec3 indexTL = ivec3(int(floor(float(probeIndex.x - 1) / 2.)), int(floor(float(probeIndex.y - 1) / 2.)), int(deeper.probeCount));
-  ivec3 indexTR = indexTL + ivec3(1, 0, 0);
-  ivec3 indexBL = indexTL + ivec3(0, 1, 0);
-  ivec3 indexBR = indexTL + ivec3(1, 1, 0);
-  vec2 probeTL = probeIndexToUv(indexTL);
-  vec2 probeBR = probeIndexToUv(indexBR);
-
-  vec2 probeTLEnd1 = lineSegmentUv(indexTL, deeperDirIndex1, deeper.minDistance);
-  vec2 probeTLEnd2 = lineSegmentUv(indexTL, deeperDirIndex2, deeper.minDistance);
-  
-  vec2 probeTREnd1 = lineSegmentUv(indexTR, deeperDirIndex1, deeper.minDistance);
-  vec2 probeTREnd2 = lineSegmentUv(indexTR, deeperDirIndex2, deeper.minDistance);
-  
-  vec2 probeBLEnd1 = lineSegmentUv(indexBL, deeperDirIndex1, deeper.minDistance);
-  vec2 probeBLEnd2 = lineSegmentUv(indexBL, deeperDirIndex2, deeper.minDistance);
-  
-  vec2 probeBREnd1 = lineSegmentUv(indexBR, deeperDirIndex1, deeper.minDistance);
-  vec2 probeBREnd2 = lineSegmentUv(indexBR, deeperDirIndex2, deeper.minDistance);
-
-  vec2 start = lineSegmentUv(probeIndex, directionIndex, current.minDistance);
-
-  ivec2 sampleDirections1 = ivec2(2 * directionIndex.x);
-  ivec2 sampleDirections2 = ivec2(2 * directionIndex.x + 1);
-
-  vec4 radTL1 = castRay(start, probeTLEnd1, indexTL, sampleDirections1);
-  vec4 radTL2 = castRay(start, probeTLEnd2, indexTL, sampleDirections2);
-  vec4 radTL = 0.5 * (radTL1 + radTL2);
-
-  vec4 radTR1 = castRay(start, probeTREnd1, indexTR, sampleDirections1);
-  vec4 radTR2 = castRay(start, probeTREnd2, indexTR, sampleDirections2);
-  vec4 radTR = 0.5 * (radTR1 + radTR2);
-
-  vec4 radBL1 = castRay(start, probeBLEnd1, indexBL, sampleDirections1);
-  vec4 radBL2 = castRay(start, probeBLEnd2, indexBL, sampleDirections2);
-  vec4 radBL = 0.5 * (radBL1 + radBL2);
-
-  vec4 radBR1 = castRay(start, probeBREnd1, indexBR, sampleDirections1);
-  vec4 radBR2 = castRay(start, probeBREnd2, indexBR, sampleDirections2);
-  vec4 radBR = 0.5 * (radBR1 + radBR2);
-
-  vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
-  if (probeIndex.x == 0) {
-    weights.x = 1.;
-  }
-  if (probeIndex.y == 0) {
-    weights.y = 1.;
-  }
-  if (probeIndex.x == probeIndex.z - 1) {
-    weights.x = 0.;
-  }
-  if (probeIndex.y == probeIndex.z - 1) {
-    weights.y = 0.;
-  }
-
-  vec4 top = mix(radTL, radTR, vec4(weights.x));
-  vec4 bot = mix(radBL, radBR, vec4(weights.x));
-
-  return mix(top, bot, vec4(weights.y));
-
-}
-
-
-vec4 bilinearFix2(ivec4 probeIndex) {
+vec4 bilinearFix(ivec4 probeIndex) {
   vec2 probeUv = indicesToProbeUv(probeIndex);
 
   ivec4 indexTL = ivec4(
@@ -506,10 +311,10 @@ vec4 bilinearFix2(ivec4 probeIndex) {
   vec2 start = probeUv + current.minDistance * rayDirectionUv;
   vec2 end = probeUv + current.maxDistance * rayDirectionUv;
 
-  vec4 radTL = castRay2(start, end + (probeTL - probeUv), indexTL, indexTL + ivec4(0,0,1,0));
-  vec4 radTR = castRay2(start, end + (probeTR - probeUv), indexTR, indexTR + ivec4(0,0,1,0));
-  vec4 radBL = castRay2(start, end + (probeBL - probeUv), indexBL, indexBL + ivec4(0,0,1,0));
-  vec4 radBR = castRay2(start, end + (probeBR - probeUv), indexBR, indexBR + ivec4(0,0,1,0));
+  vec4 radTL = castRay(start, end + (probeTL - probeUv), indexTL, indexTL + ivec4(0,0,1,0));
+  vec4 radTR = castRay(start, end + (probeTR - probeUv), indexTR, indexTR + ivec4(0,0,1,0));
+  vec4 radBL = castRay(start, end + (probeBL - probeUv), indexBL, indexBL + ivec4(0,0,1,0));
+  vec4 radBR = castRay(start, end + (probeBR - probeUv), indexBR, indexBR + ivec4(0,0,1,0));
 
   vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
 
@@ -549,14 +354,14 @@ void main() {
 
     if (probeIndex.x >= 0) {
         if (current.depth == float(startDepth)) {
-          vec2 start = lineSegmentUv2(newIndex, 0.);
-          vec2 end = lineSegmentUv2(newIndex, current.maxDistance);
-          outColor = castRay2(start, end, ivec4(-1), ivec4(-1));
+          vec2 start = lineSegmentUv(newIndex, 0.);
+          vec2 end = lineSegmentUv(newIndex, current.maxDistance);
+          outColor = castRay(start, end, ivec4(-1), ivec4(-1));
         } else {
           if (debug.continousBilinearFix) {
-            outColor = continousBilinearFix2(newIndex);
+            outColor = continousbilinearFix(newIndex);
           } else {
-            outColor = bilinearFix2(newIndex);
+            outColor = bilinearFix(newIndex);
           }
         }
     } else {
