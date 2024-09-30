@@ -342,31 +342,17 @@ vec4 bilinearFix(ivec4 probeIndex) {
 }
 
 void main() {
-    ivec3 probeIndex;
-    ivec2 directionIndex;
-
     ivec4 newIndex = sampleUvToIndices(vUv);
     if (newIndex.w != int(current.depth)) {
-      outColor = texture2D(tPrevCascade, vUv) ;
-      return;
-    }
-    discreteProbeToEvaluate(vUv, probeIndex, directionIndex);
-
-    if (probeIndex.x >= 0) {
-        if (current.depth == float(startDepth)) {
-          vec2 start = lineSegmentUv(newIndex, 0.);
-          vec2 end = lineSegmentUv(newIndex, current.maxDistance);
-          outColor = castRay(start, end, ivec4(-1), ivec4(-1));
-        } else {
-          if (debug.continousBilinearFix) {
-            outColor = continousbilinearFix(newIndex);
-          } else {
-            outColor = bilinearFix(newIndex);
-          }
-        }
+      outColor = texture2D(tPrevCascade, vUv);
+    } else if (current.depth == float(startDepth)) {
+      vec2 start = lineSegmentUv(newIndex, 0.);
+      vec2 end = lineSegmentUv(newIndex, current.maxDistance);
+      outColor = castRay(start, end, ivec4(-1), ivec4(-1));
+    } else if (debug.continousBilinearFix) {
+      outColor = continousbilinearFix(newIndex);
     } else {
-      outColor = texture2D(tPrevCascade, vUv) ;
-      outColor = BAD_PROBE_INDEX_COLOR;
+      outColor = bilinearFix(newIndex);
     }
     
     outColor.w = 1.;
