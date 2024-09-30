@@ -408,6 +408,58 @@ vec4 continousBilinearFix(ivec3 probeIndex, ivec2 directionIndex) {
 
 }
 
+
+vec4 bilinearFix2(ivec4 probeIndex) {
+  vec2 probeUv = indicesToProbeUv(probeIndex);
+
+  ivec4 indexTL = ivec4(
+    int(floor(float(probeIndex.x - 1) / 2.)),
+    int(floor(float(probeIndex.y - 1) / 2.)),
+    2 * probeIndex.z,
+    probeIndex.w + 1
+  );
+
+  vec2 probeTL = indicesToProbeUv(indexTL);
+  ivec4 indexTR = indexTL + ivec4(1, 0, 0, 0);
+  vec2 probeTR = indicesToProbeUv(indexTR); 
+  ivec4 indexBL = indexTL + ivec4(0, 1, 0, 0);
+  vec2 probeBL = indicesToProbeUv(indexBL);
+  ivec4 indexBR = indexTL + ivec4(1, 1, 0, 0);
+  vec2 probeBR = indicesToProbeUv(indexBR);
+  vec2 rayDirectionUv = probeDirectionToDir2(probeIndex);
+  vec2 start = probeUv + current.minDistance * rayDirectionUv;
+  vec2 end = probeUv + current.maxDistance * rayDirectionUv;
+
+  vec4 radTL = castRay2(start, end + (probeTL - probeUv), indexTL, indexTL + ivec4(0,0,1,0));
+  vec4 radTR = castRay2(start, end + (probeTR - probeUv), indexTR, indexTR + ivec4(0,0,1,0));
+  vec4 radBL = castRay2(start, end + (probeBL - probeUv), indexBL, indexBL + ivec4(0,0,1,0));
+  vec4 radBR = castRay2(start, end + (probeBR - probeUv), indexBR, indexBR + ivec4(0,0,1,0));
+
+  vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
+
+  if (probeIndex.x == 0) {
+    weights.x = 1.;
+  }
+  if (probeIndex.y == 0) {
+    weights.y = 1.;
+  }
+
+  ivec2 texSize = textureSize(tPrevCascade, 0);
+
+  int probeCount = texSize.x >> (probeIndex.w + 2);
+
+  if (probeIndex.x == probeCount - 1) {
+    weights.x = 0.;
+  }
+  if (probeIndex.y == probeCount - 1) {
+    weights.y = 0.;
+  }
+  vec4 top = mix(radTL, radTR, vec4(weights.x));
+  vec4 bot = mix(radBL, radBR, vec4(weights.x));
+
+  return mix(top, bot, vec4(weights.y));
+}
+
 void main() {
     ivec3 probeIndex;
     ivec2 directionIndex;
@@ -428,7 +480,7 @@ void main() {
           if (debug.continousBilinearFix) {
             outColor = continousBilinearFix(probeIndex, directionIndex);
           } else {
-            outColor = bilinearFix(probeIndex, directionIndex);
+            outColor = bilinearFix2(newIndex);
           }
         }
     } else {
