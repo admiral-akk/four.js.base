@@ -341,13 +341,89 @@ void discreteProbeToEvaluate(
 }
 
 
+
+vec4 continousBilinearFix2(ivec4 probeIndex) { 
+  vec2 probeUv = indicesToProbeUv(probeIndex);
+
+  ivec4 indexTL = ivec4(
+    int(floor(float(probeIndex.x - 1) / 2.)),
+    int(floor(float(probeIndex.y - 1) / 2.)),
+    2 * probeIndex.z,
+    probeIndex.w + 1
+  );
+
+  vec2 probeTL = indicesToProbeUv(indexTL);
+  ivec4 indexTR = indexTL + ivec4(1, 0, 0, 0);
+  vec2 probeTR = indicesToProbeUv(indexTR); 
+  ivec4 indexBL = indexTL + ivec4(0, 1, 0, 0);
+  vec2 probeBL = indicesToProbeUv(indexBL);
+  ivec4 indexBR = indexTL + ivec4(1, 1, 0, 0);
+  vec2 probeBR = indicesToProbeUv(indexBR);
+
+
+  vec2 probeTLEnd1 = lineSegmentUv2(indexTL, deeper.minDistance);
+  vec2 probeTLEnd2 = lineSegmentUv2(indexTL + ivec4(0,0,1,0), deeper.minDistance);
+  
+  vec2 probeTREnd1 = lineSegmentUv2(indexTR, deeper.minDistance);
+  vec2 probeTREnd2 = lineSegmentUv2(indexTR + ivec4(0,0,1,0), deeper.minDistance);
+  
+  vec2 probeBLEnd1 = lineSegmentUv2(indexBL, deeper.minDistance);
+  vec2 probeBLEnd2 = lineSegmentUv2(indexBL + ivec4(0,0,1,0), deeper.minDistance);
+  
+  vec2 probeBREnd1 = lineSegmentUv2(indexBR, deeper.minDistance);
+  vec2 probeBREnd2 = lineSegmentUv2(indexBR + ivec4(0,0,1,0), deeper.minDistance);
+
+  vec2 start = lineSegmentUv2(probeIndex,  current.minDistance);
+
+
+  vec4 radTL1 = castRay2(start, probeTLEnd1, indexTL, indexTL);
+  vec4 radTL2 = castRay2(start, probeTLEnd2, indexTL + ivec4(0,0,1,0), indexTL + ivec4(0,0,1,0));
+  vec4 radTL = 0.5 * (radTL1 + radTL2);
+
+  vec4 radTR1 = castRay2(start, probeTREnd1, indexTR, indexTR);
+  vec4 radTR2 = castRay2(start, probeTREnd2, indexTR + ivec4(0,0,1,0), indexTR + ivec4(0,0,1,0));
+  vec4 radTR = 0.5 * (radTR1 + radTR2);
+
+  vec4 radBL1 = castRay2(start, probeBLEnd1, indexBL, indexBL);
+  vec4 radBL2 = castRay2(start, probeBLEnd2, indexBL + ivec4(0,0,1,0), indexBL + ivec4(0,0,1,0));
+  vec4 radBL = 0.5 * (radBL1 + radBL2);
+
+  vec4 radBR1 = castRay2(start, probeBREnd1, indexBR, indexBR);
+  vec4 radBR2 = castRay2(start, probeBREnd2, indexBR + ivec4(0,0,1,0), indexBR + ivec4(0,0,1,0));
+  vec4 radBR = 0.5 * (radBR1 + radBR2);
+
+  ivec2 texSize = textureSize(tPrevCascade, 0);
+
+  int probeCount = texSize.x >> (probeIndex.w + 2);
+
+  vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
+  if (probeIndex.x == 0) {
+    weights.x = 1.;
+  }
+  if (probeIndex.y == 0) {
+    weights.y = 1.;
+  }
+  if (probeIndex.x == probeCount - 1) {
+    weights.x = 0.;
+  }
+  if (probeIndex.y == probeCount - 1) {
+    weights.y = 0.;
+  }
+
+  vec4 top = mix(radTL, radTR, vec4(weights.x));
+  vec4 bot = mix(radBL, radBR, vec4(weights.x));
+
+  return mix(top, bot, vec4(weights.y));
+
+}
+
 vec4 continousBilinearFix(ivec3 probeIndex, ivec2 directionIndex) { 
   vec2 probeUv = probeIndexToUv(probeIndex);
 
   ivec2 deeperDirIndex1 = ivec2(2 * directionIndex.x, 2*directionIndex.y);
   ivec2 deeperDirIndex2 = deeperDirIndex1 + ivec2(1,0);
 
-   ivec3 indexTL = ivec3(int(floor(float(probeIndex.x - 1) / 2.)), int(floor(float(probeIndex.y - 1) / 2.)), int(deeper.probeCount));
+    ivec3 indexTL = ivec3(int(floor(float(probeIndex.x - 1) / 2.)), int(floor(float(probeIndex.y - 1) / 2.)), int(deeper.probeCount));
   ivec3 indexTR = indexTL + ivec3(1, 0, 0);
   ivec3 indexBL = indexTL + ivec3(0, 1, 0);
   ivec3 indexBR = indexTL + ivec3(1, 1, 0);
@@ -478,7 +554,7 @@ void main() {
           outColor = castRay2(start, end, ivec4(-1), ivec4(-1));
         } else {
           if (debug.continousBilinearFix) {
-            outColor = continousBilinearFix(probeIndex, directionIndex);
+            outColor = continousBilinearFix2(newIndex);
           } else {
             outColor = bilinearFix2(newIndex);
           }
