@@ -12,9 +12,9 @@ vec2 sampleUvMapped(vec2 sampleUv) {
   vec2 fuv = fwidth(vUv);
   vec2 minUvRemap = 0.5  * fuv;
   vec2 maxUvRemap = 1. - minUvRemap;
-  vec2 zeroToOne = sampleUv / (maxUvRemap - minUvRemap);
+  vec2 zeroToOne = (sampleUv - minUvRemap) / (maxUvRemap - minUvRemap);
   vec2 delta = 1. / vec2(textureSize(tPrevCascade, 0));
-  vec2 newMax = vec2(0.25, 1.) - delta;
+  vec2 newMax = vec2(0.25, 1.) - 0.5 * delta;
   vec2 newMin = 0.5 * delta + vec2(0.,0.5);
   return zeroToOne * (newMax - newMin) + newMin;
 }
