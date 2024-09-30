@@ -252,7 +252,29 @@ export class RadianceCascade extends GameState {
     this.cascadeRT = engine.renderer.newRenderTarget(1, textureConfig);
     this.spareCascadeRT = engine.renderer.newRenderTarget(1, textureConfig);
 
-    this.finalCascadeRT = engine.renderer.newRenderTarget(1, textureConfig);
+    const textureConfig2 = {
+      fixedSize: new THREE.Vector2(cascadeTextureSize, cascadeTextureSize),
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping,
+      magFilter: THREE.LinearFilter,
+      minFilter: THREE.LinearFilter,
+      generateMipmaps: false,
+      format: THREE.RGBAFormat,
+      type: THREE.FloatType,
+      internalFormat: "RGBA32F",
+      anisotropy: 1,
+      colorSpace: THREE.NoColorSpace,
+      depthBuffer: false,
+      stencilBuffer: false,
+      resolveDepthBuffer: false,
+      resolveStencilBuffer: false,
+      depthTexture: null,
+    };
+    this.finalCascadeRT = engine.renderer.newRenderTarget(1, textureConfig2);
+    this.spareFinalCascadeRT = engine.renderer.newRenderTarget(
+      1,
+      textureConfig2
+    );
 
     gui
       .add(myObject, "textureSize", 3, 12, 1)
@@ -278,10 +300,18 @@ export class RadianceCascade extends GameState {
           myObject.finalDepth
         );
         this.cascadeRT.fixedSize = new THREE.Vector2(
-          cascadeTextureSize,
+          2 * cascadeTextureSize,
           cascadeTextureSize
         );
         this.spareCascadeRT.fixedSize = new THREE.Vector2(
+          2 * cascadeTextureSize,
+          cascadeTextureSize
+        );
+        this.finalCascadeRT.fixedSize = new THREE.Vector2(
+          cascadeTextureSize,
+          cascadeTextureSize
+        );
+        this.spareFinalCascadeRT.fixedSize = new THREE.Vector2(
           cascadeTextureSize,
           cascadeTextureSize
         );
@@ -497,11 +527,11 @@ export class RadianceCascade extends GameState {
       renderer.applyPostProcess(
         this.calculateUniforms(0),
         renderCascade,
-        this.spareCascadeRT
+        this.spareFinalCascadeRT
       );
-      [this.spareCascadeRT, this.cascadeRT] = [
-        this.cascadeRT,
-        this.spareCascadeRT,
+      [this.spareFinalCascadeRT, this.finalCascadeRT] = [
+        this.finalCascadeRT,
+        this.spareFinalCascadeRT,
       ];
     }
 
@@ -525,20 +555,24 @@ export class RadianceCascade extends GameState {
 
       renderer.applyPostProcess(
         {
-          tInput: this.cascadeRT,
+          tInput: this.finalCascadeRT,
           normal: normal.normalize(),
           diffScale: 1,
         },
         symmetryShader,
-        this.spareCascadeRT
+        this.spareFinalCascadeRT
       );
-      [this.spareCascadeRT, this.cascadeRT] = [
-        this.cascadeRT,
-        this.spareCascadeRT,
+      [this.spareFinalCascadeRT, this.finalCascadeRT] = [
+        this.finalCascadeRT,
+        this.spareFinalCascadeRT,
       ];
     }
 
-    renderer.renderTexture(this.cascadeRT);
+    if (myObject.renderCascadeStep) {
+      renderer.renderTexture(this.finalCascadeRT);
+    } else {
+      renderer.renderTexture(this.cascadeRT);
+    }
 
     if (pendingImage) {
       let canvas = document.getElementById("webgl");
