@@ -208,7 +208,7 @@ class InputManager extends StateMachine {
     this.createColorButton("#00ff00", 0);
     this.createColorButton("#000000", 0);
     this.createColorButton("#ffffff", 0);
-    this.createColorButton("#ffffff", 1);
+    this.createColorButton("#ff00ff", 1);
   }
 
   update(engine, game) {

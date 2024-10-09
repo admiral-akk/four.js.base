@@ -132,22 +132,34 @@ vec4 sampleSky(vec2 dir) {
 }
 
 vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
-    vec2 dir = normalize(end - start);
-    int hitIndex;
+  vec2 delta = end - start;
+    vec2 dir = normalize(delta);
+    int hitIndex = -1;
     float closestDist;
-    vec4 lineColor = vec4(0.);
+    vec4 lineColor = vec4(1.);
+    bool hitValidWall = false;
+    while (!hitValidWall) {
     #if (LINE_SEGMENT_COUNT > 0)
-      hitLines(start, end, -1, hitIndex, closestDist);
-      lineColor = lineSegments[hitIndex].color;
+      hitLines(start, end, hitIndex, hitIndex, closestDist);
+      hitValidWall = lineSegments[hitIndex].wallType == 0;
     #endif
     float distToEdge = distToOutOfBounds(start, dir) ;
     if (closestDist < 1. && closestDist > 0. ) {
-        return lineColor;
+    #if (LINE_SEGMENT_COUNT > 0)
+      if (hitValidWall) {
+        return lineColor * lineSegments[hitIndex].color;
+      } else {
+        start += (end - start) * closestDist;
+        lineColor *= lineSegments[hitIndex].color;
+      }
+    #endif
     } else if (distToEdge < length(end - start)) {
-      return sampleSky(dir);
+      return lineColor * sampleSky(dir);
     } else {
-      return sampleTexture(sampleTarget, sampleTarget2);
+      return lineColor * sampleTexture(sampleTarget, sampleTarget2);
     } 
+    }
+    return vec4(0.);
 }
 
 
