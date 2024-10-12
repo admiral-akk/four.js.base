@@ -50,33 +50,6 @@ const windowManager = new WindowManager(1);
 
 const gl = document.getElementById("webgl").getContext("webgl");
 
-const vs = `
-attribute vec4 position;
-
-void main() {
-  gl_Position = position;
-}
-`;
-const fs = `
-precision mediump float;
-
-uniform vec2 resolution;
-uniform float time;
-
-void main() {
-  vec2 uv = gl_FragCoord.xy / resolution;
-  float color = 0.0;
-  // lifted from glslsandbox.com
-  color += sin( uv.x * cos( time / 3.0 ) * 60.0 ) + cos( uv.y * cos( time / 2.80 ) * 10.0 );
-  color += sin( uv.y * sin( time / 2.0 ) * 40.0 ) + cos( uv.x * sin( time / 1.70 ) * 40.0 );
-  color += sin( uv.x * sin( time / 1.0 ) * 10.0 ) + sin( uv.y * sin( time / 3.50 ) * 80.0 );
-  color *= sin( time / 10.0 ) * 0.5;
-
-  gl_FragColor = vec4( vec3(color), 1.0 );
-}
-`;
-const programInfo = twgl.createProgramInfo(gl, [vs, fs]);
-
 const arrays = {
   position: {
     numComponents: 3,
@@ -202,6 +175,21 @@ const clipToScreenSpace = ([x, y]) => [(x + 1) / 2, (y + 1) / 2];
 class MyGame {
   constructor() {
     this.commands = [];
+    this.lines = [];
+    this.currLine = { start: [0, 0], end: [0, 0] };
+  }
+
+  startLine(pos) {
+    this.currLine = { start: pos, end: pos };
+  }
+
+  updateLine(pos) {
+    this.currLine.end = pos;
+  }
+
+  endLine(pos) {
+    this.currLine.end = pos;
+    this.lines.push(this.currLine);
   }
 
   applyCommand(command) {
@@ -223,7 +211,7 @@ class MyGame {
         break;
       case LineCommand:
         {
-          this.updateLine(clipToScreenSpace(command.end));
+          this.endLine(clipToScreenSpace(command.end));
         }
         break;
       default:
@@ -247,6 +235,60 @@ const data = new DataManager(defaultData);
 data.init();
 data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 
+// Draw Lines
+
+const vs = `
+attribute vec4 position;
+
+void main() {
+  gl_Position = position;
+}
+`;
+
+const fs = `
+precision mediump float;
+
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 lineStart;
+uniform vec2 lineEnd;
+
+float lineDist() {
+  vec2 uv = gl_FragCoord.xy / resolution;
+  if (lineStart == lineEnd) {
+    return length(lineStart - uv);
+  } else {
+   vec2 delta = (lineEnd - lineStart);
+    vec2 dir = uv - lineStart;
+    float t = dot(dir, delta) / dot(delta,delta);
+    if (t < 0. || t > 1.) {
+      return min(length(uv - lineStart), length(uv - lineEnd));
+    } else {
+     return length(lineStart + t * delta - uv);
+    }
+   return 0.;
+  }
+}
+
+void main() {
+
+
+  vec2 uv = gl_FragCoord.xy / resolution;
+
+
+  float color = 0.0;
+  // lifted from glslsandbox.com
+  color += sin( uv.x * cos( time / 3.0 ) * 60.0 ) + cos( uv.y * cos( time / 2.80 ) * 10.0 );
+  color += sin( uv.y * sin( time / 2.0 ) * 40.0 ) + cos( uv.x * sin( time / 1.70 ) * 40.0 );
+  color += sin( uv.x * sin( time / 1.0 ) * 10.0 ) + sin( uv.y * sin( time / 3.50 ) * 80.0 );
+  color *= sin( time / 10.0 ) * 0.5;
+
+  float dist = floor(10.*lineDist()) / 10.;
+  gl_FragColor = vec4( vec3(dist), 1.0 );
+}
+`;
+const programInfo = twgl.createProgramInfo(gl, [vs, fs]);
+
 function render(time) {
   timeManager.tick();
   windowManager.update();
@@ -258,6 +300,8 @@ function render(time) {
   const uniforms = {
     time: time * 0.001,
     resolution: [gl.canvas.width, gl.canvas.height],
+    lineStart: game.currLine.start,
+    lineEnd: game.currLine.end,
   };
 
   gl.useProgram(programInfo.program);
