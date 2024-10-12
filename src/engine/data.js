@@ -3,24 +3,6 @@ import GUI from "lil-gui";
 const stateString = "state";
 const configString = "config";
 
-const enumConfig = (displayName, initialValue, options) => {
-  return {
-    name: displayName,
-    value: initialValue,
-    minOrOptions: options,
-  };
-};
-
-const numberConfig = (displayName, initialValue, min, max, step) => {
-  return {
-    name: displayName,
-    value: initialValue,
-    minOrOptions: min,
-    max,
-    step,
-  };
-};
-
 class DataManager {
   constructor({ state = {}, config = {} }) {
     this.defaultConfig = config;
@@ -93,4 +75,4 @@ class DataManager {
   }
 }
 
-export { DataManager, numberConfig, enumConfig };
+export { DataManager };
