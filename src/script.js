@@ -62,6 +62,7 @@ const defaultData = {
 
 const data = new DataManager(defaultData);
 data.init();
+data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 
 const frameBuffers = {
   cascadeRT: twgl.createFramebufferInfo(gl, null, width, height),
