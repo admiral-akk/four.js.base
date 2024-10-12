@@ -289,6 +289,30 @@ void main() {
 `;
 const programInfo = twgl.createProgramInfo(gl, [vs, fs]);
 
+let toSave = false;
+
+data.addButton({
+  name: "Save Image",
+  fn: () => {
+    toSave = true;
+  },
+});
+
+const saveImage = () => {
+  let canvas = document.getElementById("webgl");
+
+  var image = canvas.toDataURL();
+  // Create a link
+  var aDownloadLink = document.createElement("a");
+  // Add the name of the file to the link
+  aDownloadLink.download = "canvas_image.png";
+  // Attach the data to the link
+  aDownloadLink.href = image;
+  // Get the code to click the download link
+  aDownloadLink.click();
+  toSave = false;
+};
+
 function render(time) {
   timeManager.tick();
   windowManager.update();
@@ -309,6 +333,10 @@ function render(time) {
   twgl.setUniforms(programInfo, uniforms);
   twgl.bindFramebufferInfo(gl);
   twgl.drawBufferInfo(gl, bufferInfo);
+
+  if (toSave) {
+    saveImage();
+  }
 
   requestAnimationFrame(render);
 }
