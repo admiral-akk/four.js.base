@@ -4,11 +4,18 @@ import { DataManager } from "./engine/data.js";
 import Stats from "stats-js";
 import { addCustomArrayMethods } from "./utils/array.js";
 import * as twgl from "twgl.js";
+import { State, StateMachine } from "./utils/stateMachine";
+import { InputManager2 } from "./engine/input2.js";
+import { TimeManager } from "./engine/time.js";
 
 addCustomArrayMethods();
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.body.appendChild(stats.dom);
+
+// Time
+
+const timeManager = new TimeManager();
 
 // Data Storage
 
@@ -98,6 +105,142 @@ windowManager.listeners.push({
 addEnumConfig("My Enum", "v", ["1", "2", "3", "v"]);
 addNumberConfig("My Num", 0, -1, 10, 0.1);
 
+// Input handler
+
+const input = new InputManager2(windowManager, timeManager);
+
+// Input State Machine
+
+class Command {
+  constructor() {
+    this.type = Object.getPrototypeOf(this).constructor;
+  }
+}
+
+class ClearCommand extends Command {}
+
+class DragCommand extends Command {
+  constructor(curr) {
+    super();
+    this.curr = curr;
+  }
+}
+
+class StartDragCommand extends Command {
+  constructor(start) {
+    super();
+    this.start = start;
+  }
+}
+
+class LineCommand extends Command {
+  constructor(start, end) {
+    super();
+    this.start = start;
+    this.end = end;
+  }
+}
+
+class DragInputState extends State {
+  constructor(start) {
+    super();
+    this.start = start;
+    this.curr = start;
+  }
+
+  update(game, inputStateMachine, inputState) {
+    const { mouse } = inputState;
+    if (!mouse) {
+      return;
+    }
+    const { pos, buttons } = mouse;
+    if (!buttons) {
+      if (!this.start.equals(pos)) {
+        game.commands.push(new LineCommand(this.start, pos));
+      }
+      inputStateMachine.replaceState(new OpenInputState());
+    } else if (!this.start.equals(pos)) {
+      this.curr = pos;
+      game.commands.push(new DragCommand(this.curr));
+    }
+  }
+}
+
+class OpenInputState extends State {
+  update(game, inputStateMachine, inputState) {
+    const { mouse } = inputState;
+    if (!mouse) {
+      return;
+    }
+    const { pos, buttons } = mouse;
+    if (pos && buttons) {
+      game.commands.push(new StartDragCommand(pos));
+      inputStateMachine.replaceState(new DragInputState(pos));
+    }
+  }
+}
+
+class InputManager extends StateMachine {
+  constructor() {
+    super();
+    this.pushState(new OpenInputState());
+  }
+
+  init() {}
+
+  update(game, inputState) {
+    this.currentState()?.update(game, this, inputState);
+  }
+}
+
+const inputState = new InputManager();
+
+// Game
+
+const clipToScreenSpace = ([x, y]) => [(x + 1) / 2, (y + 1) / 2];
+
+class MyGame {
+  constructor() {
+    this.commands = [];
+  }
+
+  applyCommand(command) {
+    switch (command.type) {
+      case ClearCommand:
+        this.clearLines();
+        break;
+      case StartDragCommand:
+        {
+          {
+            this.startLine(clipToScreenSpace(command.start));
+          }
+        }
+        break;
+      case DragCommand:
+        {
+          this.updateLine(clipToScreenSpace(command.curr));
+        }
+        break;
+      case LineCommand:
+        {
+          this.updateLine(clipToScreenSpace(command.end));
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  update() {
+    this.commands.forEach((command) => {
+      this.applyCommand(command);
+    });
+    this.commands.length = 0;
+  }
+}
+
+const game = new MyGame();
+
 // Data Storage Layer
 
 const data = new DataManager(defaultData);
@@ -105,7 +248,10 @@ data.init();
 data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 
 function render(time) {
+  timeManager.tick();
   windowManager.update();
+  inputState.update(game, input.getState());
+  game.update();
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -123,38 +269,3 @@ function render(time) {
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
-/*
-
-const time = new TimeManager();
-const loader = generateLoadingManager();
-const input = new InputManager(windowManager, time);
-const renderer = new CustomerRenderer(windowManager);
-
-const config = {
-  fps: 60,
-  gameRate: 120,
-};
-
-const engine = new GameEngine(
-  input,
-  time,
-  loader,
-  renderer,
-  windowManager,
-  config
-);
-
-engine.pushState(new RadianceCascade());
-
-function raf() {
-  stats.begin();
-  engine.update();
-  engine.render();
-  stats.end();
-  setTimeout(() => {
-    window.requestAnimationFrame(raf);
-  }, engine.timeToNextTick());
-}
-
-window.requestAnimationFrame(raf);
-*/

@@ -7,6 +7,7 @@ class DataManager {
   constructor({ state = {}, config = {} }) {
     this.defaultConfig = config;
     this.defaultState = state;
+    this.listeners = [];
   }
 
   init() {
@@ -31,7 +32,14 @@ class DataManager {
     this.gui
       .add(this.config[key], "value", minOrOptions, max, step)
       .name(name)
-      .onChange(() => this.writeData());
+      .onChange(() => {
+        this.writeData();
+        this.notify();
+      });
+  }
+
+  notify() {
+    this.listeners.forEach((l) => l.configUpdated(this.config));
   }
 
   readData() {
@@ -72,6 +80,10 @@ class DataManager {
     if (localStorage.getItem(configString)) {
       localStorage.removeItem(configString);
     }
+  }
+
+  addListener(listener) {
+    this.listeners.push(listener);
   }
 }
 

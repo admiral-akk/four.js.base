@@ -3,8 +3,6 @@ class WindowManager {
     this.sizes = {
       width: window.innerWidth,
       height: window.innerHeight,
-      verticalOffset: 0,
-      horizontalOffset: 0,
       buffer: 20,
       aspect,
     };
@@ -20,18 +18,19 @@ class WindowManager {
       if (adjustedHeight * this.sizes.aspect > adjustedWidth) {
         this.sizes.width = adjustedWidth;
         this.sizes.height = adjustedWidth / this.sizes.aspect;
-        this.sizes.verticalOffset = (adjustedHeight - this.sizes.height) / 2;
-        this.sizes.horizontalOffset = 0;
+        this.sizes.verticalOffset =
+          buffer + (adjustedHeight - this.sizes.height) / 2;
+        this.sizes.horizontalOffset = buffer;
       } else {
         this.sizes.width = adjustedHeight * this.sizes.aspect;
         this.sizes.height = adjustedHeight;
-        this.sizes.verticalOffset = 0;
-        this.sizes.horizontalOffset = (adjustedWidth - this.sizes.width) / 2;
+        this.sizes.verticalOffset = buffer;
+        this.sizes.horizontalOffset =
+          buffer + (adjustedWidth - this.sizes.width) / 2;
       }
-      canvasContainer.style.top =
-        (this.sizes.verticalOffset + buffer).toString() + "px";
+      canvasContainer.style.top = this.sizes.verticalOffset.toString() + "px";
       canvasContainer.style.left =
-        (this.sizes.horizontalOffset + buffer).toString() + "px";
+        this.sizes.horizontalOffset.toString() + "px";
 
       this.listeners.forEach((l) => {
         l.updateSize(this.sizes);
