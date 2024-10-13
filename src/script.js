@@ -292,18 +292,39 @@ uniform sampler2D tLine;
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   
-  float dist = 10.;
+  vec2 prevClosestPos = texture2D(tPrev, uv).xy;
 
   for (int i = -1; i < 2; i++) {
     for (int j = -1; j < 2; j++) {
-      vec2 sampleUv = vec2(float(i), float(j)) * jumpSize / resolution;
+      vec2 delta = vec2(float(i), float(j)) * jumpSize / resolution;
+      vec2 sampleUv = uv + delta;
+      vec2 closestPos = texture2D(tPrev, sampleUv).xy;
       float lineVal = texture2D(tLine, sampleUv).r;
-      float prevDistance = float(lineVal < 0.5) * texture2D(tPrev, sampleUv).r;
-      dist = min(dist, prevDistance + length(sampleUv - uv));
+
+      if (lineVal > 0.1) {
+        closestPos = sampleUv;
+      }
+
+      if (length(closestPos - uv) < length(prevClosestPos - uv)) {
+        prevClosestPos = closestPos;
+      }
     }
   }
-  gl_FragColor = vec4( dist );
+  gl_FragColor = vec4( prevClosestPos, 0., 1. );
 }
+`;
+
+const fs_render_closest = `
+precision mediump float;
+
+uniform vec2 resolution;
+uniform sampler2D tPrev;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution;
+  gl_FragColor = vec4(vec3(length(texture2D(tPrev, uv).xy - uv)), 1.0);
+}
+
 `;
 
 const fs_render_texture = `
@@ -320,7 +341,7 @@ void main() {
 `;
 
 const drawLineToBuffer = twgl.createProgramInfo(gl, [vs, fs_write_line]);
-const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_texture]);
+const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const fillColor = twgl.createProgramInfo(gl, [vs, fs_constant_fill]);
 const jumpFill = twgl.createProgramInfo(gl, [vs, fs_jump]);
 
@@ -426,7 +447,7 @@ function render(time) {
     frameBuffers.fill,
   ];
 
-  for (var i = 7; i >= 7; i--) {
+  for (var i = 7; i >= 0; i--) {
     gl.useProgram(jumpFill.program);
     twgl.setBuffersAndAttributes(gl, jumpFill, bufferInfo);
     twgl.setUniforms(jumpFill, {
@@ -443,15 +464,6 @@ function render(time) {
     ];
   }
 
-  gl.useProgram(drawTexture.program);
-  twgl.setBuffersAndAttributes(gl, drawTexture, bufferInfo);
-  twgl.setUniforms(drawTexture, {
-    resolution: [gl.canvas.width, gl.canvas.height],
-    tPrev: frameBuffers.fill.attachments[0],
-  });
-  twgl.bindFramebufferInfo(gl);
-  twgl.drawBufferInfo(gl, bufferInfo);
-
   gl.useProgram(drawLineToBuffer.program);
   twgl.setBuffersAndAttributes(gl, drawLineToBuffer, bufferInfo);
   twgl.setUniforms(drawLineToBuffer, {
@@ -464,6 +476,14 @@ function render(time) {
   twgl.bindFramebufferInfo(gl);
   twgl.drawBufferInfo(gl, bufferInfo);
 
+  gl.useProgram(drawTexture.program);
+  twgl.setBuffersAndAttributes(gl, drawTexture, bufferInfo);
+  twgl.setUniforms(drawTexture, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    tPrev: frameBuffers.fill.attachments[0],
+  });
+  twgl.bindFramebufferInfo(gl);
+  twgl.drawBufferInfo(gl, bufferInfo);
   if (toSave) {
     saveImage();
   }
