@@ -414,9 +414,9 @@ function render(time) {
       frameBuffers.lightEmitters,
     ];
   }
-  gl.useProgram(drawTexture.program);
-  twgl.setBuffersAndAttributes(gl, drawTexture, bufferInfo);
-  twgl.setUniforms(drawTexture, generateUniforms());
+  gl.useProgram(drawLineToBuffer.program);
+  twgl.setBuffersAndAttributes(gl, drawLineToBuffer, bufferInfo);
+  twgl.setUniforms(drawLineToBuffer, generateUniforms());
   twgl.bindFramebufferInfo(gl);
   twgl.drawBufferInfo(gl, bufferInfo);
 
