@@ -290,27 +290,33 @@ uniform sampler2D tPrev;
 uniform sampler2D tLine;
 
 void main() {
-  vec2 uv = gl_FragCoord.xy / resolution;
+  vec2 uv = gl_FragCoord.xy / resolution + 0.5 / resolution;
   
-  vec2 prevClosestPos = texture2D(tPrev, uv).xy;
+  vec3 prevClosestPos = texture2D(tPrev, uv).xyz;
 
-  for (int i = -1; i < 2; i++) {
-    for (int j = -1; j < 2; j++) {
+  for (int i = -1; i <= 1; i++) {
+    for (int j = -1; j <= 1; j++) {
       vec2 delta = vec2(float(i), float(j)) * jumpSize / resolution;
       vec2 sampleUv = uv + delta;
-      vec2 closestPos = texture2D(tPrev, sampleUv).xy;
+      vec3 closestPos = texture2D(tPrev, sampleUv).xyz;
       float lineVal = texture2D(tLine, sampleUv).r;
 
       if (lineVal > 0.1) {
-        closestPos = sampleUv;
+        closestPos = vec3(sampleUv, 1.);
       }
 
-      if (length(closestPos - uv) < length(prevClosestPos - uv)) {
-        prevClosestPos = closestPos;
+      if (closestPos.z > 0.) {
+        if (prevClosestPos.z > 0.) {
+          if (length(closestPos.xy - uv) < length(prevClosestPos.xy - uv)) {
+            prevClosestPos = closestPos;
+          }
+        } else {
+          prevClosestPos = closestPos;
+        }
       }
     }
   }
-  gl_FragColor = vec4( prevClosestPos, 0., 1. );
+  gl_FragColor = vec4( prevClosestPos , 0.);
 }
 `;
 
@@ -372,23 +378,13 @@ const saveImage = () => {
 const width = 256;
 const height = 256;
 
-const generateUniforms = () => {
-  return {
-    resolution: [gl.canvas.width, gl.canvas.height],
-    lineStart: game.currLine.start,
-    lineEnd: game.currLine.end,
-    pixelLineSize: 4,
-    tPrev: frameBuffers.lightEmitters.attachments[0],
-  };
-};
-
-console.log(gl);
 const attachments = [
   {
     internalFormat: gl.RGBA32F,
     format: gl.RGBA,
-    mag: gl.LINEAR,
-    min: gl.LINEAR,
+    mag: gl.NEAREST,
+    min: gl.NEAREST,
+    wrap: gl.CLAMP_TO_EDGE,
   },
 ];
 const frameBuffers = {
@@ -405,8 +401,6 @@ const frameBuffers = {
     height
   ),
 };
-
-console.log(frameBuffers);
 let linesCount = 0;
 
 function render(time) {
@@ -439,7 +433,7 @@ function render(time) {
   }
   gl.useProgram(fillColor.program);
   twgl.setBuffersAndAttributes(gl, fillColor, bufferInfo);
-  twgl.setUniforms(fillColor, { color: [2, 2, 2, 2] });
+  twgl.setUniforms(fillColor, { color: [0, 0, 0, 0] });
   twgl.bindFramebufferInfo(gl, frameBuffers.spare);
   twgl.drawBufferInfo(gl, bufferInfo);
   [frameBuffers.fill, frameBuffers.spare] = [
@@ -447,7 +441,7 @@ function render(time) {
     frameBuffers.fill,
   ];
 
-  for (var i = 7; i >= 0; i--) {
+  for (var i = Math.ceil(Math.log2(width)); i >= 0; i--) {
     gl.useProgram(jumpFill.program);
     twgl.setBuffersAndAttributes(gl, jumpFill, bufferInfo);
     twgl.setUniforms(jumpFill, {
