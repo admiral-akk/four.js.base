@@ -235,6 +235,17 @@ void main() {
 }
 `;
 
+const fs_constant_fill = `
+precision mediump float;
+
+uniform vec4 color;
+
+
+void main() {
+  gl_FragColor = color;
+}
+`;
+
 const fs_write_line = `
 precision mediump float;
 
@@ -274,32 +285,24 @@ const fs_jump = `
 precision mediump float;
 
 uniform vec2 resolution;
-uniform vec2 lineStart;
-uniform vec2 lineEnd;
+uniform float jumpSize; 
 uniform sampler2D tPrev;
-
-float lineDist() {
-  vec2 uv = gl_FragCoord.xy / resolution;
-  if (lineStart == lineEnd) {
-    return length(lineStart - uv);
-  } else {
-   vec2 delta = (lineEnd - lineStart);
-    vec2 dir = uv - lineStart;
-    float t = dot(dir, delta) / dot(delta,delta);
-    if (t < 0. || t > 1.) {
-      return min(length(uv - lineStart), length(uv - lineEnd));
-    } else {
-     return length(lineStart + t * delta - uv);
-    }
-   return 0.;
-  }
-}
+uniform sampler2D tLine;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
+  
+  float dist = 10.;
 
-  float dist = floor(10.*lineDist()) / 10.;
-  gl_FragColor = vec4( vec3(dist), 1.0 );
+  for (int i = -1; i < 2; i++) {
+    for (int j = -1; j < 2; j++) {
+      vec2 sampleUv = vec2(float(i), float(j)) * jumpSize / resolution;
+      float lineVal = texture2D(tLine, sampleUv).r;
+      float prevDistance = float(lineVal < 0.5) * texture2D(tPrev, sampleUv).r;
+      dist = min(dist, prevDistance + length(sampleUv - uv));
+    }
+  }
+  gl_FragColor = vec4( dist );
 }
 `;
 
@@ -318,6 +321,8 @@ void main() {
 
 const drawLineToBuffer = twgl.createProgramInfo(gl, [vs, fs_write_line]);
 const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_texture]);
+const fillColor = twgl.createProgramInfo(gl, [vs, fs_constant_fill]);
+const jumpFill = twgl.createProgramInfo(gl, [vs, fs_jump]);
 
 let toSave = false;
 
@@ -367,12 +372,8 @@ const attachments = [
 ];
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(gl, attachments, width, height),
-  lightEmittersSpare: twgl.createFramebufferInfo(
-    gl,
-    attachments,
-    width,
-    height
-  ),
+  fill: twgl.createFramebufferInfo(gl, attachments, width, height),
+  spare: twgl.createFramebufferInfo(gl, attachments, width, height),
   cascadeRT: twgl.createFramebufferInfo(gl, attachments, width, height),
   cascadeRTSpare: twgl.createFramebufferInfo(gl, attachments, width, height),
   finalCascadeRT: twgl.createFramebufferInfo(gl, attachments, width, height),
@@ -401,22 +402,65 @@ function render(time) {
 
     gl.useProgram(drawLineToBuffer.program);
     twgl.setBuffersAndAttributes(gl, drawLineToBuffer, bufferInfo);
-    twgl.bindFramebufferInfo(gl, frameBuffers.lightEmittersSpare);
-    const uniforms = generateUniforms();
-    uniforms.resolution = [
-      frameBuffers.lightEmittersSpare.width,
-      frameBuffers.lightEmittersSpare.height,
-    ];
-    twgl.setUniforms(drawLineToBuffer, uniforms);
+    twgl.bindFramebufferInfo(gl, frameBuffers.spare);
+    twgl.setUniforms(drawLineToBuffer, {
+      resolution: [frameBuffers.spare.width, frameBuffers.spare.height],
+      lineStart: game.currLine.start,
+      lineEnd: game.currLine.end,
+      pixelLineSize: 4,
+      tPrev: frameBuffers.lightEmitters.attachments[0],
+    });
     twgl.drawBufferInfo(gl, bufferInfo);
-    [frameBuffers.lightEmitters, frameBuffers.lightEmittersSpare] = [
-      frameBuffers.lightEmittersSpare,
+    [frameBuffers.lightEmitters, frameBuffers.spare] = [
+      frameBuffers.spare,
       frameBuffers.lightEmitters,
     ];
   }
+  gl.useProgram(fillColor.program);
+  twgl.setBuffersAndAttributes(gl, fillColor, bufferInfo);
+  twgl.setUniforms(fillColor, { color: [2, 2, 2, 2] });
+  twgl.bindFramebufferInfo(gl, frameBuffers.spare);
+  twgl.drawBufferInfo(gl, bufferInfo);
+  [frameBuffers.fill, frameBuffers.spare] = [
+    frameBuffers.spare,
+    frameBuffers.fill,
+  ];
+
+  for (var i = 7; i >= 7; i--) {
+    gl.useProgram(jumpFill.program);
+    twgl.setBuffersAndAttributes(gl, jumpFill, bufferInfo);
+    twgl.setUniforms(jumpFill, {
+      resolution: [frameBuffers.fill.width, frameBuffers.fill.height],
+      jumpSize: 1 << i,
+      tPrev: frameBuffers.fill.attachments[0],
+      tLine: frameBuffers.lightEmitters.attachments[0],
+    });
+    twgl.bindFramebufferInfo(gl, frameBuffers.spare);
+    twgl.drawBufferInfo(gl, bufferInfo);
+    [frameBuffers.fill, frameBuffers.spare] = [
+      frameBuffers.spare,
+      frameBuffers.fill,
+    ];
+  }
+
+  gl.useProgram(drawTexture.program);
+  twgl.setBuffersAndAttributes(gl, drawTexture, bufferInfo);
+  twgl.setUniforms(drawTexture, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    tPrev: frameBuffers.fill.attachments[0],
+  });
+  twgl.bindFramebufferInfo(gl);
+  twgl.drawBufferInfo(gl, bufferInfo);
+
   gl.useProgram(drawLineToBuffer.program);
   twgl.setBuffersAndAttributes(gl, drawLineToBuffer, bufferInfo);
-  twgl.setUniforms(drawLineToBuffer, generateUniforms());
+  twgl.setUniforms(drawLineToBuffer, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    lineStart: game.currLine.start,
+    lineEnd: game.currLine.end,
+    pixelLineSize: 4,
+    tPrev: frameBuffers.lightEmitters.attachments[0],
+  });
   twgl.bindFramebufferInfo(gl);
   twgl.drawBufferInfo(gl, bufferInfo);
 
