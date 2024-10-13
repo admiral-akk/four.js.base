@@ -58,16 +58,6 @@ const arrays = {
 };
 const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
 
-const width = 256;
-const height = 256;
-
-const frameBuffers = {
-  cascadeRT: twgl.createFramebufferInfo(gl, null, width, height),
-  cascadeRTSpare: twgl.createFramebufferInfo(gl, null, width, height),
-  finalCascadeRT: twgl.createFramebufferInfo(gl, null, width, height),
-  finalCascadeRTSpare: twgl.createFramebufferInfo(gl, null, width, height),
-};
-
 windowManager.listeners.push({
   updateSize: ({ width, height }) => {
     gl.canvas.width = width;
@@ -245,13 +235,15 @@ void main() {
 }
 `;
 
-const fs = `
+const fs_write_line = `
 precision mediump float;
 
 uniform vec2 resolution;
 uniform float time;
 uniform vec2 lineStart;
 uniform vec2 lineEnd;
+uniform float pixelLineSize;
+uniform sampler2D tPrev;
 
 float lineDist() {
   vec2 uv = gl_FragCoord.xy / resolution;
@@ -271,23 +263,61 @@ float lineDist() {
 }
 
 void main() {
-
-
   vec2 uv = gl_FragCoord.xy / resolution;
+  float dist = step(lineDist(), pixelLineSize / resolution.x);
+  float prevColor = texture2D(tPrev, uv).x;
+  gl_FragColor = vec4( vec3(max(prevColor, dist)), 1.0 );
+}
+`;
 
+const fs_jump = `
+precision mediump float;
 
-  float color = 0.0;
-  // lifted from glslsandbox.com
-  color += sin( uv.x * cos( time / 3.0 ) * 60.0 ) + cos( uv.y * cos( time / 2.80 ) * 10.0 );
-  color += sin( uv.y * sin( time / 2.0 ) * 40.0 ) + cos( uv.x * sin( time / 1.70 ) * 40.0 );
-  color += sin( uv.x * sin( time / 1.0 ) * 10.0 ) + sin( uv.y * sin( time / 3.50 ) * 80.0 );
-  color *= sin( time / 10.0 ) * 0.5;
+uniform vec2 resolution;
+uniform vec2 lineStart;
+uniform vec2 lineEnd;
+uniform sampler2D tPrev;
+
+float lineDist() {
+  vec2 uv = gl_FragCoord.xy / resolution;
+  if (lineStart == lineEnd) {
+    return length(lineStart - uv);
+  } else {
+   vec2 delta = (lineEnd - lineStart);
+    vec2 dir = uv - lineStart;
+    float t = dot(dir, delta) / dot(delta,delta);
+    if (t < 0. || t > 1.) {
+      return min(length(uv - lineStart), length(uv - lineEnd));
+    } else {
+     return length(lineStart + t * delta - uv);
+    }
+   return 0.;
+  }
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution;
 
   float dist = floor(10.*lineDist()) / 10.;
   gl_FragColor = vec4( vec3(dist), 1.0 );
 }
 `;
-const programInfo = twgl.createProgramInfo(gl, [vs, fs]);
+
+const fs_render_texture = `
+precision mediump float;
+
+uniform vec2 resolution;
+uniform sampler2D tPrev;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution;
+  gl_FragColor = texture2D(tPrev, uv);
+}
+
+`;
+
+const drawLineToBuffer = twgl.createProgramInfo(gl, [vs, fs_write_line]);
+const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_texture]);
 
 let toSave = false;
 
@@ -313,6 +343,50 @@ const saveImage = () => {
   toSave = false;
 };
 
+const width = 256;
+const height = 256;
+
+const generateUniforms = () => {
+  return {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    lineStart: game.currLine.start,
+    lineEnd: game.currLine.end,
+    pixelLineSize: 4,
+    tPrev: frameBuffers.lightEmitters.attachments[0],
+  };
+};
+
+console.log(gl);
+const attachments = [
+  {
+    internalFormat: gl.RGBA32F,
+    format: gl.RGBA,
+    mag: gl.LINEAR,
+    min: gl.LINEAR,
+  },
+];
+const frameBuffers = {
+  lightEmitters: twgl.createFramebufferInfo(gl, attachments, width, height),
+  lightEmittersSpare: twgl.createFramebufferInfo(
+    gl,
+    attachments,
+    width,
+    height
+  ),
+  cascadeRT: twgl.createFramebufferInfo(gl, attachments, width, height),
+  cascadeRTSpare: twgl.createFramebufferInfo(gl, attachments, width, height),
+  finalCascadeRT: twgl.createFramebufferInfo(gl, attachments, width, height),
+  finalCascadeRTSpare: twgl.createFramebufferInfo(
+    gl,
+    attachments,
+    width,
+    height
+  ),
+};
+
+console.log(frameBuffers);
+let linesCount = 0;
+
 function render(time) {
   timeManager.tick();
   windowManager.update();
@@ -321,16 +395,28 @@ function render(time) {
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-  const uniforms = {
-    time: time * 0.001,
-    resolution: [gl.canvas.width, gl.canvas.height],
-    lineStart: game.currLine.start,
-    lineEnd: game.currLine.end,
-  };
+  if (game.lines.length > linesCount) {
+    console.log("thing");
+    linesCount++;
 
-  gl.useProgram(programInfo.program);
-  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
-  twgl.setUniforms(programInfo, uniforms);
+    gl.useProgram(drawLineToBuffer.program);
+    twgl.setBuffersAndAttributes(gl, drawLineToBuffer, bufferInfo);
+    twgl.bindFramebufferInfo(gl, frameBuffers.lightEmittersSpare);
+    const uniforms = generateUniforms();
+    uniforms.resolution = [
+      frameBuffers.lightEmittersSpare.width,
+      frameBuffers.lightEmittersSpare.height,
+    ];
+    twgl.setUniforms(drawLineToBuffer, uniforms);
+    twgl.drawBufferInfo(gl, bufferInfo);
+    [frameBuffers.lightEmitters, frameBuffers.lightEmittersSpare] = [
+      frameBuffers.lightEmittersSpare,
+      frameBuffers.lightEmitters,
+    ];
+  }
+  gl.useProgram(drawTexture.program);
+  twgl.setBuffersAndAttributes(gl, drawTexture, bufferInfo);
+  twgl.setUniforms(drawTexture, generateUniforms());
   twgl.bindFramebufferInfo(gl);
   twgl.drawBufferInfo(gl, bufferInfo);
 
