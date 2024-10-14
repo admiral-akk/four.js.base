@@ -8,6 +8,7 @@ import { State, StateMachine } from "./utils/stateMachine";
 import { InputManager2 } from "./engine/input2.js";
 import { TimeManager } from "./engine/time.js";
 import calculateCascade from "./shaders/cascade.glsl";
+import { createFramebufferInfo } from "./twgl/framebuffers.js";
 
 addCustomArrayMethods();
 var stats = new Stats();
@@ -49,7 +50,7 @@ const windowManager = new WindowManager(1);
 
 // Render Pipeline
 
-const gl = document.getElementById("webgl").getContext("webgl");
+const gl = document.getElementById("webgl").getContext("webgl2");
 
 const arrays = {
   position: {
@@ -68,6 +69,8 @@ windowManager.listeners.push({
 
 addEnumConfig("My Enum", "v", ["1", "2", "3", "v"]);
 addNumberConfig("My Num", 0, -1, 10, 0.1);
+addNumberConfig("Start Depth", 4, 1, 5, 1);
+addNumberConfig("End Depth", 0, 0, 4, 1);
 
 // Input handler
 
@@ -228,26 +231,28 @@ data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 
 // Draw Lines
 
-const vs = `
-attribute vec4 position;
+const vs = `#version 300 es
+
+in vec4 vPosition;
 
 void main() {
-  gl_Position = position;
+  gl_Position = vPosition;
 }
 `;
 
-const fs_constant_fill = `
-precision mediump float;
+const fs_constant_fill = `#version 300 es
+precision highp float;
 
 uniform vec4 color;
 
+out vec4 outColor;
 
 void main() {
-  gl_FragColor = color;
+  outColor = color;
 }
 `;
 
-const fs_write_line = `
+const fs_write_line = `#version 300 es
 precision mediump float;
 
 uniform vec2 resolution;
@@ -256,6 +261,8 @@ uniform vec2 lineStart;
 uniform vec2 lineEnd;
 uniform float pixelLineSize;
 uniform sampler2D tPrev;
+
+out vec4 outColor;
 
 float lineDist() {
   vec2 uv = gl_FragCoord.xy / resolution;
@@ -277,12 +284,12 @@ float lineDist() {
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   float dist = step(lineDist(), pixelLineSize / resolution.x);
-  float prevColor = texture2D(tPrev, uv).x;
-  gl_FragColor = vec4( vec3(max(prevColor, dist)), 1.0 );
+  float prevColor = texture(tPrev, uv).x;
+  outColor = vec4( vec3(max(prevColor, dist)), 1.0 );
 }
 `;
 
-const fs_jump = `
+const fs_jump = `#version 300 es
 precision mediump float;
 
 uniform vec2 resolution;
@@ -290,17 +297,19 @@ uniform float jumpSize;
 uniform sampler2D tPrev;
 uniform sampler2D tLine;
 
+out vec4 outColor;
+
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   
-  vec3 prevClosestPos = texture2D(tPrev, uv).xyz;
+  vec3 prevClosestPos = texture(tPrev, uv).xyz;
 
   for (int i = -1; i <= 1; i++) {
     for (int j = -1; j <= 1; j++) {
       vec2 delta = vec2(float(i), float(j)) * jumpSize / resolution;
       vec2 sampleUv = uv + delta;
-      vec3 closestPos = texture2D(tPrev, sampleUv).xyz;
-      float lineVal = texture2D(tLine, sampleUv).r;
+      vec3 closestPos = texture(tPrev, sampleUv).xyz;
+      float lineVal = texture(tLine, sampleUv).r;
 
       if (lineVal > 0.1) {
         closestPos = vec3(sampleUv, 1.);
@@ -317,49 +326,54 @@ void main() {
       }
     }
   }
-  gl_FragColor = vec4( prevClosestPos , 0.);
+  outColor = vec4( prevClosestPos , 0.);
 }
 `;
 
-const fs_render_closest = `
+const fs_render_closest = `#version 300 es
 precision mediump float;
 
 uniform vec2 resolution;
 uniform sampler2D tPrev;
 
+out vec4 outColor;
+
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
-  float dist = length(texture2D(tPrev, uv).xy - uv);
-  gl_FragColor = vec4(float(gl_FragCoord.x == resolution.x - 0.5), float(gl_FragCoord.y == resolution.y - 0.5), 0. ,1.);
-  gl_FragColor = vec4(vec3(dist), 1.0);
+  float dist = length(texture(tPrev, uv).xy - uv);
+  outColor = vec4(float(gl_FragCoord.x == resolution.x - 0.5), float(gl_FragCoord.y == resolution.y - 0.5), 0. ,1.);
+  outColor = vec4(vec3(dist), 1.0);
 }
 
 `;
 
-const fs_calculate_distance = `
+const fs_calculate_distance = `#version 300 es
 precision mediump float;
 
 uniform vec2 resolution;
 uniform sampler2D tPrev;
 
+out vec4 outColor;
+
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
-  gl_FragColor = texture2D(tPrev, uv);
+  outColor = texture(tPrev, uv);
 }
 
 `;
 
-const fs_render_texture = `
-precision mediump float;
+const fs_render_texture = `#version 300 es
+precision highp float;
 
 uniform vec2 resolution;
 uniform sampler2D tPrev;
 
+out vec4 outColor;
+
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
-  gl_FragColor = texture2D(tPrev, uv);
+  outColor = texture(tPrev, uv);
 }
-
 `;
 
 const drawLineToBuffer = twgl.createProgramInfo(gl, [vs, fs_write_line]);
@@ -368,6 +382,7 @@ const calculateDistance = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const fillColor = twgl.createProgramInfo(gl, [vs, fs_constant_fill]);
 const jumpFill = twgl.createProgramInfo(gl, [vs, fs_jump]);
+const cascadeCalculate = twgl.createProgramInfo(gl, [vs, calculateCascade]);
 
 let toSave = false;
 
@@ -395,13 +410,12 @@ const saveImage = () => {
 
 const width = 256;
 const height = 256;
-gl.getExtension("OES_texture_float");
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.NEAREST,
         min: gl.NEAREST,
@@ -415,7 +429,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -429,7 +443,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.NEAREST,
         min: gl.NEAREST,
@@ -443,7 +457,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.NEAREST,
         min: gl.NEAREST,
@@ -457,7 +471,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -467,11 +481,11 @@ const frameBuffers = {
     width,
     2 * height
   ),
-  cascadeRTSpare: twgl.createFramebufferInfo(
+  spareCascadeRT: twgl.createFramebufferInfo(
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -485,7 +499,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -499,7 +513,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA32F,
+        internalFormat: gl.RGBA8,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -599,6 +613,54 @@ function render(time) {
     frameBuffers.distance
   );
 
+  const startDepth = 4;
+  const finalDepth = 0;
+  let depth = startDepth;
+
+  while (depth >= finalDepth) {
+    const baseDistance = (1 * Math.SQRT2) / frameBuffers.cascadeRT.width;
+    const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
+
+    const minDistance = baseDistance * Math.pow(2, multiplier * (depth - 1));
+    const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
+    const deeperMaxDistance =
+      baseDistance * Math.pow(2, multiplier * (depth + 1));
+    renderTo(
+      gl,
+      cascadeCalculate,
+      bufferInfo,
+      {
+        maxSteps: 32,
+        tDistance: frameBuffers.distance.attachments[0],
+        tColor: frameBuffers.lightEmitters.attachments[0],
+        startDepth: startDepth,
+        current: {
+          depth: depth,
+          minDistance: minDistance,
+          maxDistance: maxDistance,
+        },
+        deeper: {
+          depth: depth,
+          minDistance: maxDistance,
+          maxDistance: deeperMaxDistance,
+        },
+        debug: {
+          continousBilinearFix: false,
+          finalDepth: finalDepth,
+          renderMode: 0,
+        },
+        tPrevCascade: frameBuffers.cascadeRT.attachments[0],
+      },
+      frameBuffers.spareCascadeRT
+    );
+
+    [frameBuffers.spareCascadeRT, frameBuffers.cascadeRT] = [
+      frameBuffers.cascadeRT,
+      frameBuffers.spareCascadeRT,
+    ];
+    depth--;
+  }
+
   renderTo(gl, drawLineToBuffer, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],
     lineStart: game.currLine.start,
@@ -614,7 +676,11 @@ function render(time) {
 
   renderTo(gl, renderTexture, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],
-    tPrev: frameBuffers.distance.attachments[0],
+    tPrev: frameBuffers.lightEmitters.attachments[0],
+  });
+
+  renderTo(gl, fillColor, bufferInfo, {
+    color: [1, 1, 0, 1],
   });
 
   if (toSave) {

@@ -1,3 +1,4 @@
+#version 300 es
 precision mediump float;
 
 #define PI 3.141592654 
@@ -32,6 +33,8 @@ uniform CascadeConfig deeper;
 uniform DebugInfo debug;
 uniform sampler2D tPrevCascade;
 
+out vec4 outColor;
+
 bool outOfBounds(vec2 uv) {
   return uv.x < 0. || uv.x > 1. || uv.y < 0. || uv.y > 1.;
 }
@@ -50,8 +53,8 @@ vec2 indicesToSampleUv(ivec4 probeIndex) {
 
 vec4 sampleTexture(ivec4 sampleTarget, ivec4 sampleTarget2) {
   return 0.5 * ( 
-    texture2D(tPrevCascade, indicesToSampleUv(sampleTarget)) 
-    + texture2D(tPrevCascade, indicesToSampleUv(sampleTarget2))  
+    texture(tPrevCascade, indicesToSampleUv(sampleTarget)) 
+    + texture(tPrevCascade, indicesToSampleUv(sampleTarget2))  
   );
 }
 
@@ -73,12 +76,12 @@ vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
       return sampleSky(dir);
     }
     
-    vec4 color = texture2D(tColor, start);
+    vec4 color = texture(tColor, start);
     if (color.a > 0.1) {
       return color;
     }
 
-    float sdf = texture2D(tDistance, start).r;
+    float sdf = texture(tDistance, start).r;
     start += sdf * dir;
     distanceLeft -= sdf;
   }
@@ -252,16 +255,16 @@ void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   ivec4 newIndex = sampleUvToIndices(uv);
   if (newIndex.w != int(current.depth)) {
-    gl_FragColor = texture2D(tPrevCascade, uv);
+    outColor = texture(tPrevCascade, uv);
   } else if (current.depth == float(startDepth)) {
     vec2 start = lineSegmentUv(newIndex, 0.);
     vec2 end = lineSegmentUv(newIndex, current.maxDistance);
-    gl_FragColor = castRay(start, end, ivec4(-1), ivec4(-1));
+    outColor = castRay(start, end, ivec4(-1), ivec4(-1));
   } else if (debug.continousBilinearFix) {
-    gl_FragColor = continousbilinearFix(newIndex);
+    outColor = continousbilinearFix(newIndex);
   } else {
-    gl_FragColor = bilinearFix(newIndex);
+    outColor = bilinearFix(newIndex);
   }
   
-  gl_FragColor.w = 1.;
+  outColor.w = 1.;
 }
