@@ -410,6 +410,20 @@ const frameBuffers = {
     width,
     height
   ),
+  lightEmittersWithCurrent: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA8,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
   distance: twgl.createFramebufferInfo(
     gl,
     [
@@ -511,8 +525,8 @@ const frameBuffers = {
 };
 let linesCount = 0;
 
-const startDepthVal = data.addNumber("Start Depth", 4, 1, 5, 1);
-const finalDepthVal = data.addNumber("Final Depth", 0, 0, 4, 1);
+const startDepthVal = data.addNumber("Start Depth", 4, 1, 8, 1);
+const finalDepthVal = data.addNumber("Final Depth", 0, 0, 8, 1);
 const colorVal = data.addColor("Color", [1, 1, 1]);
 const colorWithAlpha = () => {
   const c = colorVal();
@@ -552,6 +566,24 @@ function render(time) {
 
   renderTo(
     gl,
+    drawLineToBuffer,
+    bufferInfo,
+    {
+      resolution: [
+        frameBuffers.lightEmitters.width,
+        frameBuffers.lightEmitters.height,
+      ],
+      lineStart: game.currLine.start,
+      lineEnd: game.currLine.end,
+      pixelLineSize: 4,
+      color: colorWithAlpha(),
+      tPrev: frameBuffers.lightEmitters.attachments[0],
+    },
+    frameBuffers.lightEmittersWithCurrent
+  );
+
+  renderTo(
+    gl,
     fillColor,
     bufferInfo,
     { color: [0, 0, 0, 0] },
@@ -571,7 +603,7 @@ function render(time) {
         resolution: [frameBuffers.fill.width, frameBuffers.fill.height],
         jumpSize: 1 << i,
         tPrev: frameBuffers.fill.attachments[0],
-        tLine: frameBuffers.lightEmitters.attachments[0],
+        tLine: frameBuffers.lightEmittersWithCurrent.attachments[0],
       },
       frameBuffers.spare
     );
@@ -623,7 +655,7 @@ function render(time) {
         ],
         maxSteps: 8,
         tDistance: frameBuffers.distance.attachments[0],
-        tColor: frameBuffers.lightEmitters.attachments[0],
+        tColor: frameBuffers.lightEmittersWithCurrent.attachments[0],
         startDepth: startDepth,
         current: {
           depth: depth,
@@ -649,14 +681,6 @@ function render(time) {
     ];
     depth--;
   }
-
-  renderTo(gl, drawLineToBuffer, bufferInfo, {
-    resolution: [gl.canvas.width, gl.canvas.height],
-    lineStart: game.currLine.start,
-    lineEnd: game.currLine.end,
-    pixelLineSize: 4,
-    tPrev: frameBuffers.lightEmitters.attachments[0],
-  });
 
   renderTo(gl, drawTexture, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],

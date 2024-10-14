@@ -34,4 +34,5 @@ void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   outColor = radiance(uv);
   outColor.w = 1.;
+  outColor = pow(outColor, vec4(1./2.2));
 }
