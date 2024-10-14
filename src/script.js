@@ -157,9 +157,14 @@ const inputState = new InputManager();
 const clipToScreenSpace = ([x, y]) => [(x + 1) / 2, (y + 1) / 2];
 
 class MyGame {
-  constructor() {
+  constructor(data) {
     this.commands = [];
-    this.lines = [];
+    this.data = data;
+    data.listeners.push(this);
+    if (!Array.isArray(this.data.state.lines)) {
+      this.data.state.lines = [];
+      this.data.saveData();
+    }
     this.currLine = { start: [0, 0], end: [0, 0] };
   }
 
@@ -173,7 +178,13 @@ class MyGame {
 
   endLine(pos) {
     this.currLine.end = pos;
-    this.lines.push(this.currLine);
+    this.data.state.lines.push(this.currLine);
+    this.data.saveData();
+  }
+
+  configUpdated() {
+    this.data.state.lines = [];
+    console.log("Config update", this.data.state.lines.length);
   }
 
   applyCommand(command) {
@@ -211,7 +222,7 @@ class MyGame {
   }
 }
 
-const game = new MyGame();
+const game = new MyGame(data);
 
 // Data Storage Layer
 
@@ -541,17 +552,31 @@ function render(time) {
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-  if (game.lines.length > linesCount) {
-    linesCount++;
+  const lines = game.data.state.lines;
+  if (lines.length < linesCount) {
+    renderTo(
+      gl,
+      fillColor,
+      bufferInfo,
+      { color: [0, 0, 0, 0] },
+      frameBuffers.spare
+    );
+    [frameBuffers.lightEmitters, frameBuffers.spare] = [
+      frameBuffers.spare,
+      frameBuffers.lightEmitters,
+    ];
+    linesCount = 0;
+  }
 
+  while (lines.length > linesCount) {
     renderTo(
       gl,
       drawLineToBuffer,
       bufferInfo,
       {
         resolution: [frameBuffers.spare.width, frameBuffers.spare.height],
-        lineStart: game.currLine.start,
-        lineEnd: game.currLine.end,
+        lineStart: lines[linesCount].start,
+        lineEnd: lines[linesCount].end,
         color: colorWithAlpha(),
         pixelLineSize: 4,
         tPrev: frameBuffers.lightEmitters.attachments[0],
@@ -562,6 +587,7 @@ function render(time) {
       frameBuffers.spare,
       frameBuffers.lightEmitters,
     ];
+    linesCount++;
   }
 
   renderTo(

@@ -9,6 +9,7 @@ class DataManager {
     this.listeners = [];
     this.serializedConfig = {};
     this.config = {};
+    this.state = {};
   }
 
   init() {
@@ -19,7 +20,7 @@ class DataManager {
 
     // load in the local data, if any
     this.readData();
-    this.addButton({ name: "Clear Data", fn: () => data.clearData() });
+    this.addButton({ name: "Clear Data", fn: () => this.clearData() });
   }
 
   addEnum(displayName, defaultValue, options) {
@@ -27,6 +28,7 @@ class DataManager {
       this.serializedConfig[displayName]?.value ?? defaultValue;
     this.config[displayName] = {
       name: displayName,
+      defaultValue: defaultValue,
       value: existingValue,
       minOrOptions: options,
     };
@@ -42,6 +44,7 @@ class DataManager {
       this.serializedConfig[displayName]?.value ?? defaultValue;
     this.config[displayName] = {
       name: displayName,
+      defaultValue: defaultValue,
       value: existingValue,
       minOrOptions: min,
       max,
@@ -59,15 +62,17 @@ class DataManager {
       this.serializedConfig[displayName]?.value ?? defaultValue;
     this.config[displayName] = {
       name: displayName,
+      defaultValue: defaultValue,
       value: existingValue,
     };
     this.variables
       .addColor(this.config[displayName], "value")
       .name(displayName)
       .onChange(() => {
-        this.writeData();
+        this.saveData();
         this.notify();
-      });
+      })
+      .listen();
     this.added.push(displayName);
     return () => {
       return structuredClone(this.config[displayName].value);
@@ -91,9 +96,10 @@ class DataManager {
       .add(this.config[key], "value", minOrOptions, max, step)
       .name(name)
       .onChange(() => {
-        this.writeData();
+        this.saveData();
         this.notify();
-      });
+      })
+      .listen();
   }
 
   notify() {
@@ -103,9 +109,9 @@ class DataManager {
   readData() {
     const state = localStorage.getItem(stateString);
     if (state && state != "undefined") {
-      this.serializedState = JSON.parse(state);
+      this.state = JSON.parse(state);
     } else {
-      this.serializedState = {};
+      this.state = {};
     }
 
     const config = localStorage.getItem(configString);
@@ -116,7 +122,7 @@ class DataManager {
     }
   }
 
-  writeData() {
+  saveData() {
     localStorage.setItem(stateString, JSON.stringify(this.state));
     localStorage.setItem(configString, JSON.stringify(this.config));
   }
@@ -125,9 +131,16 @@ class DataManager {
     if (localStorage.getItem(stateString)) {
       localStorage.removeItem(stateString);
     }
+    this.state = {};
     if (localStorage.getItem(configString)) {
       localStorage.removeItem(configString);
     }
+
+    for (const [_, value] of Object.entries(this.config)) {
+      value.value = value.defaultValue;
+    }
+
+    this.notify();
   }
 
   addListener(listener) {
