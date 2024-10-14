@@ -44,6 +44,15 @@ const addNumberConfig = (displayName, initialValue, min, max, step) => {
   };
 };
 
+const data = new DataManager(defaultData);
+data.init();
+
+data.addEnum("My Enum", "v", ["1", "2", "3", "v"]);
+data.addNumber("My Num", 0, -1, 10, 0.1);
+const startDepthVal = data.addNumber("Start Depth", 4, 1, 5, 1);
+const finalDepthVal = data.addNumber("Final Depth", 0, 0, 4, 1);
+data.addButton({ name: "Clear Data", fn: () => data.clearData() });
+
 // Canvas Manager
 
 const windowManager = new WindowManager(1);
@@ -81,11 +90,6 @@ windowManager.listeners.push({
     gl.canvas.height = height;
   },
 });
-
-addEnumConfig("My Enum", "v", ["1", "2", "3", "v"]);
-addNumberConfig("My Num", 0, -1, 10, 0.1);
-addNumberConfig("Start Depth", 4, 1, 5, 1);
-addNumberConfig("End Depth", 0, 0, 4, 1);
 
 // Input handler
 
@@ -239,10 +243,6 @@ class MyGame {
 const game = new MyGame();
 
 // Data Storage Layer
-
-const data = new DataManager(defaultData);
-data.init();
-data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 
 // Draw Lines
 
@@ -613,8 +613,8 @@ function render(time) {
     frameBuffers.distance
   );
 
-  const startDepth = 5;
-  const finalDepth = 0;
+  const startDepth = startDepthVal();
+  const finalDepth = finalDepthVal();
   let depth = startDepth;
 
   renderTo(

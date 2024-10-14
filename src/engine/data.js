@@ -4,16 +4,49 @@ const stateString = "state";
 const configString = "config";
 
 class DataManager {
-  constructor({ state = {}, config = {} }) {
-    this.defaultConfig = config;
-    this.defaultState = state;
+  constructor() {
+    this.added = [];
     this.listeners = [];
+    this.serializedConfig = {};
+    this.config = {};
   }
 
   init() {
     this.gui = new GUI();
     // load in the local data, if any
     this.readData();
+  }
+
+  addEnum(displayName, defaultValue, options) {
+    const existingValue =
+      this.serializedConfig[displayName]?.value ?? defaultValue;
+    this.config[displayName] = {
+      name: displayName,
+      value: existingValue,
+      minOrOptions: options,
+    };
+    this.addConfigData(displayName);
+    this.added.push(displayName);
+    return () => {
+      return this.config[displayName].value;
+    };
+  }
+
+  addNumber(displayName, defaultValue, min, max, step) {
+    const existingValue =
+      this.serializedConfig[displayName]?.value ?? defaultValue;
+    this.config[displayName] = {
+      name: displayName,
+      value: existingValue,
+      minOrOptions: min,
+      max,
+      step,
+    };
+    this.addConfigData(displayName);
+    this.added.push(displayName);
+    return () => {
+      return this.config[displayName].value;
+    };
   }
 
   addButton({ fn, name }) {
@@ -52,19 +85,9 @@ class DataManager {
 
     const config = localStorage.getItem(configString);
     if (config) {
-      this.config = JSON.parse(config);
+      this.serializedConfig = JSON.parse(config);
     } else {
-      this.config = this.defaultConfig;
-    }
-
-    for (var key of Object.keys(this.defaultConfig)) {
-      if (this.config[key] === null) {
-        this.config[key] = this.defaultConfig[key];
-      }
-    }
-
-    for (var key of Object.keys(this.config)) {
-      this.addConfigData(key);
+      this.serializedConfig = {};
     }
   }
 
