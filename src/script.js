@@ -195,17 +195,20 @@ class MyGame {
       case StartDragCommand:
         {
           {
+            this.data.state.isDragging = true;
             this.startLine(clipToScreenSpace(command.start));
           }
         }
         break;
       case DragCommand:
         {
+          this.data.state.isDragging = true;
           this.updateLine(clipToScreenSpace(command.curr));
         }
         break;
       case LineCommand:
         {
+          this.data.state.isDragging = false;
           this.endLine(clipToScreenSpace(command.end));
         }
         break;
@@ -367,7 +370,7 @@ out vec4 outColor;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
-  outColor = vec4(texture(tPrev, uv).rgb, 1.);
+  outColor = texture(tPrev, uv).rgba;
 }
 `;
 
@@ -553,18 +556,15 @@ function render(time) {
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
   const lines = game.data.state.lines;
+  console.log(lines.length, linesCount);
   if (lines.length < linesCount) {
     renderTo(
       gl,
       fillColor,
       bufferInfo,
       { color: [0, 0, 0, 0] },
-      frameBuffers.spare
+      frameBuffers.lightEmitters
     );
-    [frameBuffers.lightEmitters, frameBuffers.spare] = [
-      frameBuffers.spare,
-      frameBuffers.lightEmitters,
-    ];
     linesCount = 0;
   }
 
@@ -590,23 +590,39 @@ function render(time) {
     linesCount++;
   }
 
-  renderTo(
-    gl,
-    drawLineToBuffer,
-    bufferInfo,
-    {
-      resolution: [
-        frameBuffers.lightEmitters.width,
-        frameBuffers.lightEmitters.height,
-      ],
-      lineStart: game.currLine.start,
-      lineEnd: game.currLine.end,
-      pixelLineSize: 4,
-      color: colorWithAlpha(),
-      tPrev: frameBuffers.lightEmitters.attachments[0],
-    },
-    frameBuffers.lightEmittersWithCurrent
-  );
+  if (game.data.state.isDragging) {
+    renderTo(
+      gl,
+      drawLineToBuffer,
+      bufferInfo,
+      {
+        resolution: [
+          frameBuffers.lightEmitters.width,
+          frameBuffers.lightEmitters.height,
+        ],
+        lineStart: game.currLine.start,
+        lineEnd: game.currLine.end,
+        pixelLineSize: 4,
+        color: colorWithAlpha(),
+        tPrev: frameBuffers.lightEmitters.attachments[0],
+      },
+      frameBuffers.lightEmittersWithCurrent
+    );
+  } else {
+    renderTo(
+      gl,
+      renderTexture,
+      bufferInfo,
+      {
+        resolution: [
+          frameBuffers.lightEmitters.width,
+          frameBuffers.lightEmitters.height,
+        ],
+        tPrev: frameBuffers.lightEmitters.attachments[0],
+      },
+      frameBuffers.lightEmittersWithCurrent
+    );
+  }
 
   renderTo(
     gl,
