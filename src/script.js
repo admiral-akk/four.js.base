@@ -8,6 +8,7 @@ import { State, StateMachine } from "./utils/stateMachine";
 import { InputManager2 } from "./engine/input2.js";
 import { TimeManager } from "./engine/time.js";
 import calculateCascade from "./shaders/cascade.glsl";
+import renderCascade from "./shaders/renderCascade.glsl";
 
 addCustomArrayMethods();
 var stats = new Stats();
@@ -395,6 +396,7 @@ const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const fillColor = twgl.createProgramInfo(gl, [vs, fs_constant_fill]);
 const jumpFill = twgl.createProgramInfo(gl, [vs, fs_jump]);
 const cascadeCalculate = twgl.createProgramInfo(gl, [vs, calculateCascade]);
+const cascadeRender = twgl.createProgramInfo(gl, [vs, renderCascade]);
 
 let toSave = false;
 
@@ -441,7 +443,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA8,
+        internalFormat: gl.RGBA32F,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -490,8 +492,8 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    2 * height
+    2 * width,
+    height
   ),
   spareCascadeRT: twgl.createFramebufferInfo(
     gl,
@@ -504,8 +506,8 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    2 * height
+    2 * width,
+    height
   ),
   finalCascadeRT: twgl.createFramebufferInfo(
     gl,
@@ -518,8 +520,8 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    2 * height
+    2 * width,
+    height
   ),
   finalCascadeRTSpare: twgl.createFramebufferInfo(
     gl,
@@ -532,8 +534,8 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    2 * height
+    2 * width,
+    height
   ),
 };
 let linesCount = 0;
@@ -615,6 +617,14 @@ function render(time) {
   const finalDepth = 0;
   let depth = startDepth;
 
+  renderTo(
+    gl,
+    fillColor,
+    bufferInfo,
+    { color: [0, 0, 0, 0] },
+    frameBuffers.spareCascadeRT
+  );
+
   while (depth >= finalDepth) {
     const baseDistance = (1 * Math.SQRT2) / frameBuffers.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
@@ -628,6 +638,10 @@ function render(time) {
       cascadeCalculate,
       bufferInfo,
       {
+        resolution: [
+          frameBuffers.cascadeRT.width,
+          frameBuffers.cascadeRT.height,
+        ],
         maxSteps: 32,
         tDistance: frameBuffers.distance.attachments[0],
         tColor: frameBuffers.lightEmitters.attachments[0],
@@ -674,7 +688,12 @@ function render(time) {
 
   renderTo(gl, renderTexture, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],
-    tPrev: frameBuffers.lightEmitters.attachments[0],
+    tPrev: frameBuffers.cascadeRT.attachments[0],
+  });
+
+  renderTo(gl, cascadeRender, bufferInfo, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    tPrevCascade: frameBuffers.cascadeRT.attachments[0],
   });
 
   if (toSave) {

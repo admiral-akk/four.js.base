@@ -77,11 +77,11 @@ vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
     }
     
     vec4 color = texture(tColor, start);
-    if (color.a > 0.1) {
+    if (color.r > 0.1) {
       return color;
     }
 
-    float sdf = texture(tDistance, start).r;
+    float sdf = texture(tDistance, start).r + 0.0001;
     start += sdf * dir;
     distanceLeft -= sdf;
   }
