@@ -7,6 +7,7 @@ import * as twgl from "twgl.js";
 import { State, StateMachine } from "./utils/stateMachine";
 import { InputManager2 } from "./engine/input2.js";
 import { TimeManager } from "./engine/time.js";
+import calculateCascade from "./shaders/cascade.glsl";
 
 addCustomArrayMethods();
 var stats = new Stats();
@@ -458,13 +459,13 @@ const frameBuffers = {
       {
         internalFormat: gl.RGBA32F,
         format: gl.RGBA,
-        mag: gl.NEAREST,
-        min: gl.NEAREST,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
     width,
-    height
+    2 * height
   ),
   cascadeRTSpare: twgl.createFramebufferInfo(
     gl,
@@ -472,13 +473,13 @@ const frameBuffers = {
       {
         internalFormat: gl.RGBA32F,
         format: gl.RGBA,
-        mag: gl.NEAREST,
-        min: gl.NEAREST,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
     width,
-    height
+    2 * height
   ),
   finalCascadeRT: twgl.createFramebufferInfo(
     gl,
@@ -486,13 +487,13 @@ const frameBuffers = {
       {
         internalFormat: gl.RGBA32F,
         format: gl.RGBA,
-        mag: gl.NEAREST,
-        min: gl.NEAREST,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
     width,
-    height
+    2 * height
   ),
   finalCascadeRTSpare: twgl.createFramebufferInfo(
     gl,
@@ -500,16 +501,30 @@ const frameBuffers = {
       {
         internalFormat: gl.RGBA32F,
         format: gl.RGBA,
-        mag: gl.NEAREST,
-        min: gl.NEAREST,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
     width,
-    height
+    2 * height
   ),
 };
 let linesCount = 0;
+
+function renderTo(
+  gl,
+  programInfo,
+  bufferInfo,
+  uniforms,
+  targetFrameBuffer = null
+) {
+  gl.useProgram(programInfo.program);
+  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+  twgl.setUniforms(programInfo, uniforms);
+  twgl.bindFramebufferInfo(gl, targetFrameBuffer);
+  twgl.drawBufferInfo(gl, bufferInfo);
+}
 
 function render(time) {
   timeManager.tick();
@@ -523,17 +538,19 @@ function render(time) {
     console.log("thing");
     linesCount++;
 
-    gl.useProgram(drawLineToBuffer.program);
-    twgl.setBuffersAndAttributes(gl, drawLineToBuffer, bufferInfo);
-    twgl.bindFramebufferInfo(gl, frameBuffers.spare);
-    twgl.setUniforms(drawLineToBuffer, {
-      resolution: [frameBuffers.spare.width, frameBuffers.spare.height],
-      lineStart: game.currLine.start,
-      lineEnd: game.currLine.end,
-      pixelLineSize: 4,
-      tPrev: frameBuffers.lightEmitters.attachments[0],
-    });
-    twgl.drawBufferInfo(gl, bufferInfo);
+    renderTo(
+      gl,
+      drawLineToBuffer,
+      bufferInfo,
+      {
+        resolution: [frameBuffers.spare.width, frameBuffers.spare.height],
+        lineStart: game.currLine.start,
+        lineEnd: game.currLine.end,
+        pixelLineSize: 4,
+        tPrev: frameBuffers.lightEmitters.attachments[0],
+      },
+      frameBuffers.spare
+    );
     [frameBuffers.lightEmitters, frameBuffers.spare] = [
       frameBuffers.spare,
       frameBuffers.lightEmitters,
