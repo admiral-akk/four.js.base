@@ -8,7 +8,6 @@ import { State, StateMachine } from "./utils/stateMachine";
 import { InputManager2 } from "./engine/input2.js";
 import { TimeManager } from "./engine/time.js";
 import calculateCascade from "./shaders/cascade.glsl";
-import { createFramebufferInfo } from "./twgl/framebuffers.js";
 
 addCustomArrayMethods();
 var stats = new Stats();
@@ -51,6 +50,21 @@ const windowManager = new WindowManager(1);
 // Render Pipeline
 
 const gl = document.getElementById("webgl").getContext("webgl2");
+twgl.addExtensionsToContext(gl);
+
+function renderTo(
+  gl,
+  programInfo,
+  bufferInfo,
+  uniforms,
+  targetFrameBuffer = null
+) {
+  gl.useProgram(programInfo.program);
+  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+  twgl.setUniforms(programInfo, uniforms);
+  twgl.bindFramebufferInfo(gl, targetFrameBuffer);
+  twgl.drawBufferInfo(gl, bufferInfo);
+}
 
 const arrays = {
   position: {
@@ -232,11 +246,9 @@ data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 // Draw Lines
 
 const vs = `#version 300 es
-
-in vec4 vPosition;
-
+in vec2 position;
 void main() {
-  gl_Position = vPosition;
+  gl_Position = vec4(position, 0.0, 1.0);
 }
 `;
 
@@ -526,20 +538,6 @@ const frameBuffers = {
 };
 let linesCount = 0;
 
-function renderTo(
-  gl,
-  programInfo,
-  bufferInfo,
-  uniforms,
-  targetFrameBuffer = null
-) {
-  gl.useProgram(programInfo.program);
-  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
-  twgl.setUniforms(programInfo, uniforms);
-  twgl.bindFramebufferInfo(gl, targetFrameBuffer);
-  twgl.drawBufferInfo(gl, bufferInfo);
-}
-
 function render(time) {
   timeManager.tick();
   windowManager.update();
@@ -677,10 +675,6 @@ function render(time) {
   renderTo(gl, renderTexture, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],
     tPrev: frameBuffers.lightEmitters.attachments[0],
-  });
-
-  renderTo(gl, fillColor, bufferInfo, {
-    color: [1, 1, 0, 1],
   });
 
   if (toSave) {
