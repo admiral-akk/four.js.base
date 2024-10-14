@@ -1,17 +1,10 @@
+precision mediump float;
+
 #define PI 3.141592654 
 #define TAU (2.0*PI)
 #define BAD_PROBE_INDEX_COLOR vec4(1.,1.,0.,1.);
 #define DEBUG_COLOR vec4(0.,1.,1.,1.);
 #define RESERVED_COLOR vec4(0.5,0.5,0.,1.);
-
-#if (LINE_SEGMENT_COUNT > 0)
-struct LineSegment { 
-  vec4 color;
-  vec4 startEnd;
-  int wallType;
-};
-uniform LineSegment lineSegments[ LINE_SEGMENT_COUNT ];
-#endif
 
 struct CascadeConfig { 
   float probeCount;
@@ -39,76 +32,6 @@ uniform CascadeConfig deeper;
 uniform DebugInfo debug;
 uniform sampler2D tPrevCascade;
 
-varying vec2 vUv;
-
-out vec4 outColor;
-
-float crossVec2(in vec2 a, in vec2 b) {
-  return a.x * b.y - b.x * a.y;
-}
-
-#if LINE_SEGMENT_COUNT > 0
-float hitLineDistance(vec4 sampleStartEnd, vec4 segmentStartEnd) {
-  vec2 p = sampleStartEnd.xy;
-  vec2 r = sampleStartEnd.zw - sampleStartEnd.xy;
-  vec2 q = segmentStartEnd.xy;
-  vec2 s = segmentStartEnd.zw - segmentStartEnd.xy;
-
-  float r_s = crossVec2(r,s);
-
-  if (r_s == 0.) {
-    return 1000.;
-  }
-
-  float t = crossVec2((q - p), s) / r_s;
-  float u = crossVec2(p-q, r) / (-r_s);
-
-  if (t < 0. || t > 1. || u < 0. || u > 1.) {
-    return 100.;
-  }
-
-  return t;
-}
-
-void hitLines(vec2 start, vec2 end, int prevHit, out int hitIndex, out float hitDistance) {
-  hitIndex = -1;
-  hitDistance = 100.;
-  vec4 sampleStartEnd = vec4(start, end);
-  for (int i = 0; i < LINE_SEGMENT_COUNT; i++) {
-    if (i != prevHit) {
-      float dist = hitLineDistance(sampleStartEnd,  lineSegments[i].startEnd);
-      if (dist < hitDistance) {
-          hitIndex = i;
-          hitDistance = dist;
-      }
-
-    }
-  }
-}
-#endif
-
-float distToOutOfBounds(vec2 start, vec2 dir) {
-  if (dir.x == 0.) {
-    if (dir.y > 0.) {
-      return  (1. - start.y) / dir.y;
-    } else {
-      return -start.y / dir.y;
-    }
-  }
-  
-  if (dir.y == 0.) {
-    if (dir.x > 0.) {
-      return  (1. - start.x) / dir.x;
-    } else {
-      return  -start.x / dir.x;
-    }
-  }
-  
-  float xDist = max((1. - start.x) / dir.x, -start.x / dir.x);
-  float yDist = max((1. - start.y) / dir.y, -start.y / dir.y);
-  return min(xDist, yDist);
-}
-
 bool outOfBounds(vec2 uv) {
   return uv.x < 0. || uv.x > 1. || uv.y < 0. || uv.y > 1.;
 }
@@ -132,19 +55,22 @@ vec4 sampleTexture(ivec4 sampleTarget, ivec4 sampleTarget2) {
   );
 }
 
-
 vec4 sampleSky(vec2 dir) {
-  return vec4(0., 0., 0.0,1.);
+  return vec4(0., 0., 0., 1.);
 }
 
-vec4 castRay2(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
+vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
   vec2 delta = end-start;
-  float maxDistance = length(delta);
-  vec2 dir = delta / maxDistance;
+  float distanceLeft = length(delta);
+  vec2 dir = delta / distanceLeft;
   vec4 radiance = vec4(0.);
   for (int i = 0; i < maxSteps; i++) {
+    if (distanceLeft < 0.) {
+      return sampleTexture(sampleTarget, sampleTarget2);
+    }
+
     if (outOfBounds(start)) {
-      break;
+      return sampleSky(dir);
     }
     
     vec4 color = texture2D(tColor, start);
@@ -153,44 +79,12 @@ vec4 castRay2(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
     }
 
     float sdf = texture2D(tDistance, start).r;
-    
-
+    start += sdf * dir;
+    distanceLeft -= sdf;
   }
 
   return radiance;
 }
-
-vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
-  vec2 delta = end - start;
-    vec2 dir = normalize(delta);
-    int hitIndex = -1;
-    float closestDist;
-    vec4 lineColor = vec4(1.);
-    bool hitValidWall = false;
-    while (!hitValidWall) {
-    #if (LINE_SEGMENT_COUNT > 0)
-      hitLines(start, end, hitIndex, hitIndex, closestDist);
-      hitValidWall = lineSegments[hitIndex].wallType == 0;
-    #endif
-    float distToEdge = distToOutOfBounds(start, dir) ;
-    if (closestDist < 1. && closestDist > 0. ) {
-    #if (LINE_SEGMENT_COUNT > 0)
-      if (hitValidWall) {
-        return lineColor * lineSegments[hitIndex].color;
-      } else {
-        start += (end - start) * closestDist;
-        lineColor *= lineSegments[hitIndex].color;
-      }
-    #endif
-    } else if (distToEdge < length(end - start)) {
-      return lineColor * sampleSky(dir);
-    } else {
-      return lineColor * sampleTexture(sampleTarget, sampleTarget2);
-    } 
-    }
-    return vec4(0.);
-}
-
 
 // gets the uv of the probe for this index
 vec2 indicesToProbeUv(ivec4 probeIndex) {
@@ -355,18 +249,19 @@ vec4 bilinearFix(ivec4 probeIndex) {
 }
 
 void main() {
-    ivec4 newIndex = sampleUvToIndices(vUv);
-    if (newIndex.w != int(current.depth)) {
-      outColor = texture2D(tPrevCascade, vUv);
-    } else if (current.depth == float(startDepth)) {
-      vec2 start = lineSegmentUv(newIndex, 0.);
-      vec2 end = lineSegmentUv(newIndex, current.maxDistance);
-      outColor = castRay(start, end, ivec4(-1), ivec4(-1));
-    } else if (debug.continousBilinearFix) {
-      outColor = continousbilinearFix(newIndex);
-    } else {
-      outColor = bilinearFix(newIndex);
-    }
-    
-    outColor.w = 1.;
+  vec2 uv = gl_FragCoord.xy / resolution;
+  ivec4 newIndex = sampleUvToIndices(uv);
+  if (newIndex.w != int(current.depth)) {
+    gl_FragColor = texture2D(tPrevCascade, uv);
+  } else if (current.depth == float(startDepth)) {
+    vec2 start = lineSegmentUv(newIndex, 0.);
+    vec2 end = lineSegmentUv(newIndex, current.maxDistance);
+    gl_FragColor = castRay(start, end, ivec4(-1), ivec4(-1));
+  } else if (debug.continousBilinearFix) {
+    gl_FragColor = continousbilinearFix(newIndex);
+  } else {
+    gl_FragColor = bilinearFix(newIndex);
+  }
+  
+  gl_FragColor.w = 1.;
 }
