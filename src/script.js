@@ -299,7 +299,7 @@ void main() {
       vec2 delta = vec2(float(i), float(j)) * jumpSize / resolution;
       vec2 sampleUv = uv + delta;
       vec3 closestPos = texture(tPrev, sampleUv).xyz;
-      float lineVal = texture(tLine, sampleUv).r;
+      float lineVal = texture(tLine, sampleUv).a;
 
       if (lineVal > 0.1) {
         closestPos = vec3(sampleUv, 1.);
@@ -671,14 +671,14 @@ function render(time) {
     resolution: [gl.canvas.width, gl.canvas.height],
     tPrev: frameBuffers.fill.attachments[0],
   });
+  renderTo(gl, renderTexture, bufferInfo, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    tPrev: frameBuffers.cascadeRT.attachments[0],
+  });
 
   renderTo(gl, cascadeRender, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],
     tPrevCascade: frameBuffers.cascadeRT.attachments[0],
-  });
-  renderTo(gl, renderTexture, bufferInfo, {
-    resolution: [gl.canvas.width, gl.canvas.height],
-    tPrev: frameBuffers.cascadeRT.attachments[0],
   });
 
   if (toSave) {
