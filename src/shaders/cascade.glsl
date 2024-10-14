@@ -8,19 +8,13 @@ precision mediump float;
 #define RESERVED_COLOR vec4(0.5,0.5,0.,1.);
 
 struct CascadeConfig { 
-  float probeCount;
   float depth;
-  int xSize;
-  int ySize;
-  float rayCount;
   float minDistance;
   float maxDistance;
 };
 
 struct DebugInfo {
   bool continousBilinearFix;
-  int finalDepth;
-  int renderMode; 
 };
 
 uniform vec2 resolution;

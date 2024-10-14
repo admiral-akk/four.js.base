@@ -422,8 +422,8 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 256;
-const height = 256;
+const width = 2 * 256;
+const height = 2 * 256;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
     gl,
@@ -613,7 +613,7 @@ function render(time) {
     frameBuffers.distance
   );
 
-  const startDepth = 4;
+  const startDepth = 5;
   const finalDepth = 0;
   let depth = startDepth;
 
@@ -657,9 +657,7 @@ function render(time) {
           maxDistance: deeperMaxDistance,
         },
         debug: {
-          continousBilinearFix: false,
-          finalDepth: finalDepth,
-          renderMode: 0,
+          continousBilinearFix: true,
         },
         tPrevCascade: frameBuffers.cascadeRT.attachments[0],
       },
@@ -686,14 +684,13 @@ function render(time) {
     tPrev: frameBuffers.fill.attachments[0],
   });
 
-  renderTo(gl, renderTexture, bufferInfo, {
-    resolution: [gl.canvas.width, gl.canvas.height],
-    tPrev: frameBuffers.cascadeRT.attachments[0],
-  });
-
   renderTo(gl, cascadeRender, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],
     tPrevCascade: frameBuffers.cascadeRT.attachments[0],
+  });
+  renderTo(gl, renderTexture, bufferInfo, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    tPrev: frameBuffers.cascadeRT.attachments[0],
   });
 
   if (toSave) {
