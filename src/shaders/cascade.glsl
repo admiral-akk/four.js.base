@@ -60,7 +60,6 @@ vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
   vec2 delta = end-start;
   float distanceLeft = length(delta);
   vec2 dir = delta / distanceLeft;
-  vec4 radiance = vec4(0.);
   for (int i = 0; i < maxSteps; i++) {
     if (distanceLeft < 0.) {
       return sampleTexture(sampleTarget, sampleTarget2);
@@ -80,7 +79,7 @@ vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
     distanceLeft -= sdf;
   }
 
-  return radiance;
+  return sampleTexture(sampleTarget, sampleTarget2);
 }
 
 // gets the uv of the probe for this index

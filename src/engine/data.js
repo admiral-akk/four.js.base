@@ -19,6 +19,7 @@ class DataManager {
 
     // load in the local data, if any
     this.readData();
+    this.addButton({ name: "Clear Data", fn: () => data.clearData() });
   }
 
   addEnum(displayName, defaultValue, options) {

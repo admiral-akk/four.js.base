@@ -21,14 +21,8 @@ const timeManager = new TimeManager();
 
 // Data Storage
 
-const defaultData = {
-  state: {},
-  config: {},
-};
-
-const data = new DataManager(defaultData);
+const data = new DataManager();
 data.init();
-data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 
 // Canvas Manager
 
@@ -534,7 +528,6 @@ function render(time) {
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
   if (game.lines.length > linesCount) {
-    console.log("thing");
     linesCount++;
 
     renderTo(
@@ -602,8 +595,6 @@ function render(time) {
   const startDepth = startDepthVal();
   const finalDepth = finalDepthVal();
   let depth = startDepth;
-
-  console.log(colorVal());
 
   renderTo(
     gl,
