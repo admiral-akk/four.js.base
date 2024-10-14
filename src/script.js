@@ -290,7 +290,7 @@ uniform sampler2D tPrev;
 uniform sampler2D tLine;
 
 void main() {
-  vec2 uv = gl_FragCoord.xy / resolution + 0.5 / resolution;
+  vec2 uv = gl_FragCoord.xy / resolution;
   
   vec3 prevClosestPos = texture2D(tPrev, uv).xyz;
 
@@ -328,7 +328,22 @@ uniform sampler2D tPrev;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
-  gl_FragColor = vec4(vec3(length(texture2D(tPrev, uv).xy - uv)), 1.0);
+  float dist = length(texture2D(tPrev, uv).xy - uv);
+  gl_FragColor = vec4(float(gl_FragCoord.x == resolution.x - 0.5), float(gl_FragCoord.y == resolution.y - 0.5), 0. ,1.);
+  gl_FragColor = vec4(vec3(dist), 1.0);
+}
+
+`;
+
+const fs_calculate_distance = `
+precision mediump float;
+
+uniform vec2 resolution;
+uniform sampler2D tPrev;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution;
+  gl_FragColor = texture2D(tPrev, uv);
 }
 
 `;
@@ -347,6 +362,8 @@ void main() {
 `;
 
 const drawLineToBuffer = twgl.createProgramInfo(gl, [vs, fs_write_line]);
+const renderTexture = twgl.createProgramInfo(gl, [vs, fs_render_texture]);
+const calculateDistance = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const fillColor = twgl.createProgramInfo(gl, [vs, fs_constant_fill]);
 const jumpFill = twgl.createProgramInfo(gl, [vs, fs_jump]);
@@ -377,26 +394,117 @@ const saveImage = () => {
 
 const width = 256;
 const height = 256;
-
-const attachments = [
-  {
-    internalFormat: gl.RGBA32F,
-    format: gl.RGBA,
-    mag: gl.NEAREST,
-    min: gl.NEAREST,
-    wrap: gl.CLAMP_TO_EDGE,
-  },
-];
+gl.getExtension("OES_texture_float");
 const frameBuffers = {
-  lightEmitters: twgl.createFramebufferInfo(gl, attachments, width, height),
-  fill: twgl.createFramebufferInfo(gl, attachments, width, height),
-  spare: twgl.createFramebufferInfo(gl, attachments, width, height),
-  cascadeRT: twgl.createFramebufferInfo(gl, attachments, width, height),
-  cascadeRTSpare: twgl.createFramebufferInfo(gl, attachments, width, height),
-  finalCascadeRT: twgl.createFramebufferInfo(gl, attachments, width, height),
+  lightEmitters: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
+  distance: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
+  fill: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
+  spare: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
+  cascadeRT: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
+  cascadeRTSpare: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
+  finalCascadeRT: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    width,
+    height
+  ),
   finalCascadeRTSpare: twgl.createFramebufferInfo(
     gl,
-    attachments,
+    [
+      {
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
     width,
     height
   ),
@@ -458,6 +566,15 @@ function render(time) {
     ];
   }
 
+  gl.useProgram(calculateDistance.program);
+  twgl.setBuffersAndAttributes(gl, calculateDistance, bufferInfo);
+  twgl.setUniforms(calculateDistance, {
+    resolution: [frameBuffers.fill.width, frameBuffers.fill.height],
+    tPrev: frameBuffers.fill.attachments[0],
+  });
+  twgl.bindFramebufferInfo(gl, frameBuffers.distance);
+  twgl.drawBufferInfo(gl, bufferInfo);
+
   gl.useProgram(drawLineToBuffer.program);
   twgl.setBuffersAndAttributes(gl, drawLineToBuffer, bufferInfo);
   twgl.setUniforms(drawLineToBuffer, {
@@ -475,6 +592,15 @@ function render(time) {
   twgl.setUniforms(drawTexture, {
     resolution: [gl.canvas.width, gl.canvas.height],
     tPrev: frameBuffers.fill.attachments[0],
+  });
+  twgl.bindFramebufferInfo(gl);
+  twgl.drawBufferInfo(gl, bufferInfo);
+
+  gl.useProgram(renderTexture.program);
+  twgl.setBuffersAndAttributes(gl, renderTexture, bufferInfo);
+  twgl.setUniforms(renderTexture, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    tPrev: frameBuffers.distance.attachments[0],
   });
   twgl.bindFramebufferInfo(gl);
   twgl.drawBufferInfo(gl, bufferInfo);
