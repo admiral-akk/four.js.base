@@ -26,31 +26,8 @@ const defaultData = {
   config: {},
 };
 
-const addEnumConfig = (displayName, initialValue, options) => {
-  defaultData.config[displayName] = {
-    name: displayName,
-    value: initialValue,
-    minOrOptions: options,
-  };
-};
-
-const addNumberConfig = (displayName, initialValue, min, max, step) => {
-  defaultData.config[displayName] = {
-    name: displayName,
-    value: initialValue,
-    minOrOptions: min,
-    max,
-    step,
-  };
-};
-
 const data = new DataManager(defaultData);
 data.init();
-
-data.addEnum("My Enum", "v", ["1", "2", "3", "v"]);
-data.addNumber("My Num", 0, -1, 10, 0.1);
-const startDepthVal = data.addNumber("Start Depth", 4, 1, 5, 1);
-const finalDepthVal = data.addNumber("Final Depth", 0, 0, 4, 1);
 data.addButton({ name: "Clear Data", fn: () => data.clearData() });
 
 // Canvas Manager
@@ -271,6 +248,7 @@ precision mediump float;
 uniform vec2 resolution;
 uniform float time;
 uniform vec2 lineStart;
+uniform vec4 color;
 uniform vec2 lineEnd;
 uniform float pixelLineSize;
 uniform sampler2D tPrev;
@@ -297,8 +275,7 @@ float lineDist() {
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
   float dist = step(lineDist(), pixelLineSize / resolution.x);
-  float prevColor = texture(tPrev, uv).x;
-  outColor = vec4( vec3(max(prevColor, dist)), 1.0 );
+  outColor = mix(texture(tPrev, uv).xyzw, color.rgba,  dist);
 }
 `;
 
@@ -385,7 +362,7 @@ out vec4 outColor;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
-  outColor = texture(tPrev, uv);
+  outColor = vec4(texture(tPrev, uv).rgb, 1.);
 }
 `;
 
@@ -540,6 +517,14 @@ const frameBuffers = {
 };
 let linesCount = 0;
 
+const startDepthVal = data.addNumber("Start Depth", 4, 1, 5, 1);
+const finalDepthVal = data.addNumber("Final Depth", 0, 0, 4, 1);
+const colorVal = data.addColor("Color", [1, 1, 1]);
+const colorWithAlpha = () => {
+  const c = colorVal();
+  c.push(1);
+  return c;
+};
 function render(time) {
   timeManager.tick();
   windowManager.update();
@@ -560,6 +545,7 @@ function render(time) {
         resolution: [frameBuffers.spare.width, frameBuffers.spare.height],
         lineStart: game.currLine.start,
         lineEnd: game.currLine.end,
+        color: colorWithAlpha(),
         pixelLineSize: 4,
         tPrev: frameBuffers.lightEmitters.attachments[0],
       },
@@ -617,12 +603,14 @@ function render(time) {
   const finalDepth = finalDepthVal();
   let depth = startDepth;
 
+  console.log(colorVal());
+
   renderTo(
     gl,
     fillColor,
     bufferInfo,
     { color: [0, 0, 0, 0] },
-    frameBuffers.spareCascadeRT
+    frameBuffers.cascadeRT
   );
 
   while (depth >= finalDepth) {
@@ -642,7 +630,7 @@ function render(time) {
           frameBuffers.cascadeRT.width,
           frameBuffers.cascadeRT.height,
         ],
-        maxSteps: 32,
+        maxSteps: 8,
         tDistance: frameBuffers.distance.attachments[0],
         tColor: frameBuffers.lightEmitters.attachments[0],
         startDepth: startDepth,

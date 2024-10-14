@@ -12,7 +12,11 @@ class DataManager {
   }
 
   init() {
-    this.gui = new GUI();
+    const gui = new GUI();
+
+    this.variables = gui.addFolder("Variables");
+    this.buttons = gui.addFolder("Buttons");
+
     // load in the local data, if any
     this.readData();
   }
@@ -28,11 +32,11 @@ class DataManager {
     this.addConfigData(displayName);
     this.added.push(displayName);
     return () => {
-      return this.config[displayName].value;
+      return structuredClone(this.config[displayName].value);
     };
   }
 
-  addNumber(displayName, defaultValue, min, max, step) {
+  addNumber(displayName, defaultValue, min = null, max = null, step = null) {
     const existingValue =
       this.serializedConfig[displayName]?.value ?? defaultValue;
     this.config[displayName] = {
@@ -45,14 +49,34 @@ class DataManager {
     this.addConfigData(displayName);
     this.added.push(displayName);
     return () => {
-      return this.config[displayName].value;
+      return structuredClone(this.config[displayName].value);
+    };
+  }
+
+  addColor(displayName, defaultValue) {
+    const existingValue =
+      this.serializedConfig[displayName]?.value ?? defaultValue;
+    this.config[displayName] = {
+      name: displayName,
+      value: existingValue,
+    };
+    this.variables
+      .addColor(this.config[displayName], "value")
+      .name(displayName)
+      .onChange(() => {
+        this.writeData();
+        this.notify();
+      });
+    this.added.push(displayName);
+    return () => {
+      return structuredClone(this.config[displayName].value);
     };
   }
 
   addButton({ fn, name }) {
     const s = {};
     s[name] = fn;
-    this.gui.add(s, name);
+    this.buttons.add(s, name);
   }
 
   addConfigData(key) {
@@ -62,7 +86,7 @@ class DataManager {
       step = null,
       name,
     } = this.config[key];
-    this.gui
+    this.variables
       .add(this.config[key], "value", minOrOptions, max, step)
       .name(name)
       .onChange(() => {
@@ -77,14 +101,14 @@ class DataManager {
 
   readData() {
     const state = localStorage.getItem(stateString);
-    if (state) {
-      this.state = JSON.parse(state);
+    if (state && state != "undefined") {
+      this.serializedState = JSON.parse(state);
     } else {
-      this.state = this.defaultState;
+      this.serializedState = {};
     }
 
     const config = localStorage.getItem(configString);
-    if (config) {
+    if (config && config != "undefined") {
       this.serializedConfig = JSON.parse(config);
     } else {
       this.serializedConfig = {};
