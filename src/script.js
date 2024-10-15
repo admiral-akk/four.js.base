@@ -592,18 +592,18 @@ const stepCountVal = data.addNumber({
   max: 128,
   step: 1,
 });
-const colorVal = data.addColor({
+data.addColor({
   displayName: "Color",
   defaultValue: [1, 1, 1],
   callback: (color) => {
     game.commands.push(new UpdateColorCommand(color));
   },
 });
-const colorWithAlpha = () => {
-  const c = colorVal();
-  c.push(1);
-  return c;
-};
+const renderModeVal = data.addEnum({
+  displayName: "Render Mode",
+  defaultValue: "Render Cascade",
+  options: ["Render Cascade", "Cascade Levels"],
+});
 function render(time) {
   timeManager.tick();
   windowManager.update();
@@ -800,6 +800,24 @@ function render(time) {
     resolution: [gl.canvas.width, gl.canvas.height],
     tPrevCascade: frameBuffers.cascadeRT.attachments[0],
   });
+
+  switch (renderModeVal()) {
+    case "Cascade Levels":
+      renderTo(gl, renderTexture, bufferInfo, {
+        resolution: [gl.canvas.width, gl.canvas.height],
+        tPrev: frameBuffers.cascadeRT.attachments[0],
+      });
+
+      break;
+    case "Render Cascade":
+    default:
+      renderTo(gl, cascadeRender, bufferInfo, {
+        resolution: [gl.canvas.width, gl.canvas.height],
+        tPrevCascade: frameBuffers.cascadeRT.attachments[0],
+      });
+
+      break;
+  }
 
   if (toSave) {
     saveImage();
