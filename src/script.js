@@ -90,6 +90,12 @@ class StartDragCommand extends Command {
   }
 }
 
+class UpdateColorCommand extends Command {
+  constructor(color) {
+    super();
+    this.color = color;
+  }
+}
 class LineCommand extends Command {
   constructor(start, end) {
     super();
@@ -165,11 +171,12 @@ class MyGame {
       this.data.state.lines = [];
       this.data.saveData();
     }
-    this.currLine = { start: [0, 0], end: [0, 0] };
+    this.activeColor = [1, 1, 1, 1];
+    this.currLine = { start: [0, 0], end: [0, 0], color: this.activeColor };
   }
 
   startLine(pos) {
-    this.currLine = { start: pos, end: pos };
+    this.currLine = { start: pos, end: pos, color: this.activeColor };
   }
 
   updateLine(pos) {
@@ -179,18 +186,29 @@ class MyGame {
   endLine(pos) {
     this.currLine.end = pos;
     this.data.state.lines.push(this.currLine);
+    this.currLine = { start: [0, 0], end: [0, 0], color: this.activeColor };
     this.data.saveData();
   }
 
   configUpdated() {
-    this.data.state.lines = [];
-    console.log("Config update", this.data.state.lines.length);
+    if (!this.data.state.lines) {
+      this.data.state.lines = [];
+    }
+  }
+
+  updateColor(color) {
+    this.activeColor = structuredClone(color);
+    this.activeColor.push(1);
+    this.currLine.color = this.activeColor;
   }
 
   applyCommand(command) {
     switch (command.type) {
       case ClearCommand:
         this.clearLines();
+        break;
+      case UpdateColorCommand:
+        this.updateColor(command.color);
         break;
       case StartDragCommand:
         {
@@ -539,9 +557,48 @@ const frameBuffers = {
 };
 let linesCount = 0;
 
-const startDepthVal = data.addNumber("Start Depth", 4, 1, 8, 1);
-const finalDepthVal = data.addNumber("Final Depth", 0, 0, 8, 1);
-const colorVal = data.addColor("Color", [1, 1, 1]);
+const startDepthVal = data.addNumber({
+  displayName: "Start Depth",
+  defaultValue: 4,
+  min: 1,
+  max: 8,
+  step: 1,
+});
+const finalDepthVal = data.addNumber({
+  displayName: "Final Depth",
+  defaultValue: 0,
+  min: 0,
+  max: 8,
+  step: 1,
+});
+const stepSizeVal = data.addNumber({
+  displayName: "Step Size",
+  defaultValue: 1,
+  min: 0.1,
+  max: 5,
+  step: 0.1,
+});
+const overlapSizeVal = data.addNumber({
+  displayName: "Overlap Size",
+  defaultValue: 1,
+  min: 1,
+  max: 5,
+  step: 0.1,
+});
+const stepCountVal = data.addNumber({
+  displayName: "Max Steps",
+  defaultValue: 8,
+  min: 1,
+  max: 128,
+  step: 1,
+});
+const colorVal = data.addColor({
+  displayName: "Color",
+  defaultValue: [1, 1, 1],
+  callback: (color) => {
+    game.commands.push(new UpdateColorCommand(color));
+  },
+});
 const colorWithAlpha = () => {
   const c = colorVal();
   c.push(1);
@@ -569,6 +626,7 @@ function render(time) {
   }
 
   while (lines.length > linesCount) {
+    console.log(lines[linesCount]);
     renderTo(
       gl,
       drawLineToBuffer,
@@ -577,7 +635,7 @@ function render(time) {
         resolution: [frameBuffers.spare.width, frameBuffers.spare.height],
         lineStart: lines[linesCount].start,
         lineEnd: lines[linesCount].end,
-        color: colorWithAlpha(),
+        color: lines[linesCount].color,
         pixelLineSize: 4,
         tPrev: frameBuffers.lightEmitters.attachments[0],
       },
@@ -591,6 +649,7 @@ function render(time) {
   }
 
   if (game.data.state.isDragging) {
+    console.log(lines);
     renderTo(
       gl,
       drawLineToBuffer,
@@ -603,7 +662,7 @@ function render(time) {
         lineStart: game.currLine.start,
         lineEnd: game.currLine.end,
         pixelLineSize: 4,
-        color: colorWithAlpha(),
+        color: game.currLine.color,
         tPrev: frameBuffers.lightEmitters.attachments[0],
       },
       frameBuffers.lightEmittersWithCurrent
@@ -679,10 +738,14 @@ function render(time) {
   );
 
   while (depth >= finalDepth) {
-    const baseDistance = (1 * Math.SQRT2) / frameBuffers.cascadeRT.width;
+    const baseDistance =
+      (stepSizeVal() * (1 * Math.SQRT2)) / frameBuffers.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
-    const minDistance = baseDistance * Math.pow(2, multiplier * (depth - 1));
+    const minDistance =
+      depth === startDepth
+        ? 0
+        : baseDistance * Math.pow(2, multiplier * (depth - 1));
     const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
     const deeperMaxDistance =
       baseDistance * Math.pow(2, multiplier * (depth + 1));
@@ -695,22 +758,22 @@ function render(time) {
           frameBuffers.cascadeRT.width,
           frameBuffers.cascadeRT.height,
         ],
-        maxSteps: 8,
+        maxSteps: stepCountVal(),
         tDistance: frameBuffers.distance.attachments[0],
         tColor: frameBuffers.lightEmittersWithCurrent.attachments[0],
         startDepth: startDepth,
         current: {
           depth: depth,
           minDistance: minDistance,
-          maxDistance: maxDistance,
+          maxDistance: maxDistance * overlapSizeVal(),
         },
         deeper: {
           depth: depth,
           minDistance: maxDistance,
-          maxDistance: deeperMaxDistance,
+          maxDistance: deeperMaxDistance * overlapSizeVal(),
         },
         debug: {
-          continousBilinearFix: true,
+          continousBilinearFix: false,
         },
         tPrevCascade: frameBuffers.cascadeRT.attachments[0],
       },

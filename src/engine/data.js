@@ -23,7 +23,7 @@ class DataManager {
     this.addButton({ name: "Clear Data", fn: () => this.clearData() });
   }
 
-  addEnum(displayName, defaultValue, options) {
+  addEnum({ displayName, defaultValue, options, callback = null }) {
     const existingValue =
       this.serializedConfig[displayName]?.value ?? defaultValue;
     this.config[displayName] = {
@@ -32,14 +32,21 @@ class DataManager {
       value: existingValue,
       minOrOptions: options,
     };
-    this.addConfigData(displayName);
+    this.addConfigData(displayName, callback);
     this.added.push(displayName);
     return () => {
       return structuredClone(this.config[displayName].value);
     };
   }
 
-  addNumber(displayName, defaultValue, min = null, max = null, step = null) {
+  addNumber({
+    displayName,
+    defaultValue,
+    min = null,
+    max = null,
+    step = null,
+    callback = null,
+  }) {
     const existingValue =
       this.serializedConfig[displayName]?.value ?? defaultValue;
     this.config[displayName] = {
@@ -50,14 +57,14 @@ class DataManager {
       max,
       step,
     };
-    this.addConfigData(displayName);
+    this.addConfigData(displayName, callback);
     this.added.push(displayName);
     return () => {
       return structuredClone(this.config[displayName].value);
     };
   }
 
-  addColor(displayName, defaultValue) {
+  addColor({ displayName, defaultValue, callback = null }) {
     const existingValue =
       this.serializedConfig[displayName]?.value ?? defaultValue;
     this.config[displayName] = {
@@ -68,9 +75,12 @@ class DataManager {
     this.variables
       .addColor(this.config[displayName], "value")
       .name(displayName)
-      .onChange(() => {
+      .onChange((v) => {
         this.saveData();
         this.notify();
+        if (callback) {
+          callback(v);
+        }
       })
       .listen();
     this.added.push(displayName);
@@ -85,7 +95,7 @@ class DataManager {
     this.buttons.add(s, name);
   }
 
-  addConfigData(key) {
+  addConfigData(key, callback) {
     const {
       minOrOptions = null,
       max = null,
@@ -95,9 +105,12 @@ class DataManager {
     this.variables
       .add(this.config[key], "value", minOrOptions, max, step)
       .name(name)
-      .onChange(() => {
+      .onChange((v) => {
         this.saveData();
         this.notify();
+        if (callback) {
+          callback(v);
+        }
       })
       .listen();
   }
