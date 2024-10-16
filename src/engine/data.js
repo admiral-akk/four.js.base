@@ -24,19 +24,19 @@ class DataManager {
   }
 
   addEnum({ displayName, defaultValue, options, callback = null }) {
-    const existingValue =
-      this.serializedConfig[displayName]?.value ?? defaultValue;
-    this.config[displayName] = {
-      name: displayName,
-      defaultValue: defaultValue,
-      value: existingValue,
-      minOrOptions: options,
-    };
-    this.addConfigData(displayName, callback);
-    this.added.push(displayName);
-    return () => {
-      return structuredClone(this.config[displayName].value);
-    };
+    if (!this.config[displayName]) {
+      const existingValue =
+        this.serializedConfig[displayName]?.value ?? defaultValue;
+      this.config[displayName] = {
+        name: displayName,
+        defaultValue: defaultValue,
+        value: existingValue,
+        minOrOptions: options,
+      };
+      this.addConfigData(displayName, callback);
+      this.added.push(displayName);
+    }
+    return this.config[displayName];
   }
 
   addNumber({
@@ -47,46 +47,46 @@ class DataManager {
     step = null,
     callback = null,
   }) {
-    const existingValue =
-      this.serializedConfig[displayName]?.value ?? defaultValue;
-    this.config[displayName] = {
-      name: displayName,
-      defaultValue: defaultValue,
-      value: existingValue,
-      minOrOptions: min,
-      max,
-      step,
-    };
-    this.addConfigData(displayName, callback);
-    this.added.push(displayName);
-    return () => {
-      return structuredClone(this.config[displayName].value);
-    };
+    if (!this.config[displayName]) {
+      const existingValue =
+        this.serializedConfig[displayName]?.value ?? defaultValue;
+      this.config[displayName] = {
+        name: displayName,
+        defaultValue: defaultValue,
+        value: existingValue,
+        minOrOptions: min,
+        max,
+        step,
+      };
+      this.addConfigData(displayName, callback);
+      this.added.push(displayName);
+    }
+    return this.config[displayName];
   }
 
   addColor({ displayName, defaultValue, callback = null }) {
-    const existingValue =
-      this.serializedConfig[displayName]?.value ?? defaultValue;
-    this.config[displayName] = {
-      name: displayName,
-      defaultValue: defaultValue,
-      value: existingValue,
-    };
-    this.variables
-      .addColor(this.config[displayName], "value")
-      .name(displayName)
-      .onChange((v) => {
-        this.saveData();
-        this.notify();
-        if (callback) {
-          callback(v);
-        }
-      })
-      .listen();
-    this.added.push(displayName);
-    return () => {
-      return structuredClone(this.config[displayName].value);
-    };
+    if (!this.config[displayName]) {
+      const existingValue =
+        this.serializedConfig[displayName]?.value ?? defaultValue;
+      this.config[displayName] = {
+        name: displayName,
+        defaultValue: defaultValue,
+        value: existingValue,
+      };
+      this.variables
+        .addColor(this.config[displayName], "value")
+        .name(displayName)
+        .onChange((v) => {
+          this.saveData();
+          this.notify();
+          if (callback) {
+            callback(v);
+          }
+        })
+        .listen();
+      this.added.push(displayName);
+    }
+    return this.config[displayName];
   }
 
   addButton({ fn, name }) {

@@ -537,7 +537,7 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    2 * width,
+    width,
     height
   ),
   finalCascadeRTSpare: twgl.createFramebufferInfo(
@@ -551,47 +551,12 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    2 * width,
+    width,
     height
   ),
 };
 let linesCount = 0;
 
-const startDepthVal = data.addNumber({
-  displayName: "Start Depth",
-  defaultValue: 4,
-  min: 1,
-  max: 8,
-  step: 1,
-});
-const finalDepthVal = data.addNumber({
-  displayName: "Final Depth",
-  defaultValue: 0,
-  min: 0,
-  max: 8,
-  step: 1,
-});
-const stepSizeVal = data.addNumber({
-  displayName: "Step Size",
-  defaultValue: 1,
-  min: 0.1,
-  max: 5,
-  step: 0.1,
-});
-const overlapSizeVal = data.addNumber({
-  displayName: "Overlap Size",
-  defaultValue: 1,
-  min: 1,
-  max: 5,
-  step: 0.1,
-});
-const stepCountVal = data.addNumber({
-  displayName: "Max Steps",
-  defaultValue: 8,
-  min: 1,
-  max: 128,
-  step: 1,
-});
 data.addColor({
   displayName: "Color",
   defaultValue: [1, 1, 1],
@@ -599,11 +564,7 @@ data.addColor({
     game.commands.push(new UpdateColorCommand(color));
   },
 });
-const renderModeVal = data.addEnum({
-  displayName: "Render Mode",
-  defaultValue: "Render Cascade",
-  options: ["Render Cascade", "Cascade Levels"],
-});
+
 function render(time) {
   timeManager.tick();
   windowManager.update();
@@ -722,8 +683,20 @@ function render(time) {
     frameBuffers.distance
   );
 
-  const startDepth = startDepthVal();
-  const finalDepth = finalDepthVal();
+  const startDepth = data.addNumber({
+    displayName: "Start Depth",
+    defaultValue: 4,
+    min: 1,
+    max: 8,
+    step: 1,
+  }).value;
+  const finalDepth = data.addNumber({
+    displayName: "Final Depth",
+    defaultValue: 0,
+    min: 0,
+    max: 8,
+    step: 1,
+  }).value;
   let depth = startDepth;
 
   renderTo(
@@ -736,7 +709,15 @@ function render(time) {
 
   while (depth >= finalDepth) {
     const baseDistance =
-      (stepSizeVal() * (1 * Math.SQRT2)) / frameBuffers.cascadeRT.width;
+      (data.addNumber({
+        displayName: "Step Size",
+        defaultValue: 1,
+        min: 0.1,
+        max: 5,
+        step: 0.1,
+      }).value *
+        (1 * Math.SQRT2)) /
+      frameBuffers.cascadeRT.width;
     const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
 
     const minDistance =
@@ -751,26 +732,59 @@ function render(time) {
       cascadeCalculate,
       bufferInfo,
       {
+        renderResolution: [
+          frameBuffers.finalCascadeRT.width,
+          frameBuffers.finalCascadeRT.height,
+        ],
         resolution: [
           frameBuffers.cascadeRT.width,
           frameBuffers.cascadeRT.height,
         ],
-        maxSteps: stepCountVal(),
+        maxSteps: data.addNumber({
+          displayName: "Max Steps",
+          defaultValue: 8,
+          min: 1,
+          max: 128,
+          step: 1,
+        }).value,
         tDistance: frameBuffers.distance.attachments[0],
         tColor: frameBuffers.lightEmittersWithCurrent.attachments[0],
         startDepth: startDepth,
         current: {
           depth: depth,
           minDistance: minDistance,
-          maxDistance: maxDistance * overlapSizeVal(),
+          maxDistance:
+            maxDistance *
+            data.addNumber({
+              displayName: "Overlap Size",
+              defaultValue: 1,
+              min: 1,
+              max: 5,
+              step: 0.1,
+            }).value,
         },
         deeper: {
           depth: depth,
           minDistance: maxDistance,
-          maxDistance: deeperMaxDistance * overlapSizeVal(),
+          maxDistance:
+            deeperMaxDistance *
+            data.addNumber({
+              displayName: "Overlap Size",
+              defaultValue: 1,
+              min: 1,
+              max: 5,
+              step: 0.1,
+            }).value,
         },
         debug: {
-          continousBilinearFix: true,
+          continousBilinearFix: data.addNumber({
+            displayName: "Continuous Bilinear Fix",
+            defaultValue: false,
+          }).value,
+          cornerProbes: data.addNumber({
+            displayName: "Corner Probes",
+            defaultValue: false,
+          }).value,
         },
         tPrevCascade: frameBuffers.cascadeRT.attachments[0],
       },
@@ -798,7 +812,13 @@ function render(time) {
     tPrevCascade: frameBuffers.cascadeRT.attachments[0],
   });
 
-  switch (renderModeVal()) {
+  switch (
+    data.addEnum({
+      displayName: "Render Mode",
+      defaultValue: "Render Cascade",
+      options: ["Render Cascade", "Cascade Levels"],
+    }).value
+  ) {
     case "Cascade Levels":
       renderTo(gl, renderTexture, bufferInfo, {
         resolution: [gl.canvas.width, gl.canvas.height],

@@ -15,9 +15,11 @@ struct CascadeConfig {
 
 struct DebugInfo {
   bool continousBilinearFix;
+  bool cornerProbes;
 };
 
 uniform vec2 resolution;
+uniform vec2 renderResolution;
 uniform int maxSteps;
 uniform sampler2D tDistance;
 uniform sampler2D tColor;
@@ -81,11 +83,18 @@ vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
 
   return sampleTexture(sampleTarget, sampleTarget2);
 }
-
 // gets the uv of the probe for this index
 vec2 indicesToProbeUv(ivec4 probeIndex) {
+
   float probeCount = float((int(textureSize(tPrevCascade, 0).x) / 4) >> probeIndex.w);
+  if (debug.cornerProbes) {
+  vec2 zeroToOne = vec2(probeIndex.xy) / (probeCount - 1.);
+  vec2 delta = 1. / renderResolution;
+  return zeroToOne * (1. - delta) + 0.5 * delta; 
+
+  } else {
   return (vec2(probeIndex.xy) + 0.5) / probeCount; 
+  }
 }
 
 
@@ -191,7 +200,6 @@ vec4 continousbilinearFix(ivec4 probeIndex) {
   return mix(top, bot, vec4(weights.y));
 
 }
-
 
 vec4 bilinearFix(ivec4 probeIndex) {
   vec2 probeUv = indicesToProbeUv(probeIndex);
