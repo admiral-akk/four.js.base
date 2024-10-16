@@ -425,8 +425,8 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 2 * 256;
-const height = 2 * 256;
+const width = 256;
+const height = 256;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
     gl,
@@ -613,7 +613,6 @@ function render(time) {
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
   const lines = game.data.state.lines;
-  console.log(lines.length, linesCount);
   if (lines.length < linesCount) {
     renderTo(
       gl,
@@ -626,7 +625,6 @@ function render(time) {
   }
 
   while (lines.length > linesCount) {
-    console.log(lines[linesCount]);
     renderTo(
       gl,
       drawLineToBuffer,
@@ -649,7 +647,6 @@ function render(time) {
   }
 
   if (game.data.state.isDragging) {
-    console.log(lines);
     renderTo(
       gl,
       drawLineToBuffer,
@@ -773,7 +770,7 @@ function render(time) {
           maxDistance: deeperMaxDistance * overlapSizeVal(),
         },
         debug: {
-          continousBilinearFix: false,
+          continousBilinearFix: true,
         },
         tPrevCascade: frameBuffers.cascadeRT.attachments[0],
       },
