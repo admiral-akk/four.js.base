@@ -16,6 +16,9 @@ struct CascadeConfig {
 struct DebugInfo {
   bool continousBilinearFix;
   bool cornerProbes;
+  bool showSampleUv;
+  bool showProbeUv;
+  bool showDirection;
 };
 
 uniform vec2 resolution;
@@ -83,20 +86,48 @@ vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
 
   return sampleTexture(sampleTarget, sampleTarget2);
 }
+
+
 // gets the uv of the probe for this index
 vec2 indicesToProbeUv(ivec4 probeIndex) {
 
   float probeCount = float((int(textureSize(tPrevCascade, 0).x) / 4) >> probeIndex.w);
   if (debug.cornerProbes) {
-  vec2 zeroToOne = vec2(probeIndex.xy) / (probeCount - 1.);
-  vec2 delta = 1. / renderResolution;
-  return zeroToOne * (1. - delta) + 0.5 * delta; 
-
+    vec2 zeroToOne = vec2(probeIndex.xy) / (probeCount - 1.);
+    vec2 delta = 1. / renderResolution;
+    return zeroToOne * (1. - delta) + 0.5 * delta; 
   } else {
-  return (vec2(probeIndex.xy) + 0.5) / probeCount; 
+    return (vec2(probeIndex.xy) + 0.5) / probeCount; 
   }
 }
 
+ivec4 topLeftIndex(ivec4 probeIndex) {
+  if (debug.cornerProbes) {
+  float probeCount = float((int(textureSize(tPrevCascade, 0).x) / 4) >> (probeIndex.w));
+    vec2 zeroToOne = vec2(probeIndex.xy) / (probeCount - 1.);
+    int deeperProbeCount = int(0.5 * probeCount  - 1.);
+    ivec2 topLeftProbe = ivec2(floor(float(deeperProbeCount) * zeroToOne));
+    if (topLeftProbe.x == deeperProbeCount ) {
+      topLeftProbe.x = deeperProbeCount - 1;
+    }
+    if (topLeftProbe.y == deeperProbeCount) {
+      topLeftProbe.y = deeperProbeCount - 1;
+    }
+    return ivec4(
+      topLeftProbe.x,
+      topLeftProbe.y, 
+    2 * probeIndex.z,
+    probeIndex.w + 1
+  );
+  } else {
+    return ivec4(
+    int(floor(float(probeIndex.x - 1 ) / 2.)),
+    int(floor(float(probeIndex.y - 1 ) / 2.)),
+    2 * probeIndex.z,
+    probeIndex.w + 1
+  );
+  }
+}
 
 vec2 probeDirectionToDir2(ivec4 probeIndex) {
   float tauOverIndexRayCount = TAU / float(4 << probeIndex.w);
@@ -131,12 +162,7 @@ ivec4 sampleUvToIndices(vec2 uv) {
 vec4 continousbilinearFix(ivec4 probeIndex) { 
   vec2 probeUv = indicesToProbeUv(probeIndex);
 
-  ivec4 indexTL = ivec4(
-    int(floor(float(probeIndex.x - 1) / 2.)),
-    int(floor(float(probeIndex.y - 1) / 2.)),
-    2 * probeIndex.z,
-    probeIndex.w + 1
-  );
+  ivec4 indexTL = topLeftIndex(probeIndex);
 
   ivec4 indexTR = indexTL + ivec4(1, 0, 0, 0);
   ivec4 indexBL = indexTL + ivec4(0, 1, 0, 0);
@@ -154,8 +180,7 @@ vec4 continousbilinearFix(ivec4 probeIndex) {
   vec2 probeBREnd1 = lineSegmentUv(indexBR, deeper.minDistance);
   vec2 probeBREnd2 = lineSegmentUv(indexBR + ivec4(0,0,1,0), deeper.minDistance);
 
-  vec2 start = lineSegmentUv(probeIndex,  current.minDistance);
-
+  vec2 start = lineSegmentUv(probeIndex, current.minDistance);
 
   vec4 radTL1 = castRay(start, probeTLEnd1, indexTL, indexTL);
   vec4 radTL2 = castRay(start, probeTLEnd2, indexTL + ivec4(0,0,1,0), indexTL + ivec4(0,0,1,0));
@@ -173,26 +198,11 @@ vec4 continousbilinearFix(ivec4 probeIndex) {
   vec4 radBR2 = castRay(start, probeBREnd2, indexBR + ivec4(0,0,1,0), indexBR + ivec4(0,0,1,0));
   vec4 radBR = 0.5 * (radBR1 + radBR2);
 
-  ivec2 texSize = textureSize(tPrevCascade, 0);
-
-  int probeCount = texSize.x >> (probeIndex.w + 2);
 
   vec2 probeTL = indicesToProbeUv(indexTL);
   vec2 probeBR = indicesToProbeUv(indexBR);
 
   vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
-  if (probeIndex.x == 0) {
-    weights.x = 1.;
-  }
-  if (probeIndex.y == 0) {
-    weights.y = 1.;
-  }
-  if (probeIndex.x == probeCount - 1) {
-    weights.x = 0.;
-  }
-  if (probeIndex.y == probeCount - 1) {
-    weights.y = 0.;
-  }
 
   vec4 top = mix(radTL, radTR, vec4(weights.x));
   vec4 bot = mix(radBL, radBR, vec4(weights.x));
@@ -204,12 +214,7 @@ vec4 continousbilinearFix(ivec4 probeIndex) {
 vec4 bilinearFix(ivec4 probeIndex) {
   vec2 probeUv = indicesToProbeUv(probeIndex);
 
-  ivec4 indexTL = ivec4(
-    int(floor(float(probeIndex.x - 1) / 2.)),
-    int(floor(float(probeIndex.y - 1) / 2.)),
-    2 * probeIndex.z,
-    probeIndex.w + 1
-  );
+  ivec4 indexTL = topLeftIndex(probeIndex);
 
   vec2 probeTL = indicesToProbeUv(indexTL);
   ivec4 indexTR = indexTL + ivec4(1, 0, 0, 0);
@@ -229,23 +234,6 @@ vec4 bilinearFix(ivec4 probeIndex) {
 
   vec2 weights = (probeUv - probeTL) / (probeBR - probeTL);
 
-  if (probeIndex.x == 0) {
-    weights.x = 1.;
-  }
-  if (probeIndex.y == 0) {
-    weights.y = 1.;
-  }
-
-  ivec2 texSize = textureSize(tPrevCascade, 0);
-
-  int probeCount = texSize.x >> (probeIndex.w + 2);
-
-  if (probeIndex.x == probeCount - 1) {
-    weights.x = 0.;
-  }
-  if (probeIndex.y == probeCount - 1) {
-    weights.y = 0.;
-  }
   vec4 top = mix(radTL, radTR, vec4(weights.x));
   vec4 bot = mix(radBL, radBR, vec4(weights.x));
 
@@ -258,14 +246,31 @@ void main() {
   if (newIndex.w != int(current.depth)) {
     outColor = texture(tPrevCascade, uv);
   } else if (current.depth == float(startDepth)) {
-    vec2 start = lineSegmentUv(newIndex, 0.);
+    vec2 start = lineSegmentUv(newIndex, current.minDistance);
     vec2 end = lineSegmentUv(newIndex, current.maxDistance);
-    outColor = castRay(start, end, ivec4(-1), ivec4(-1));
+    outColor = castRay(start, end, ivec4(-10), ivec4(-10));
   } else if (debug.continousBilinearFix) {
     outColor = continousbilinearFix(newIndex);
   } else {
     outColor = bilinearFix(newIndex);
   }
+
   
+  ivec4 indexTL = topLeftIndex(newIndex);
+
+  if (debug.showSampleUv) {
+    ivec2 texSize = textureSize(tPrevCascade, 0);
+    vec2 sampledUv = vec2(indexTL.xy) / float(texSize.x >> (indexTL.w + 2));
+    outColor.rg = sampledUv;
+  }
+  
+  if (debug.showProbeUv) {
+    vec2 sampledUv = indicesToProbeUv(newIndex) ;
+    outColor.rg = sampledUv;
+  }
+  
+  if (debug.showDirection) {
+    outColor.r = float(indexTL.z) /  float(4 << newIndex.w);
+  }
   outColor.w = 1.;
 }

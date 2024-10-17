@@ -38,12 +38,21 @@ function renderTo(
   programInfo,
   bufferInfo,
   uniforms,
-  targetFrameBuffer = null
+  targetFrameBuffer = null,
+  targetDimensions = null
 ) {
   gl.useProgram(programInfo.program);
   twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
   twgl.setUniforms(programInfo, uniforms);
   twgl.bindFramebufferInfo(gl, targetFrameBuffer);
+  if (targetDimensions) {
+    gl.viewport(
+      targetDimensions[0],
+      targetDimensions[1],
+      targetDimensions[2],
+      targetDimensions[3]
+    );
+  }
   twgl.drawBufferInfo(gl, bufferInfo);
 }
 
@@ -382,13 +391,29 @@ const fs_render_texture = `#version 300 es
 precision highp float;
 
 uniform vec2 resolution;
+uniform vec4 renderTarget;
 uniform sampler2D tPrev;
 
 out vec4 outColor;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution;
-  outColor = texture(tPrev, uv).rgba;
+  vec2 targetUv = (renderTarget.zw - renderTarget.xy) * uv + renderTarget.xy;
+  outColor = texture(tPrev, targetUv).rgba;
+}
+`;
+
+const fs_apply_gamma = `#version 300 es
+precision highp float;
+
+uniform vec2 resolution;
+uniform sampler2D tPrev;
+
+out vec4 outColor;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / resolution;
+  outColor = pow(texture(tPrev, uv), vec4(1./2.2));
 }
 `;
 
@@ -398,6 +423,7 @@ const calculateDistance = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const drawTexture = twgl.createProgramInfo(gl, [vs, fs_render_closest]);
 const fillColor = twgl.createProgramInfo(gl, [vs, fs_constant_fill]);
 const jumpFill = twgl.createProgramInfo(gl, [vs, fs_jump]);
+const applyGamma = twgl.createProgramInfo(gl, [vs, fs_apply_gamma]);
 const cascadeCalculate = twgl.createProgramInfo(gl, [vs, calculateCascade]);
 const cascadeRender = twgl.createProgramInfo(gl, [vs, renderCascade]);
 
@@ -425,8 +451,8 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 256;
-const height = 256;
+const width = 4 * 256;
+const height = 4 * 256;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
     gl,
@@ -520,6 +546,20 @@ const frameBuffers = {
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
+        wrap: gl.CLAMP_TO_EDGE,
+      },
+    ],
+    2 * width,
+    height
+  ),
+  linearCascadeRT: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA8,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
@@ -631,6 +671,7 @@ function render(time) {
       renderTexture,
       bufferInfo,
       {
+        renderTarget: [0, 0, 1, 1],
         resolution: [
           frameBuffers.lightEmitters.width,
           frameBuffers.lightEmitters.height,
@@ -687,7 +728,7 @@ function render(time) {
     displayName: "Start Depth",
     defaultValue: 4,
     min: 1,
-    max: 8,
+    max: Math.log2(width) - 2,
     step: 1,
   }).value;
   const finalDepth = data.addNumber({
@@ -708,25 +749,32 @@ function render(time) {
   );
 
   while (depth >= finalDepth) {
-    const baseDistance =
+    const baseDistance = (2 * Math.SQRT2) / frameBuffers.cascadeRT.width;
+    const multiplier =
       (data.addNumber({
         displayName: "Step Size",
         defaultValue: 1,
         min: 0.1,
-        max: 5,
+        max: 4,
         step: 0.1,
       }).value *
-        (1 * Math.SQRT2)) /
-      frameBuffers.cascadeRT.width;
-    const multiplier = Math.log2(Math.SQRT2 / baseDistance) / startDepth;
+        Math.log2(Math.SQRT2 / baseDistance)) /
+      startDepth;
+
+    const shortestDistance = (5 * Math.SQRT2) / frameBuffers.cascadeRT.width;
+    const longestDistance = 2 * Math.SQRT2;
+
+    const multiplier2 = Math.log2(longestDistance / shortestDistance);
 
     const minDistance =
-      depth === startDepth
+      depth === 0
         ? 0
-        : baseDistance * Math.pow(2, multiplier * (depth - 1));
-    const maxDistance = baseDistance * Math.pow(2, multiplier * depth);
+        : shortestDistance *
+          Math.pow(2, (multiplier2 * (depth - 1)) / startDepth);
+    const maxDistance =
+      shortestDistance * Math.pow(2, (multiplier2 * depth) / startDepth);
     const deeperMaxDistance =
-      baseDistance * Math.pow(2, multiplier * (depth + 1));
+      shortestDistance * Math.pow(2, (multiplier2 * (depth + 1)) / startDepth);
     renderTo(
       gl,
       cascadeCalculate,
@@ -753,28 +801,21 @@ function render(time) {
         current: {
           depth: depth,
           minDistance: minDistance,
-          maxDistance:
-            maxDistance *
-            data.addNumber({
-              displayName: "Overlap Size",
-              defaultValue: 1,
-              min: 1,
-              max: 5,
-              step: 0.1,
-            }).value,
+          maxDistance: maxDistance,
         },
         deeper: {
           depth: depth,
-          minDistance: maxDistance,
-          maxDistance:
-            deeperMaxDistance *
-            data.addNumber({
-              displayName: "Overlap Size",
-              defaultValue: 1,
-              min: 1,
-              max: 5,
+          minDistance:
+            (data.addNumber({
+              displayName: "Overlap Factor",
+              defaultValue: 0,
+              min: 0,
+              max: 1,
               step: 0.1,
-            }).value,
+            }).value +
+              1) *
+            maxDistance,
+          maxDistance: deeperMaxDistance,
         },
         debug: {
           continousBilinearFix: data.addNumber({
@@ -783,6 +824,18 @@ function render(time) {
           }).value,
           cornerProbes: data.addNumber({
             displayName: "Corner Probes",
+            defaultValue: false,
+          }).value,
+          showSampleUv: data.addNumber({
+            displayName: "Show Sample Uv",
+            defaultValue: false,
+          }).value,
+          showProbeUv: data.addNumber({
+            displayName: "Show Probe Uv",
+            defaultValue: false,
+          }).value,
+          showDirection: data.addNumber({
+            displayName: "Show Direction Uv",
             defaultValue: false,
           }).value,
         },
@@ -797,6 +850,20 @@ function render(time) {
     ];
     depth--;
   }
+  renderTo(
+    gl,
+    renderTexture,
+    bufferInfo,
+    {
+      resolution: [
+        frameBuffers.linearCascadeRT.width,
+        frameBuffers.linearCascadeRT.height,
+      ],
+      renderTarget: [0, 0, 1, 1],
+      tPrev: frameBuffers.cascadeRT.attachments[0],
+    },
+    frameBuffers.linearCascadeRT
+  );
 
   renderTo(gl, drawTexture, bufferInfo, {
     resolution: [gl.canvas.width, gl.canvas.height],
@@ -820,9 +887,53 @@ function render(time) {
     }).value
   ) {
     case "Cascade Levels":
-      renderTo(gl, renderTexture, bufferInfo, {
+      renderTo(
+        gl,
+        renderTexture,
+        bufferInfo,
+        {
+          renderTarget: [
+            data.addNumber({
+              displayName: "minx",
+              defaultValue: 0,
+              min: 0,
+              max: 1,
+              step: 0.01,
+            }).value,
+            data.addNumber({
+              displayName: "miny",
+              defaultValue: 0,
+              min: 0,
+              max: 1,
+              step: 0.01,
+            }).value,
+            data.addNumber({
+              displayName: "maxx",
+              defaultValue: 1,
+              min: 0,
+              max: 1,
+              step: 0.01,
+            }).value,
+            data.addNumber({
+              displayName: "maxy",
+              defaultValue: 1,
+              min: 0,
+              max: 1,
+              step: 0.01,
+            }).value,
+          ],
+          resolution: [
+            frameBuffers.finalCascadeRT.width,
+            frameBuffers.finalCascadeRT.height,
+          ],
+          tPrev: frameBuffers.linearCascadeRT.attachments[0],
+        },
+        frameBuffers.finalCascadeRT
+      );
+
+      renderTo(gl, applyGamma, bufferInfo, {
         resolution: [gl.canvas.width, gl.canvas.height],
-        tPrev: frameBuffers.cascadeRT.attachments[0],
+        tPrev: frameBuffers.finalCascadeRT.attachments[0],
       });
 
       break;
@@ -830,7 +941,7 @@ function render(time) {
     default:
       renderTo(gl, cascadeRender, bufferInfo, {
         resolution: [gl.canvas.width, gl.canvas.height],
-        tPrevCascade: frameBuffers.cascadeRT.attachments[0],
+        tPrevCascade: frameBuffers.linearCascadeRT.attachments[0],
       });
 
       break;
