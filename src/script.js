@@ -451,8 +451,8 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 4 * 256;
-const height = 4 * 256;
+const width = 256;
+const height = 256;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
     gl,
@@ -528,7 +528,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA8,
+        internalFormat: gl.RGBA32F,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -542,7 +542,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA8,
+        internalFormat: gl.RGBA32F,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -556,10 +556,10 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA8,
+        internalFormat: gl.RGBA32F,
         format: gl.RGBA,
-        mag: gl.NEAREST,
-        min: gl.NEAREST,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
@@ -570,7 +570,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA8,
+        internalFormat: gl.RGBA32F,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
@@ -584,7 +584,7 @@ const frameBuffers = {
     gl,
     [
       {
-        internalFormat: gl.RGBA8,
+        internalFormat: gl.RGBA32F,
         format: gl.RGBA,
         mag: gl.LINEAR,
         min: gl.LINEAR,
