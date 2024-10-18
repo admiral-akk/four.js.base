@@ -451,8 +451,8 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 256;
-const height = 256;
+const width = 2 * 128;
+const height = 2 * 128;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
     gl,
@@ -749,19 +749,7 @@ function render(time) {
   );
 
   while (depth >= finalDepth) {
-    const baseDistance = (2 * Math.SQRT2) / frameBuffers.cascadeRT.width;
-    const multiplier =
-      (data.addNumber({
-        displayName: "Step Size",
-        defaultValue: 1,
-        min: 0.1,
-        max: 4,
-        step: 0.1,
-      }).value *
-        Math.log2(Math.SQRT2 / baseDistance)) /
-      startDepth;
-
-    const shortestDistance = (5 * Math.SQRT2) / frameBuffers.cascadeRT.width;
+    const shortestDistance = (2 * Math.SQRT2) / frameBuffers.cascadeRT.width;
     const longestDistance = 2 * Math.SQRT2;
 
     const multiplier2 = Math.log2(longestDistance / shortestDistance);
@@ -790,7 +778,7 @@ function render(time) {
         ],
         maxSteps: data.addNumber({
           displayName: "Max Steps",
-          defaultValue: 8,
+          defaultValue: 32,
           min: 1,
           max: 128,
           step: 1,
@@ -820,11 +808,11 @@ function render(time) {
         debug: {
           continousBilinearFix: data.addNumber({
             displayName: "Continuous Bilinear Fix",
-            defaultValue: false,
+            defaultValue: true,
           }).value,
           cornerProbes: data.addNumber({
             displayName: "Corner Probes",
-            defaultValue: false,
+            defaultValue: true,
           }).value,
           showSampleUv: data.addNumber({
             displayName: "Show Sample Uv",
