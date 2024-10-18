@@ -427,6 +427,116 @@ const applyGamma = twgl.createProgramInfo(gl, [vs, fs_apply_gamma]);
 const cascadeCalculate = twgl.createProgramInfo(gl, [vs, calculateCascade]);
 const cascadeRender = twgl.createProgramInfo(gl, [vs, renderCascade]);
 
+function temp() {
+  const vs_instance = `#version 300 es
+    in vec2 position;
+    in vec4 color;
+    in mat4 matrix;
+    
+    out vec4 v_color;
+      void main() {
+        // Multiply the position by the matrix.
+        gl_Position = matrix * vec4(position, 0.0, 1.0);
+        v_color = color;
+      }
+    `;
+  const fs_instance_color = `#version 300 es
+
+    precision mediump float;
+    
+    in vec4 v_color;
+    
+    out vec4 outColor;
+    void main() {
+      outColor = v_color;
+    }`;
+
+  const instanceColor = twgl.createProgramInfo(gl, [
+    vs_instance,
+    fs_instance_color,
+  ]);
+  const numInstances = 5;
+  const m4 = twgl.m4;
+  const matrices = [
+    m4.identity(),
+    m4.identity(),
+    m4.identity(),
+    m4.identity(),
+    m4.identity(),
+  ];
+  const newMat = [];
+
+  matrices.forEach((mat, ndx) => {
+    const newM = m4.translation([-0.5 + ndx * 0.25, 0, 0]);
+    console.log(newM);
+    newM.forEach((v, i) => {
+      newMat.push(v);
+    });
+  });
+
+  const arrays2 = {
+    position: {
+      numComponents: 2,
+      data: [
+        -0.1, 0.4, -0.1, -0.4, 0.1, -0.4, 0.1, -0.4, -0.1, 0.4, 0.1, 0.4, 0.4,
+        -0.1, -0.4, -0.1, -0.4, 0.1, -0.4, 0.1, 0.4, -0.1, 0.4, 0.1,
+      ],
+    },
+    color: {
+      numComponents: 4,
+      data: [
+        1,
+        0,
+        0,
+        1, // red
+        0,
+        1,
+        0,
+        1, // green
+        0,
+        0,
+        1,
+        1, // blue
+        1,
+        0,
+        1,
+        1, // magenta
+        0,
+        1,
+        1,
+        1, // cyan
+      ],
+      divisor: 1,
+    },
+    matrix: {
+      numComponents: 16,
+      data: newMat,
+      divisor: 1,
+    },
+  };
+  console.log(newMat);
+  const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays2);
+  const vertexArrayInfo = twgl.createVertexArrayInfo(
+    gl,
+    instanceColor,
+    bufferInfo
+  );
+  console.log(vertexArrayInfo);
+
+  gl.useProgram(instanceColor.program);
+  twgl.setBuffersAndAttributes(gl, instanceColor, vertexArrayInfo);
+  twgl.setUniforms(instanceColor, {});
+  twgl.bindFramebufferInfo(gl, null);
+  twgl.drawBufferInfo(
+    gl,
+    vertexArrayInfo,
+    gl.TRIANGLES,
+    vertexArrayInfo.numElements,
+    0,
+    numInstances
+  );
+}
+
 let toSave = false;
 
 data.addButton({
@@ -941,4 +1051,5 @@ function render(time) {
 
   requestAnimationFrame(render);
 }
-requestAnimationFrame(render);
+temp();
+//requestAnimationFrame(render);
