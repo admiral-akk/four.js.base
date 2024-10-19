@@ -427,7 +427,7 @@ const applyGamma = twgl.createProgramInfo(gl, [vs, fs_apply_gamma]);
 const cascadeCalculate = twgl.createProgramInfo(gl, [vs, calculateCascade]);
 const cascadeRender = twgl.createProgramInfo(gl, [vs, renderCascade]);
 
-function temp() {
+function drawToBuffer(time, buffer) {
   const vs_instance = `#version 300 es
     in vec2 position;
     in vec4 color;
@@ -448,39 +448,47 @@ function temp() {
     
     out vec4 outColor;
     void main() {
-      outColor = v_color;
+      outColor = vec4(1.);
     }`;
 
   const instanceColor = twgl.createProgramInfo(gl, [
     vs_instance,
     fs_instance_color,
   ]);
-  const numInstances = 5;
+  const numInstances = 25;
   const m4 = twgl.m4;
-  const matrices = [
-    m4.identity(),
-    m4.identity(),
-    m4.identity(),
-    m4.identity(),
-    m4.identity(),
-  ];
   const newMat = [];
 
-  matrices.forEach((mat, ndx) => {
-    const newM = m4.translation([-0.5 + ndx * 0.25, 0, 0]);
-    console.log(newM);
-    newM.forEach((v, i) => {
+  for (let i = 0; i < numInstances; i++) {
+    var mat = m4.identity();
+    mat = m4.translation([
+      -0.5 +
+        i / numInstances +
+        Math.cos(((i / numInstances + 1) * time) / 1000) / 10,
+      Math.sin(((i / numInstances + 1) * time) / 10000),
+      0,
+    ]);
+    mat.forEach((v, i) => {
       newMat.push(v);
     });
-  });
+  }
+
+  const vertexData = [];
+
+  const numPts = 32;
+  const pointSize = 0.1;
+
+  for (var i = 0; i <= numPts; i++) {
+    vertexData.push(
+      pointSize * Math.sin((i * Math.PI * 2) / numPts),
+      pointSize * Math.cos((i * Math.PI * 2) / numPts)
+    );
+  }
 
   const arrays2 = {
     position: {
       numComponents: 2,
-      data: [
-        -0.1, 0.4, -0.1, -0.4, 0.1, -0.4, 0.1, -0.4, -0.1, 0.4, 0.1, 0.4, 0.4,
-        -0.1, -0.4, -0.1, -0.4, 0.1, -0.4, 0.1, 0.4, -0.1, 0.4, 0.1,
-      ],
+      data: vertexData,
     },
     color: {
       numComponents: 4,
@@ -514,23 +522,21 @@ function temp() {
       divisor: 1,
     },
   };
-  console.log(newMat);
   const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays2);
   const vertexArrayInfo = twgl.createVertexArrayInfo(
     gl,
     instanceColor,
     bufferInfo
   );
-  console.log(vertexArrayInfo);
 
   gl.useProgram(instanceColor.program);
   twgl.setBuffersAndAttributes(gl, instanceColor, vertexArrayInfo);
   twgl.setUniforms(instanceColor, {});
-  twgl.bindFramebufferInfo(gl, null);
+  twgl.bindFramebufferInfo(gl, buffer);
   twgl.drawBufferInfo(
     gl,
     vertexArrayInfo,
-    gl.TRIANGLES,
+    gl.TRIANGLE_FAN,
     vertexArrayInfo.numElements,
     0,
     numInstances
@@ -561,8 +567,8 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 2 * 128;
-const height = 2 * 128;
+const width = 128;
+const height = width;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
     gl,
@@ -570,13 +576,13 @@ const frameBuffers = {
       {
         internalFormat: gl.RGBA8,
         format: gl.RGBA,
-        mag: gl.NEAREST,
-        min: gl.NEAREST,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    height
+    1024,
+    1024
   ),
   lightEmittersWithCurrent: twgl.createFramebufferInfo(
     gl,
@@ -584,13 +590,13 @@ const frameBuffers = {
       {
         internalFormat: gl.RGBA8,
         format: gl.RGBA,
-        mag: gl.NEAREST,
-        min: gl.NEAREST,
+        mag: gl.LINEAR,
+        min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    height
+    1024,
+    1024
   ),
   distance: twgl.createFramebufferInfo(
     gl,
@@ -603,8 +609,8 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    height
+    1024,
+    1024
   ),
   fill: twgl.createFramebufferInfo(
     gl,
@@ -617,8 +623,8 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    height
+    1024,
+    1024
   ),
   spare: twgl.createFramebufferInfo(
     gl,
@@ -631,8 +637,8 @@ const frameBuffers = {
         wrap: gl.CLAMP_TO_EDGE,
       },
     ],
-    width,
-    height
+    1024,
+    1024
   ),
   cascadeRT: twgl.createFramebufferInfo(
     gl,
@@ -791,6 +797,15 @@ function render(time) {
       frameBuffers.lightEmittersWithCurrent
     );
   }
+  renderTo(
+    gl,
+    fillColor,
+    bufferInfo,
+    { color: [0, 0, 0, 0] },
+    frameBuffers.lightEmittersWithCurrent
+  );
+
+  drawToBuffer(time, frameBuffers.lightEmittersWithCurrent);
 
   renderTo(
     gl,
@@ -848,7 +863,14 @@ function render(time) {
     max: 8,
     step: 1,
   }).value;
-  let depth = startDepth;
+  const initialDepth = data.addNumber({
+    displayName: "Initial Depth",
+    defaultValue: 0,
+    min: 1,
+    max: Math.log2(width) - 2,
+    step: 1,
+  }).value;
+  let depth = initialDepth;
 
   renderTo(
     gl,
@@ -860,7 +882,7 @@ function render(time) {
 
   while (depth >= finalDepth) {
     const shortestDistance = (2 * Math.SQRT2) / frameBuffers.cascadeRT.width;
-    const longestDistance = 2 * Math.SQRT2;
+    const longestDistance = Math.SQRT2;
 
     const multiplier2 = Math.log2(longestDistance / shortestDistance);
 
@@ -873,6 +895,7 @@ function render(time) {
       shortestDistance * Math.pow(2, (multiplier2 * depth) / startDepth);
     const deeperMaxDistance =
       shortestDistance * Math.pow(2, (multiplier2 * (depth + 1)) / startDepth);
+
     renderTo(
       gl,
       cascadeCalculate,
@@ -1051,5 +1074,4 @@ function render(time) {
 
   requestAnimationFrame(render);
 }
-temp();
-//requestAnimationFrame(render);
+requestAnimationFrame(render);
