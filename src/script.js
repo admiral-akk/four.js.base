@@ -427,7 +427,18 @@ const applyGamma = twgl.createProgramInfo(gl, [vs, fs_apply_gamma]);
 const cascadeCalculate = twgl.createProgramInfo(gl, [vs, calculateCascade]);
 const cascadeRender = twgl.createProgramInfo(gl, [vs, renderCascade]);
 
-function drawToBuffer(time, buffer) {
+const numInstances = 4;
+const colors = [];
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * max);
+}
+for (let i = 0; i < numInstances; i++) {
+  const v = getRandomInt(2) / 1;
+  colors.push(v, v, v, 1);
+}
+function drawToBuffer(time, buffer, size) {
+  time += 100000;
   const vs_instance = `#version 300 es
     in vec2 position;
     in vec4 color;
@@ -448,14 +459,14 @@ function drawToBuffer(time, buffer) {
     
     out vec4 outColor;
     void main() {
-      outColor = vec4(1.);
+      outColor = v_color;
     }`;
 
   const instanceColor = twgl.createProgramInfo(gl, [
     vs_instance,
     fs_instance_color,
   ]);
-  const numInstances = 25;
+
   const m4 = twgl.m4;
   const newMat = [];
 
@@ -476,7 +487,7 @@ function drawToBuffer(time, buffer) {
   const vertexData = [];
 
   const numPts = 32;
-  const pointSize = 0.1;
+  const pointSize = size;
 
   for (var i = 0; i <= numPts; i++) {
     vertexData.push(
@@ -492,28 +503,7 @@ function drawToBuffer(time, buffer) {
     },
     color: {
       numComponents: 4,
-      data: [
-        1,
-        0,
-        0,
-        1, // red
-        0,
-        1,
-        0,
-        1, // green
-        0,
-        0,
-        1,
-        1, // blue
-        1,
-        0,
-        1,
-        1, // magenta
-        0,
-        1,
-        1,
-        1, // cyan
-      ],
+      data: colors,
       divisor: 1,
     },
     matrix: {
@@ -567,7 +557,7 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 128;
+const width = 8 * 128;
 const height = width;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
@@ -579,6 +569,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     1024,
@@ -593,6 +584,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     1024,
@@ -607,6 +599,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     1024,
@@ -621,6 +614,7 @@ const frameBuffers = {
         mag: gl.NEAREST,
         min: gl.NEAREST,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     1024,
@@ -635,6 +629,7 @@ const frameBuffers = {
         mag: gl.NEAREST,
         min: gl.NEAREST,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     1024,
@@ -649,6 +644,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     2 * width,
@@ -663,6 +659,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     2 * width,
@@ -677,6 +674,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     2 * width,
@@ -691,6 +689,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     width,
@@ -705,6 +704,7 @@ const frameBuffers = {
         mag: gl.LINEAR,
         min: gl.LINEAR,
         wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
       },
     ],
     width,
@@ -751,7 +751,7 @@ function render(time) {
         lineStart: lines[linesCount].start,
         lineEnd: lines[linesCount].end,
         color: lines[linesCount].color,
-        pixelLineSize: 4,
+        pixelLineSize: 16,
         tPrev: frameBuffers.lightEmitters.attachments[0],
       },
       frameBuffers.spare
@@ -797,15 +797,8 @@ function render(time) {
       frameBuffers.lightEmittersWithCurrent
     );
   }
-  renderTo(
-    gl,
-    fillColor,
-    bufferInfo,
-    { color: [0, 0, 0, 0] },
-    frameBuffers.lightEmittersWithCurrent
-  );
 
-  drawToBuffer(time, frameBuffers.lightEmittersWithCurrent);
+  drawToBuffer(time, frameBuffers.lightEmittersWithCurrent, 0.05);
 
   renderTo(
     gl,
@@ -865,7 +858,7 @@ function render(time) {
   }).value;
   const initialDepth = data.addNumber({
     displayName: "Initial Depth",
-    defaultValue: 0,
+    defaultValue: Math.log2(width) - 2,
     min: 1,
     max: Math.log2(width) - 2,
     step: 1,
@@ -1067,7 +1060,7 @@ function render(time) {
 
       break;
   }
-
+  //drawToBuffer(time, null, 0.03);
   if (toSave) {
     saveImage();
   }
