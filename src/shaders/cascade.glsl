@@ -64,7 +64,7 @@ vec4 sampleSky(vec2 dir) {
 vec4 castRay(vec2 start, vec2 end, ivec4 sampleTarget, ivec4 sampleTarget2) {
   vec2 delta = end-start;
   float distanceLeft = length(delta);
-  float minStep2 = 2. / float(textureSize(tColor, 0).x);
+  float minStep2 = 4. / float(textureSize(tColor, 0).x);
   vec2 dir = delta / distanceLeft;
   for (int i = 0; i < maxSteps; i++) {
     if (distanceLeft < 0.) {

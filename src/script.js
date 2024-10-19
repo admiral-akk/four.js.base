@@ -30,6 +30,9 @@ const windowManager = new WindowManager(1);
 
 // Render Pipeline
 
+function getRandomInt({ min = 0, max, steps = 2 }) {
+  return (Math.floor(steps * Math.random()) / (steps - 1)) * (max - min) + min;
+}
 const gl = document.getElementById("webgl").getContext("webgl2");
 twgl.addExtensionsToContext(gl);
 
@@ -84,6 +87,12 @@ class Command {
 }
 
 class ClearCommand extends Command {}
+class TickCommand extends Command {
+  constructor(delta) {
+    super();
+    this.delta = delta;
+  }
+}
 
 class DragCommand extends Command {
   constructor(curr) {
@@ -178,10 +187,32 @@ class MyGame {
     data.listeners.push(this);
     if (!Array.isArray(this.data.state.lines)) {
       this.data.state.lines = [];
+      this.data.state.balls = this.setupBalls();
+      this.data.state.ball = {
+        position: [0, 0],
+        color: [1, 1, 1, 1],
+        size: 0.1,
+        velocity: [0.8, 0.4],
+      };
       this.data.saveData();
     }
     this.activeColor = [1, 1, 1, 1];
     this.currLine = { start: [0, 0], end: [0, 0], color: this.activeColor };
+  }
+
+  setupBalls() {
+    const balls = [];
+    for (var i = 0; i < 200; i++) {
+      balls.push({
+        position: [
+          getRandomInt({ max: 0.2, min: -0.2, steps: 40 }),
+          getRandomInt({ max: 0.9, min: -0.9, steps: 100 }),
+        ],
+        color: [0, 0, 0, 1],
+        size: getRandomInt({ max: 0.02, min: 0.01, steps: 5 }),
+      });
+    }
+    return balls;
   }
 
   startLine(pos) {
@@ -211,8 +242,43 @@ class MyGame {
     this.currLine.color = this.activeColor;
   }
 
+  moveBall(delta) {
+    const { ball } = this.data.state;
+    ball.position[0] += delta * ball.velocity[0];
+    ball.position[1] += delta * ball.velocity[1];
+
+    if (Math.abs(ball.position[0]) + ball.size >= 1) {
+      ball.velocity[0] *= -1;
+    }
+    if (Math.abs(ball.position[1]) + ball.size >= 1) {
+      ball.velocity[1] *= -1;
+    }
+  }
+
   applyCommand(command) {
     switch (command.type) {
+      case TickCommand:
+        const { delta } = command;
+        const { ball, balls } = this.data.state;
+        this.moveBall(delta);
+        for (let i = 0; i < balls.length; i++) {
+          const other = balls[i];
+          other.color[0] = Math.max(0, other.color[0] - 0.4 * delta);
+          other.color[1] = Math.max(0, other.color[1] - 0.4 * delta);
+          other.color[2] = Math.max(0, other.color[2] - 0.4 * delta);
+          const diff = [
+            other.position[0] - ball.position[0],
+            other.position[1] - ball.position[1],
+          ];
+          const dist = Math.sqrt(diff[0] * diff[0] + diff[1] * diff[1]);
+          if (dist < 0.2) {
+            other.color[0] = ball.color[0];
+            other.color[1] = ball.color[1];
+            other.color[2] = ball.color[2];
+          }
+          this.data.saveData();
+        }
+        break;
       case ClearCommand:
         this.clearLines();
         break;
@@ -245,6 +311,7 @@ class MyGame {
   }
 
   update() {
+    this.commands.push(new TickCommand(0.04));
     this.commands.forEach((command) => {
       this.applyCommand(command);
     });
@@ -427,17 +494,7 @@ const applyGamma = twgl.createProgramInfo(gl, [vs, fs_apply_gamma]);
 const cascadeCalculate = twgl.createProgramInfo(gl, [vs, calculateCascade]);
 const cascadeRender = twgl.createProgramInfo(gl, [vs, renderCascade]);
 
-const numInstances = 4;
-const colors = [];
-
-function getRandomInt(max) {
-  return Math.floor(Math.random() * max);
-}
-for (let i = 0; i < numInstances; i++) {
-  const v = getRandomInt(2) / 1;
-  colors.push(v, v, v, 1);
-}
-function drawToBuffer(time, buffer, size) {
+function drawToBuffer(time, buffer, size, game) {
   time += 100000;
   const vs_instance = `#version 300 es
     in vec2 position;
@@ -468,31 +525,48 @@ function drawToBuffer(time, buffer, size) {
   ]);
 
   const m4 = twgl.m4;
-  const newMat = [];
+  const matrices = [];
+  const colors = [];
 
-  for (let i = 0; i < numInstances; i++) {
-    var mat = m4.identity();
-    mat = m4.translation([
-      -0.5 +
-        i / numInstances +
-        Math.cos(((i / numInstances + 1) * time) / 1000) / 10,
-      Math.sin(((i / numInstances + 1) * time) / 10000),
+  const { ball, balls } = game.data.state;
+
+  for (let i = 0; i < balls.length; i++) {
+    const b = balls[i];
+    const scale = m4.scaling([b.size, b.size, b.size]);
+    const translation = m4.translation([
+      b.position[0] / b.size,
+      b.position[1] / b.size,
       0,
     ]);
+
+    const mat = m4.multiply(scale, translation);
     mat.forEach((v, i) => {
-      newMat.push(v);
+      matrices.push(v);
     });
+    colors.push(b.color[0], b.color[1], b.color[2], 1);
   }
+
+  const scale = m4.scaling([ball.size, ball.size, ball.size]);
+  const translation = m4.translation([
+    ball.position[0] / ball.size,
+    ball.position[1] / ball.size,
+    0,
+  ]);
+
+  const mat = m4.multiply(scale, translation);
+  mat.forEach((v, i) => {
+    matrices.push(v);
+  });
+  colors.push(ball.color[0], ball.color[1], ball.color[2], 1);
 
   const vertexData = [];
 
   const numPts = 32;
-  const pointSize = size;
 
   for (var i = 0; i <= numPts; i++) {
     vertexData.push(
-      pointSize * Math.sin((i * Math.PI * 2) / numPts),
-      pointSize * Math.cos((i * Math.PI * 2) / numPts)
+      Math.sin((i * Math.PI * 2) / numPts),
+      Math.cos((i * Math.PI * 2) / numPts)
     );
   }
 
@@ -508,7 +582,7 @@ function drawToBuffer(time, buffer, size) {
     },
     matrix: {
       numComponents: 16,
-      data: newMat,
+      data: matrices,
       divisor: 1,
     },
   };
@@ -529,7 +603,7 @@ function drawToBuffer(time, buffer, size) {
     gl.TRIANGLE_FAN,
     vertexArrayInfo.numElements,
     0,
-    numInstances
+    balls.length + 1
   );
 }
 
@@ -798,7 +872,15 @@ function render(time) {
     );
   }
 
-  drawToBuffer(time, frameBuffers.lightEmittersWithCurrent, 0.05);
+  renderTo(
+    gl,
+    fillColor,
+    bufferInfo,
+    { color: [0, 0, 0, 0] },
+    frameBuffers.lightEmittersWithCurrent
+  );
+
+  drawToBuffer(time, frameBuffers.lightEmittersWithCurrent, 0.05, game);
 
   renderTo(
     gl,
@@ -1060,6 +1142,9 @@ function render(time) {
 
       break;
   }
+
+  // drawToBuffer(time, null, 0.05, game);
+
   //drawToBuffer(time, null, 0.03);
   if (toSave) {
     saveImage();
