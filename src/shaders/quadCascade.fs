@@ -165,14 +165,68 @@ ivec4 topLeftIndex(ivec4 probeIndex) {
 
 void main() {
     ivec4 index = sampleUvToIndices(ivec2(gl_FragCoord.xy));
-
+    
+    if (debug.noFix) {
+        
     vec2 start = lineSegmentUv(index, current.minDistance);
     vec2 end = lineSegmentUv(index, current.maxDistance);
     outColor = castRay(start, end);
+    } else {
+        vec4 probeUvDir = indicesToProbeDir(index);
+        ivec4 indexTL = topLeftIndex(index);
+        vec2 probeTL = indicesToProbeUv(indexTL);
+        ivec4 indexTR = indexTL + ivec4(1, 0, 0, 0);
+        vec2 probeTR = indicesToProbeUv(indexTR); 
+        ivec4 indexBL = indexTL + ivec4(0, 1, 0, 0);
+        vec2 probeBL = indicesToProbeUv(indexBL);
+        ivec4 indexBR = indexTL + ivec4(1, 1, 0, 0);
+        vec2 probeBR = indicesToProbeUv(indexBR);
+        
+        vec2 start = probeUvDir.xy + current.minDistance * probeUvDir.zw;
+        vec2 end = probeUvDir.xy + current.maxDistance * probeUvDir.zw;
+
+        vec4 radTL = castRay(start, end + (probeTL - probeUvDir.xy));
+        vec4 radTR = castRay(start, end + (probeTR - probeUvDir.xy));
+        vec4 radBL = castRay(start, end + (probeBL - probeUvDir.xy));
+        vec4 radBR = castRay(start, end + (probeBR - probeUvDir.xy));
+
+        if (radTL.a < 0.5) {
+            for (int i = 0; i < 4; i++) {
+                radTL += texture(tPrevCascade, indicesToSampleUv(indexTL + ivec4(0,0,i,0)));
+            }
+            radTL *= 0.25;
+        } 
+
+        if (radTR.a < 0.5) {
+            for (int i = 0; i < 4; i++) {
+                radTR += texture(tPrevCascade, indicesToSampleUv(indexTR + ivec4(0,0,i,0)));
+            }
+            radTR *= 0.25;
+        } 
+        if (radBL.a < 0.5) {
+            for (int i = 0; i < 4; i++) {
+                radBL += texture(tPrevCascade, indicesToSampleUv(indexBL + ivec4(0,0,i,0)));
+            }
+            radBL *= 0.25;
+        } 
+        if (radBR.a < 0.5) {
+            for (int i = 0; i < 4; i++) {
+                radBR += texture(tPrevCascade, indicesToSampleUv(indexBR + ivec4(0,0,i,0)));
+            }
+            radBR *= 0.25;
+        } 
+
+        vec2 weights = (probeUvDir.xy - probeTL) / (probeBR - probeTL);
+
+        vec4 top = mix(radTL, radTR, vec4(weights.x));
+        vec4 bot = mix(radBL, radBR, vec4(weights.x));
+
+        outColor =  mix(top, bot, vec4(weights.y));
+    }
     
     if (outColor.w < 0.5) {
         ivec4 indexTL = topLeftIndex(index);
-        ivec4 indexBR = indexTL+ ivec4(1,1,0,0);
+        ivec4 indexBR = indexTL + ivec4(1,1,0,0);
 
         vec2 probe = indicesToProbeUv(index);
         vec2 probeTL = indicesToProbeUv(indexTL);
