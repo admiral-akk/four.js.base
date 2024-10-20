@@ -161,16 +161,68 @@ ivec4 topLeftIndex(ivec4 probeIndex) {
     );
 }
 
+vec4 sampleCascade(ivec4 deeperIndex) {
+    vec4 rad = vec4(0.);
+    if (rad.a < 0.5) {
+        for (int i = 0; i < 4; i++) {
+            rad += texture(tPrevCascade, indicesToSampleUv(deeperIndex + ivec4(0,0,i,0)));
+        }
+        rad *= 0.25;
+    } 
+    return rad;
 
+}
+
+vec4 bilinearRaycast(
+    vec2 start,
+    vec2 end,
+    vec2 probeUv,
+    vec2 deeperUv,
+    ivec4 deeperIndex
+) {
+    vec4 rad = castRay(start, end + (deeperUv - probeUv));
+    if (rad.a < 0.5) {
+        rad = sampleCascade(deeperIndex);
+    } 
+    return rad;
+}
 
 void main() {
     ivec4 index = sampleUvToIndices(ivec2(gl_FragCoord.xy));
     
     if (debug.noFix) {
-        
-    vec2 start = lineSegmentUv(index, current.minDistance);
-    vec2 end = lineSegmentUv(index, current.maxDistance);
-    outColor = castRay(start, end);
+        vec2 start = lineSegmentUv(index, current.minDistance);
+        vec2 end = lineSegmentUv(index, current.maxDistance);
+        outColor = castRay(start, end);
+    
+        if (outColor.w < 0.5) {
+            ivec4 indexTL = topLeftIndex(index);
+            ivec4 indexBR = indexTL + ivec4(1,1,0,0);
+
+            vec2 probe = indicesToProbeUv(index);
+            vec2 probeTL = indicesToProbeUv(indexTL);
+            vec2 probeBR = indicesToProbeUv(indexBR);
+
+            vec2 weights = (probe - probeTL) / (probeBR - probeTL);
+
+            vec2 sample1 = mix(indicesToSampleUv(indexTL), indicesToSampleUv(indexBR), weights);
+            vec2 sample2 = mix(indicesToSampleUv(indexTL + ivec4(0,0,1,0)), 
+                                indicesToSampleUv(indexBR + ivec4(0,0,1,0)), 
+                                weights);
+            vec2 sample3 = mix(indicesToSampleUv(indexTL + ivec4(0,0,2,0)), 
+                                indicesToSampleUv(indexBR + ivec4(0,0,2,0)), 
+                                weights);
+            vec2 sample4 = mix(indicesToSampleUv(indexTL + ivec4(0,0,3,0)), 
+                                indicesToSampleUv(indexBR + ivec4(0,0,3,0)), 
+                                weights);
+
+            outColor = 0.25 * (
+                texture(tPrevCascade, sample1) +
+                texture(tPrevCascade, sample2) +
+                texture(tPrevCascade, sample3) +
+                texture(tPrevCascade, sample4) 
+            );
+        }
     } else {
         vec4 probeUvDir = indicesToProbeDir(index);
         ivec4 indexTL = topLeftIndex(index);
@@ -185,36 +237,10 @@ void main() {
         vec2 start = probeUvDir.xy + current.minDistance * probeUvDir.zw;
         vec2 end = probeUvDir.xy + current.maxDistance * probeUvDir.zw;
 
-        vec4 radTL = castRay(start, end + (probeTL - probeUvDir.xy));
-        vec4 radTR = castRay(start, end + (probeTR - probeUvDir.xy));
-        vec4 radBL = castRay(start, end + (probeBL - probeUvDir.xy));
-        vec4 radBR = castRay(start, end + (probeBR - probeUvDir.xy));
-
-        if (radTL.a < 0.5) {
-            for (int i = 0; i < 4; i++) {
-                radTL += texture(tPrevCascade, indicesToSampleUv(indexTL + ivec4(0,0,i,0)));
-            }
-            radTL *= 0.25;
-        } 
-
-        if (radTR.a < 0.5) {
-            for (int i = 0; i < 4; i++) {
-                radTR += texture(tPrevCascade, indicesToSampleUv(indexTR + ivec4(0,0,i,0)));
-            }
-            radTR *= 0.25;
-        } 
-        if (radBL.a < 0.5) {
-            for (int i = 0; i < 4; i++) {
-                radBL += texture(tPrevCascade, indicesToSampleUv(indexBL + ivec4(0,0,i,0)));
-            }
-            radBL *= 0.25;
-        } 
-        if (radBR.a < 0.5) {
-            for (int i = 0; i < 4; i++) {
-                radBR += texture(tPrevCascade, indicesToSampleUv(indexBR + ivec4(0,0,i,0)));
-            }
-            radBR *= 0.25;
-        } 
+        vec4 radTL = bilinearRaycast(start, end,probeUvDir.xy, probeTL, indexTL);
+        vec4 radTR = bilinearRaycast(start, end,probeUvDir.xy, probeTR, indexTR);
+        vec4 radBL = bilinearRaycast(start, end,probeUvDir.xy, probeBL, indexBL);
+        vec4 radBR = bilinearRaycast(start, end,probeUvDir.xy, probeBR, indexBR);
 
         vec2 weights = (probeUvDir.xy - probeTL) / (probeBR - probeTL);
 
@@ -222,53 +248,6 @@ void main() {
         vec4 bot = mix(radBL, radBR, vec4(weights.x));
 
         outColor =  mix(top, bot, vec4(weights.y));
-    }
-    
-    if (outColor.w < 0.5) {
-        ivec4 indexTL = topLeftIndex(index);
-        ivec4 indexBR = indexTL + ivec4(1,1,0,0);
-
-        vec2 probe = indicesToProbeUv(index);
-        vec2 probeTL = indicesToProbeUv(indexTL);
-        vec2 probeBR = indicesToProbeUv(indexBR);
-
-        vec2 weights = (probe - probeTL) / (probeBR - probeTL);
-
-        vec2 sample1 = mix(indicesToSampleUv(indexTL), indicesToSampleUv(indexBR), weights);
-        vec2 sample2 = mix(indicesToSampleUv(indexTL + ivec4(0,0,1,0)), 
-                            indicesToSampleUv(indexBR + ivec4(0,0,1,0)), 
-                            weights);
-        vec2 sample3 = mix(indicesToSampleUv(indexTL + ivec4(0,0,2,0)), 
-                            indicesToSampleUv(indexBR + ivec4(0,0,2,0)), 
-                            weights);
-        vec2 sample4 = mix(indicesToSampleUv(indexTL + ivec4(0,0,3,0)), 
-                            indicesToSampleUv(indexBR + ivec4(0,0,3,0)), 
-                            weights);
-
-        outColor = 0.25 * (
-            texture(tPrevCascade, sample1) +
-            texture(tPrevCascade, sample2) +
-            texture(tPrevCascade, sample3) +
-            texture(tPrevCascade, sample4) 
-        );
-    }
-
-    if (current.depth == debug.finalDepth && false) {
-        ivec4 indexTL = topLeftIndex(index);
-        ivec4 indexBR = indexTL + ivec4(1,1,0,0);
-
-        vec2 probe = indicesToProbeUv(index);
-        vec2 probeTL = indicesToProbeUv(indexTL);
-        vec2 probeBR = indicesToProbeUv(indexBR);
-
-        vec2 weights = (probe - probeTL) / (probeBR - probeTL);
-
-        vec2 sample1 = mix(indicesToSampleUv(indexTL), indicesToSampleUv(indexBR), weights);
-        vec2 sample4 = mix(indicesToSampleUv(indexTL + ivec4(0,0,3,0)), 
-                            indicesToSampleUv(indexBR + ivec4(0,0,3,0)), 
-                            weights);
-        outColor.xyz = vec3( sample1, 0.);
-
     }
 
     outColor.w = 1.;
