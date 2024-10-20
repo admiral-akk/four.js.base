@@ -2,39 +2,22 @@ import "./style.css";
 import { WindowManager } from "./engine/window.js";
 import { DataManager } from "./engine/data.js";
 import Stats from "stats-js";
-import { addCustomArrayMethods } from "./utils/array.js";
 import * as twgl from "twgl.js";
 import { State, StateMachine } from "./utils/stateMachine";
 import { InputManager2 } from "./engine/input2.js";
 import { TimeManager } from "./engine/time.js";
+import { InputManager, MyGame } from "./game2.js";
 import calculateCascade from "./shaders/cascade.fs";
 import renderCascade from "./shaders/renderCascade.fs";
 import calculateQuadCascade from "./shaders/quadCascade.fs";
 import renderQuadCascade from "./shaders/renderQuadCascade.fs";
 
-addCustomArrayMethods();
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.body.appendChild(stats.dom);
 
-// Time
-
-const timeManager = new TimeManager();
-
-// Data Storage
-
-const data = new DataManager();
-data.init();
-
-// Canvas Manager
-
-const windowManager = new WindowManager(1);
-
 // Render Pipeline
 
-function getRandomInt({ min = 0, max, steps = 2 }) {
-  return (Math.floor(steps * Math.random()) / (steps - 1)) * (max - min) + min;
-}
 const gl = document.getElementById("webgl").getContext("webgl2");
 twgl.addExtensionsToContext(gl);
 
@@ -69,260 +52,26 @@ const arrays = {
 };
 const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
 
-windowManager.listeners.push({
-  updateSize: ({ width, height }) => {
-    gl.canvas.width = width;
-    gl.canvas.height = height;
-  },
-});
+// Time
+
+const timeManager = new TimeManager();
+
+// Data Storage
+
+const data = new DataManager();
+data.init();
+
+// Canvas Manager
+
+const windowManager = new WindowManager(1);
 
 // Input handler
 
 const input = new InputManager2(windowManager, timeManager);
 
-// Input State Machine
-
-class Command {
-  constructor() {
-    this.type = Object.getPrototypeOf(this).constructor;
-  }
-}
-
-class ClearCommand extends Command {}
-class TickCommand extends Command {
-  constructor(delta) {
-    super();
-    this.delta = delta;
-  }
-}
-
-class DragCommand extends Command {
-  constructor(curr) {
-    super();
-    this.curr = curr;
-  }
-}
-
-class StartDragCommand extends Command {
-  constructor(start) {
-    super();
-    this.start = start;
-  }
-}
-
-class UpdateColorCommand extends Command {
-  constructor(color) {
-    super();
-    this.color = color;
-  }
-}
-class LineCommand extends Command {
-  constructor(start, end) {
-    super();
-    this.start = start;
-    this.end = end;
-  }
-}
-
-class DragInputState extends State {
-  constructor(start) {
-    super();
-    this.start = start;
-    this.curr = start;
-  }
-
-  update(game, inputStateMachine, inputState) {
-    const { mouse } = inputState;
-    if (!mouse) {
-      return;
-    }
-    const { pos, buttons } = mouse;
-    if (!buttons) {
-      if (!this.start.equals(pos)) {
-        game.commands.push(new LineCommand(this.start, pos));
-      }
-      inputStateMachine.replaceState(new OpenInputState());
-    } else if (!this.start.equals(pos)) {
-      this.curr = pos;
-      game.commands.push(new DragCommand(this.curr));
-    }
-  }
-}
-
-class OpenInputState extends State {
-  update(game, inputStateMachine, inputState) {
-    const { mouse } = inputState;
-    if (!mouse) {
-      return;
-    }
-    const { pos, buttons } = mouse;
-    if (pos && buttons) {
-      game.commands.push(new StartDragCommand(pos));
-      inputStateMachine.replaceState(new DragInputState(pos));
-    }
-  }
-}
-
-class InputManager extends StateMachine {
-  constructor() {
-    super();
-    this.pushState(new OpenInputState());
-  }
-
-  init() {}
-
-  update(game, inputState) {
-    this.currentState()?.update(game, this, inputState);
-  }
-}
-
 const inputState = new InputManager();
 
 // Game
-
-const clipToScreenSpace = ([x, y]) => [(x + 1) / 2, (y + 1) / 2];
-
-class MyGame {
-  constructor(data) {
-    this.commands = [];
-    this.data = data;
-    data.listeners.push(this);
-    if (this.data.state.ball) {
-      this.data.state.ball.size = 0.1;
-    }
-    if (!Array.isArray(this.data.state.lines)) {
-      this.data.state.lines = [];
-      this.data.state.balls = this.setupBalls();
-      this.data.state.ball = {
-        position: [0, 0],
-        color: [1, 1, 1, 1],
-        size: 0.1,
-        velocity: [0.8, 0.4],
-      };
-      this.data.saveData();
-    }
-    this.activeColor = [1, 1, 1, 1];
-    this.currLine = { start: [0, 0], end: [0, 0], color: this.activeColor };
-  }
-
-  setupBalls() {
-    const balls = [];
-    for (var i = 0; i < 200; i++) {
-      balls.push({
-        position: [
-          getRandomInt({ max: 0.2, min: -0.2, steps: 40 }),
-          getRandomInt({ max: 0.9, min: -0.9, steps: 100 }),
-        ],
-        color: [0, 0, 0, 1],
-        size: getRandomInt({ max: 0.02, min: 0.01, steps: 5 }),
-      });
-    }
-    return balls;
-  }
-
-  startLine(pos) {
-    this.currLine = { start: pos, end: pos, color: this.activeColor };
-  }
-
-  updateLine(pos) {
-    this.currLine.end = pos;
-  }
-
-  endLine(pos) {
-    this.currLine.end = pos;
-    this.data.state.lines.push(this.currLine);
-    this.currLine = { start: [0, 0], end: [0, 0], color: this.activeColor };
-    this.data.saveData();
-  }
-
-  configUpdated() {
-    if (!this.data.state.lines) {
-      this.data.state.lines = [];
-    }
-  }
-
-  updateColor(color) {
-    this.activeColor = structuredClone(color);
-    this.activeColor.push(1);
-    this.currLine.color = this.activeColor;
-  }
-
-  moveBall(delta) {
-    const { ball } = this.data.state;
-    ball.position[0] += delta * ball.velocity[0];
-    ball.position[1] += delta * ball.velocity[1];
-
-    if (Math.abs(ball.position[0]) + ball.size >= 1) {
-      ball.velocity[0] *= -1;
-    }
-    if (Math.abs(ball.position[1]) + ball.size >= 1) {
-      ball.velocity[1] *= -1;
-    }
-  }
-
-  applyCommand(command) {
-    switch (command.type) {
-      case TickCommand:
-        const { delta } = command;
-        const { ball, balls } = this.data.state;
-        this.moveBall(delta);
-        for (let i = 0; i < balls.length; i++) {
-          const other = balls[i];
-          other.color[0] = Math.max(0, other.color[0] - 0.4 * delta);
-          other.color[1] = Math.max(0, other.color[1] - 0.4 * delta);
-          other.color[2] = Math.max(0, other.color[2] - 0.4 * delta);
-          const diff = [
-            other.position[0] - ball.position[0],
-            other.position[1] - ball.position[1],
-          ];
-          const dist = Math.sqrt(diff[0] * diff[0] + diff[1] * diff[1]);
-          if (dist < 0.2) {
-            other.color[0] = ball.color[0];
-            other.color[1] = ball.color[1];
-            other.color[2] = ball.color[2];
-          }
-          this.data.saveData();
-        }
-        break;
-      case ClearCommand:
-        this.clearLines();
-        break;
-      case UpdateColorCommand:
-        this.updateColor(command.color);
-        break;
-      case StartDragCommand:
-        {
-          {
-            this.data.state.isDragging = true;
-            this.startLine(clipToScreenSpace(command.start));
-          }
-        }
-        break;
-      case DragCommand:
-        {
-          this.data.state.isDragging = true;
-          this.updateLine(clipToScreenSpace(command.curr));
-        }
-        break;
-      case LineCommand:
-        {
-          this.data.state.isDragging = false;
-          this.endLine(clipToScreenSpace(command.end));
-        }
-        break;
-      default:
-        break;
-    }
-  }
-
-  update() {
-    this.commands.push(new TickCommand(0.04));
-    this.commands.forEach((command) => {
-      this.applyCommand(command);
-    });
-    this.commands.length = 0;
-  }
-}
 
 const game = new MyGame(data);
 
@@ -615,8 +364,71 @@ function drawToBuffer(time, buffer, size, game) {
     0,
     balls.length + 1
   );
+
+  const matrices2 = [];
+  const colors2 = [];
+
+  const { paddles } = game.data.state;
+
+  for (let i = 0; i < paddles.length; i++) {
+    const p = paddles[i];
+    const scale = m4.scaling([p.size[0], p.size[1], 1]);
+    const translation = m4.translation([
+      p.position[0] / p.size[0],
+      p.position[1] / p.size[1],
+      0,
+    ]);
+    const mat = m4.multiply(scale, translation);
+    mat.forEach((v, i) => {
+      matrices2.push(v);
+    });
+    colors2.push(p.color[0], p.color[1], p.color[2], 1);
+  }
+  const vertexData2 = [1, 1, 1, -1, -1, -1, -1, 1];
+
+  const arrays3 = {
+    position: {
+      numComponents: 2,
+      data: vertexData2,
+    },
+    color: {
+      numComponents: 4,
+      data: colors2,
+      divisor: 1,
+    },
+    matrix: {
+      numComponents: 16,
+      data: matrices2,
+      divisor: 1,
+    },
+  };
+  const bufferInfo2 = twgl.createBufferInfoFromArrays(gl, arrays3);
+  const vertexArrayInfo2 = twgl.createVertexArrayInfo(
+    gl,
+    instanceColor,
+    bufferInfo2
+  );
+
+  gl.useProgram(instanceColor.program);
+  twgl.setBuffersAndAttributes(gl, instanceColor, vertexArrayInfo2);
+  twgl.setUniforms(instanceColor, {});
+  twgl.bindFramebufferInfo(gl, buffer);
+  twgl.drawBufferInfo(
+    gl,
+    vertexArrayInfo,
+    gl.TRIANGLE_FAN,
+    vertexArrayInfo.numElements,
+    0,
+    paddles.length
+  );
 }
 
+windowManager.listeners.push({
+  updateSize: ({ width, height }) => {
+    gl.canvas.width = width;
+    gl.canvas.height = height;
+  },
+});
 let toSave = false;
 
 data.addButton({
@@ -641,7 +453,7 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 8 * 128;
+const width = 2 * 128;
 const height = width;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(

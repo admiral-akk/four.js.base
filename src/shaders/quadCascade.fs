@@ -250,5 +250,7 @@ void main() {
         outColor =  mix(top, bot, vec4(weights.y));
     }
 
+    outColor *= pow(0.1, current.maxDistance - current.minDistance);
+
     outColor.w = 1.;
 }

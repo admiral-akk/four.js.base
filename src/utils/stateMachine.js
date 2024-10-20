@@ -1,3 +1,5 @@
+import { addCustomArrayMethods } from "./array.js";
+addCustomArrayMethods();
 // http://gamedevgeek.com/tutorials/managing-game-states-in-c/
 export class StateMachine {
   constructor() {
