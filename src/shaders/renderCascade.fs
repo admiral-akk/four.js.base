@@ -1,7 +1,18 @@
 #version 300 es
+struct DebugInfo {
+  bool continousBilinearFix;
+  bool cornerProbes;
+  bool showSampleUv;
+  bool showProbeUv;
+  bool showDirection;
+  bool noFix;
+  bool quadSample;
+};
+
 precision mediump float;
 uniform sampler2D tPrevCascade;
 uniform vec2 resolution;
+uniform DebugInfo debug;
 
 out vec4 outColor;
 

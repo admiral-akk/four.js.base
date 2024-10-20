@@ -7,8 +7,8 @@ import * as twgl from "twgl.js";
 import { State, StateMachine } from "./utils/stateMachine";
 import { InputManager2 } from "./engine/input2.js";
 import { TimeManager } from "./engine/time.js";
-import calculateCascade from "./shaders/cascade.glsl";
-import renderCascade from "./shaders/renderCascade.glsl";
+import calculateCascade from "./shaders/cascade.fs";
+import renderCascade from "./shaders/renderCascade.fs";
 
 addCustomArrayMethods();
 var stats = new Stats();
@@ -185,6 +185,9 @@ class MyGame {
     this.commands = [];
     this.data = data;
     data.listeners.push(this);
+    if (this.data.state.ball) {
+      this.data.state.ball.size = 0.1;
+    }
     if (!Array.isArray(this.data.state.lines)) {
       this.data.state.lines = [];
       this.data.state.balls = this.setupBalls();
@@ -640,16 +643,31 @@ const frameBuffers = {
       {
         internalFormat: gl.RGBA8,
         format: gl.RGBA,
-        mag: gl.LINEAR,
-        min: gl.LINEAR,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
         wrap: gl.CLAMP_TO_EDGE,
         auto: true,
       },
     ],
-    1024,
-    1024
+    width,
+    height
   ),
   lightEmittersWithCurrent: twgl.createFramebufferInfo(
+    gl,
+    [
+      {
+        internalFormat: gl.RGBA8,
+        format: gl.RGBA,
+        mag: gl.NEAREST,
+        min: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+        auto: true,
+      },
+    ],
+    width,
+    height
+  ),
+  distance: twgl.createFramebufferInfo(
     gl,
     [
       {
@@ -661,23 +679,8 @@ const frameBuffers = {
         auto: true,
       },
     ],
-    1024,
-    1024
-  ),
-  distance: twgl.createFramebufferInfo(
-    gl,
-    [
-      {
-        internalFormat: gl.RGBA32F,
-        format: gl.RGBA,
-        mag: gl.LINEAR,
-        min: gl.LINEAR,
-        wrap: gl.CLAMP_TO_EDGE,
-        auto: true,
-      },
-    ],
-    1024,
-    1024
+    width,
+    height
   ),
   fill: twgl.createFramebufferInfo(
     gl,
@@ -691,8 +694,8 @@ const frameBuffers = {
         auto: true,
       },
     ],
-    1024,
-    1024
+    width,
+    height
   ),
   spare: twgl.createFramebufferInfo(
     gl,
@@ -706,8 +709,8 @@ const frameBuffers = {
         auto: true,
       },
     ],
-    1024,
-    1024
+    width,
+    height
   ),
   cascadeRT: twgl.createFramebufferInfo(
     gl,
@@ -926,7 +929,7 @@ function render(time) {
 
   const startDepth = data.addNumber({
     displayName: "Start Depth",
-    defaultValue: 4,
+    defaultValue: Math.log2(width) - 2,
     min: 1,
     max: Math.log2(width) - 2,
     step: 1,
@@ -955,8 +958,9 @@ function render(time) {
     frameBuffers.cascadeRT
   );
 
+  const maxProbeCount = frameBuffers.cascadeRT.width;
   while (depth >= finalDepth) {
-    const shortestDistance = (2 * Math.SQRT2) / frameBuffers.cascadeRT.width;
+    const shortestDistance = (10 * Math.SQRT2) / frameBuffers.cascadeRT.width;
     const longestDistance = Math.SQRT2;
 
     const multiplier2 = Math.log2(longestDistance / shortestDistance);
@@ -967,7 +971,9 @@ function render(time) {
         : shortestDistance *
           Math.pow(2, (multiplier2 * (depth - 1)) / startDepth);
     const maxDistance =
-      shortestDistance * Math.pow(2, (multiplier2 * depth) / startDepth);
+      depth == startDepth
+        ? Math.SQRT2
+        : shortestDistance * Math.pow(2, (multiplier2 * depth) / startDepth);
     const deeperMaxDistance =
       shortestDistance * Math.pow(2, (multiplier2 * (depth + 1)) / startDepth);
 
@@ -1032,6 +1038,10 @@ function render(time) {
           }).value,
           showDirection: data.addNumber({
             displayName: "Show Direction Uv",
+            defaultValue: false,
+          }).value,
+          noFix: data.addNumber({
+            displayName: "No Fix",
             defaultValue: false,
           }).value,
         },
