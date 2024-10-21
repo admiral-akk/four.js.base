@@ -162,19 +162,15 @@ class MyGame {
             other.color[2] = ball.color[2];
           }
 
-          for (let i = 0; i < paddles.length; i++) {
-            const p = paddles[i];
-            p.position[1] += delta * p.direction * 0.02;
-            p.position[1] = Math.min(
-              Math.max(p.position[1], -1 + p.size[1]),
-              1 - p.size[1]
-            );
-          }
-
           // check intersections
 
           for (let i = 0; i < paddles.length; i++) {
             const p = paddles[i];
+            p.position[1] += delta * p.direction * 0.01;
+            p.position[1] = Math.min(
+              Math.max(p.position[1], -1 + p.size[1]),
+              1 - p.size[1]
+            );
             const size = new Vec(p.size);
             const top = new Vec(p.position).add(p.size);
             const bot = new Vec(p.position).sub(p.size);
@@ -197,19 +193,16 @@ class MyGame {
               ),
             ];
 
-            for (let i = 0; i < lineSegments.length; i++) {
-              const l = lineSegments[i];
+            for (let j = 0; j < lineSegments.length; j++) {
+              const l = lineSegments[j];
               const dist = l.distanceTo(ball.position);
               if (dist < ball.size) {
                 ball.color = p.color;
+                if (Math.sign(ball.velocity[0]) != Math.sign(0.5 - i)) {
+                  ball.velocity[0] *= -1;
+                }
               }
             }
-
-            p.position[1] += delta * p.direction * 0.02;
-            p.position[1] = Math.min(
-              Math.max(p.position[1], -1 + p.size[1]),
-              1 - p.size[1]
-            );
           }
           this.data.saveData();
         }
