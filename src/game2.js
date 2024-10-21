@@ -1,10 +1,12 @@
 import { State, StateMachine } from "./utils/stateMachine";
+import { Vec, LineSegment } from "./utils/vector";
 
 // Input State Machine
 
 function getRandomInt({ min = 0, max, steps = 2 }) {
   return (Math.floor(steps * Math.random()) / (steps - 1)) * (max - min) + min;
 }
+
 class Command {
   constructor() {
     this.type = Object.getPrototypeOf(this).constructor;
@@ -66,31 +68,28 @@ class MyGame {
     if (this.data.state.ball) {
       this.data.state.ball.size = 0.1;
     }
-    if (!Array.isArray(this.data.state.lines)) {
-      this.data.state.lines = [];
-      this.data.state.balls = this.setupBalls();
-      this.data.state.ball = {
-        position: [0, 0],
-        color: [1, 1, 1, 1],
-        size: 0.1,
-        velocity: [0.8, 0.4],
-      };
-      this.data.state.paddles = [
-        {
-          position: [-0.9, 0],
-          size: [0.02, 0.2],
-          color: [1, 0, 0, 1],
-          direction: 0,
-        },
-        {
-          position: [0.9, 0],
-          size: [0.02, 0.2],
-          color: [0, 1, 0, 1],
-          direction: 0,
-        },
-      ];
-      this.data.saveData();
-    }
+    this.data.state.balls = this.setupBalls();
+    this.data.state.ball = {
+      position: new Vec(0, 0),
+      color: new Vec(1, 1, 1, 1),
+      size: 0.1,
+      velocity: new Vec(0.8, 0.4),
+    };
+    this.data.state.paddles = [
+      {
+        position: new Vec(-0.9, 0),
+        size: new Vec(0.02, 0.2),
+        color: new Vec(1, 0, 0, 1),
+        direction: 0,
+      },
+      {
+        position: new Vec(0.9, 0),
+        size: new Vec(0.02, 0.2),
+        color: new Vec(0, 1, 0, 1),
+        direction: 0,
+      },
+    ];
+    this.data.saveData();
     this.activeColor = [1, 1, 1, 1];
     this.currLine = { start: [0, 0], end: [0, 0], color: this.activeColor };
   }
@@ -146,7 +145,6 @@ class MyGame {
       case TickCommand:
         const { delta } = command;
         const { ball, balls, paddles } = this.data.state;
-        console.log(command);
         this.moveBall(delta);
         for (let i = 0; i < balls.length; i++) {
           const other = balls[i];
@@ -166,6 +164,47 @@ class MyGame {
 
           for (let i = 0; i < paddles.length; i++) {
             const p = paddles[i];
+            p.position[1] += delta * p.direction * 0.02;
+            p.position[1] = Math.min(
+              Math.max(p.position[1], -1 + p.size[1]),
+              1 - p.size[1]
+            );
+          }
+
+          // check intersections
+
+          for (let i = 0; i < paddles.length; i++) {
+            const p = paddles[i];
+            const size = new Vec(p.size);
+            const top = new Vec(p.position).add(p.size);
+            const bot = new Vec(p.position).sub(p.size);
+            const lineSegments = [
+              new LineSegment(
+                top.clone(),
+                top.clone().sub(size.clone().mul(Vec.X2).mul(2))
+              ),
+              new LineSegment(
+                top.clone(),
+                top.clone().sub(size.clone().mul(Vec.Y2).mul(2))
+              ),
+              new LineSegment(
+                bot.clone(),
+                bot.clone().add(size.clone().mul(Vec.X2).mul(2))
+              ),
+              new LineSegment(
+                bot.clone(),
+                bot.clone().add(size.clone().mul(Vec.Y2).mul(2))
+              ),
+            ];
+
+            for (let i = 0; i < lineSegments.length; i++) {
+              const l = lineSegments[i];
+              const dist = l.distanceTo(ball.position);
+              if (dist < ball.size) {
+                ball.color = p.color;
+              }
+            }
+
             p.position[1] += delta * p.direction * 0.02;
             p.position[1] = Math.min(
               Math.max(p.position[1], -1 + p.size[1]),
