@@ -128,8 +128,9 @@ class Vec extends Array {
 
   mix(other, t) {
     for (let i = 0; i < this.length; i++) {
-      this[i] = Math.min(this[i], other[i]);
+      this[i] = this[i].mix(other[i], t[i]);
     }
+    return this;
   }
 
   min(other) {

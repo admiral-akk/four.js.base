@@ -46,6 +46,7 @@ vec4 sampleSky(vec2 dir) {
 }
 
 vec4 castRay(vec2 start, vec2 end) {
+vec2 initialStart = start;
   vec2 delta = end - start;
   float distanceLeft = length(delta);
   float minStep = 2. / float(textureSize(tColor, 0).x);
@@ -62,7 +63,8 @@ vec4 castRay(vec2 start, vec2 end) {
     float sdf = texture(tDistance, start).r ;
     vec4 color = texture(tColor, start);
     if (color.a > 0.9) {
-      return texture(tColor, start);
+      color *= pow(0.01, length(start - initialStart));
+      return color;
     }
 
     sdf += minStep;
@@ -181,8 +183,9 @@ vec4 bilinearRaycast(
     ivec4 deeperIndex
 ) {
     vec4 rad = castRay(start, end + (deeperUv - probeUv));
-    if (rad.a < 0.5) {
+    if (rad.a < 0.05) {
         rad = sampleCascade(deeperIndex);
+        rad *= pow(0.01, current.maxDistance - current.minDistance);
     } 
     return rad;
 }

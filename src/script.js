@@ -453,7 +453,7 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 8 * 128;
+const width = 4 * 128;
 const height = width;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
@@ -1094,13 +1094,29 @@ function render(time) {
           tPrevCascade: frameBuffers.linearCascadeRT.attachments[0],
         });
       } else {
-        renderTo(gl, cascadeQuadRender, bufferInfo, {
-          resolution: [gl.canvas.width, gl.canvas.height],
-          tPrevCascade: frameBuffers.quadCascadeRT.attachments[0],
-        });
+        renderTo(
+          gl,
+          cascadeQuadRender,
+          bufferInfo,
+          {
+            resolution: [
+              frameBuffers.spareQuadCascadeRT.width,
+              frameBuffers.spareQuadCascadeRT.height,
+            ],
+            tPrevCascade: frameBuffers.quadCascadeRT.attachments[0],
+          },
+          frameBuffers.spareQuadCascadeRT
+        );
       }
       break;
   }
+
+  drawToBuffer(time, frameBuffers.spareQuadCascadeRT, 0.05, game);
+
+  renderTo(gl, applyGamma, bufferInfo, {
+    resolution: [gl.canvas.width, gl.canvas.height],
+    tPrev: frameBuffers.spareQuadCascadeRT.attachments[0],
+  });
 
   // drawToBuffer(time, null, 0.05, game);
 

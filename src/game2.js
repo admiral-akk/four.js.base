@@ -72,7 +72,7 @@ class MyGame {
     this.data.state.ball = {
       position: new Vec(0, 0),
       color: new Vec(1, 1, 1),
-      size: 0.1,
+      size: 0.05,
       velocity: new Vec(0.8, 0.4),
     };
     this.data.state.paddles = [
@@ -148,10 +148,10 @@ class MyGame {
         this.moveBall(delta);
         for (let i = 0; i < balls.length; i++) {
           const other = balls[i];
-          other.color.sub(Vec.ONE3.clone().mul(0.4 * delta)).max(Vec.ZERO3);
+          other.color.sub(Vec.ONE3.clone().mul(2 * delta)).max(Vec.ZERO3);
           const dist = other.position.clone().sub(ball.position).len();
           if (dist < 0.2) {
-            other.color.copy(ball.color);
+            other.color.copy(ball.color).mul(3);
           }
 
           // check intersections
