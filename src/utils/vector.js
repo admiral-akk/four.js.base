@@ -9,7 +9,7 @@ class LineSegment extends Array {
     const deltaLength = delta.len();
 
     const dir = other.clone().sub(this[0]);
-    const t = dir.dot(delta) / deltaLength;
+    const t = (dir.dot(delta) / delta.lenSq()).clamp(0, 1);
 
     return this[0].clone().add(delta.mul(t)).sub(other).len();
   }

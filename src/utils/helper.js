@@ -55,6 +55,10 @@ export class KeyedSet extends KeyedMap {
   }
 }
 
+Number.prototype.clamp = function (min, max) {
+  return Math.min(Math.max(this, min), max);
+};
+
 export class Position {
   constructor(x, y) {
     this.x = x;
