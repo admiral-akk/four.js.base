@@ -71,7 +71,7 @@ class MyGame {
     this.data.state.balls = this.setupBalls();
     this.data.state.ball = {
       position: new Vec(0, 0),
-      color: new Vec(1, 1, 1, 1),
+      color: new Vec(1, 1, 1),
       size: 0.1,
       velocity: new Vec(0.8, 0.4),
     };
@@ -79,13 +79,13 @@ class MyGame {
       {
         position: new Vec(-0.9, 0),
         size: new Vec(0.02, 0.2),
-        color: new Vec(1, 0, 0, 1),
+        color: new Vec(1, 0, 0),
         direction: 0,
       },
       {
         position: new Vec(0.9, 0),
         size: new Vec(0.02, 0.2),
-        color: new Vec(0, 1, 0, 1),
+        color: new Vec(0, 1, 0),
         direction: 0,
       },
     ];
@@ -98,11 +98,11 @@ class MyGame {
     const balls = [];
     for (var i = 0; i < 200; i++) {
       balls.push({
-        position: [
+        position: new Vec(
           getRandomInt({ max: 0.2, min: -0.2, steps: 40 }),
-          getRandomInt({ max: 0.9, min: -0.9, steps: 100 }),
-        ],
-        color: [0, 0, 0, 1],
+          getRandomInt({ max: 0.9, min: -0.9, steps: 100 })
+        ),
+        color: new Vec(0, 0, 0),
         size: getRandomInt({ max: 0.02, min: 0.01, steps: 5 }),
       });
     }
@@ -148,18 +148,10 @@ class MyGame {
         this.moveBall(delta);
         for (let i = 0; i < balls.length; i++) {
           const other = balls[i];
-          other.color[0] = Math.max(0, other.color[0] - 0.4 * delta);
-          other.color[1] = Math.max(0, other.color[1] - 0.4 * delta);
-          other.color[2] = Math.max(0, other.color[2] - 0.4 * delta);
-          const diff = [
-            other.position[0] - ball.position[0],
-            other.position[1] - ball.position[1],
-          ];
-          const dist = Math.sqrt(diff[0] * diff[0] + diff[1] * diff[1]);
+          other.color.sub(Vec.ONE3.clone().mul(0.4 * delta)).max(Vec.ZERO3);
+          const dist = other.position.clone().sub(ball.position).len();
           if (dist < 0.2) {
-            other.color[0] = ball.color[0];
-            other.color[1] = ball.color[1];
-            other.color[2] = ball.color[2];
+            other.color.copy(ball.color);
           }
 
           // check intersections

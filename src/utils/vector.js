@@ -19,12 +19,24 @@ class Vec extends Array {
   static X2 = new Vec([1, 0]);
   static X3 = new Vec([1, 0, 0]);
   static X4 = new Vec([1, 0, 0, 0]);
+
   static Y2 = new Vec([0, 1]);
   static Y3 = new Vec([0, 1, 0]);
   static Y4 = new Vec([0, 1, 0, 0]);
+
   static Z3 = new Vec([0, 0, 1]);
   static Z4 = new Vec([0, 0, 1, 0]);
+
   static W4 = new Vec([0, 0, 0, 1]);
+
+  static ONE2 = new Vec(1, 1);
+  static ONE3 = new Vec(1, 1, 1);
+  static ONE4 = new Vec(1, 1, 1, 1);
+
+  static ZERO2 = new Vec(0, 0);
+  static ZERO3 = new Vec(0, 0, 0);
+  static ZERO4 = new Vec(0, 0, 0, 0);
+
   constructor(arrOrX, y = null, z = null, w = null) {
     super();
     if (Array.isArray(arrOrX)) {
@@ -35,13 +47,26 @@ class Vec extends Array {
       throw new Error("Invalid construction");
     } else {
       this.push(arrOrX, y);
-      if (z) {
+      if (z !== null) {
         this.push(z);
       }
-      if (w) {
+      if (w !== null) {
         this.push(w);
       }
     }
+  }
+
+  copy(other) {
+    if (typeof other === "number") {
+      for (let i = 0; i < this.length; i++) {
+        this[i] = other;
+      }
+    } else if (other.length === this.length) {
+      for (let i = 0; i < this.length; i++) {
+        this[i] = other[i];
+      }
+    }
+    return this;
   }
 
   add(other) {
@@ -69,7 +94,7 @@ class Vec extends Array {
         this[i] -= other[i];
       }
     } else {
-      throw new Error("Invalid add");
+      throw new Error("Invalid sub");
     }
     return this;
   }
@@ -84,7 +109,7 @@ class Vec extends Array {
         this[i] *= other[i];
       }
     } else {
-      throw new Error("Invalid add");
+      throw new Error("Invalid mul");
     }
     return this;
   }
@@ -97,8 +122,35 @@ class Vec extends Array {
       }
       return sum;
     } else {
-      throw new Error("Invalid add");
+      throw new Error("Invalid dot");
     }
+  }
+
+  mix(other, t) {
+    for (let i = 0; i < this.length; i++) {
+      this[i] = Math.min(this[i], other[i]);
+    }
+  }
+
+  min(other) {
+    for (let i = 0; i < this.length; i++) {
+      this[i] = Math.min(this[i], other[i]);
+    }
+    return this;
+  }
+
+  clamp(low, high) {
+    for (let i = 0; i < this.length; i++) {
+      this[i] = this[i].clamp(low, high);
+    }
+    return this;
+  }
+
+  max(other) {
+    for (let i = 0; i < this.length; i++) {
+      this[i] = Math.max(this[i], other[i]);
+    }
+    return this;
   }
 
   normalize() {

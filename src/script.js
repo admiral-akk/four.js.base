@@ -453,7 +453,7 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 4 * 128;
+const width = 8 * 128;
 const height = width;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
@@ -654,75 +654,6 @@ function render(time) {
   game.update();
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-  const lines = game.data.state.lines;
-  if (lines.length < linesCount) {
-    renderTo(
-      gl,
-      fillColor,
-      bufferInfo,
-      { color: [0, 0, 0, 0] },
-      frameBuffers.lightEmitters
-    );
-    linesCount = 0;
-  }
-
-  while (lines.length > linesCount) {
-    renderTo(
-      gl,
-      drawLineToBuffer,
-      bufferInfo,
-      {
-        resolution: [frameBuffers.spare.width, frameBuffers.spare.height],
-        lineStart: lines[linesCount].start,
-        lineEnd: lines[linesCount].end,
-        color: lines[linesCount].color,
-        pixelLineSize: 16,
-        tPrev: frameBuffers.lightEmitters.attachments[0],
-      },
-      frameBuffers.spare
-    );
-    [frameBuffers.lightEmitters, frameBuffers.spare] = [
-      frameBuffers.spare,
-      frameBuffers.lightEmitters,
-    ];
-    linesCount++;
-  }
-
-  if (game.data.state.isDragging) {
-    renderTo(
-      gl,
-      drawLineToBuffer,
-      bufferInfo,
-      {
-        resolution: [
-          frameBuffers.lightEmitters.width,
-          frameBuffers.lightEmitters.height,
-        ],
-        lineStart: game.currLine.start,
-        lineEnd: game.currLine.end,
-        pixelLineSize: 4,
-        color: game.currLine.color,
-        tPrev: frameBuffers.lightEmitters.attachments[0],
-      },
-      frameBuffers.lightEmittersWithCurrent
-    );
-  } else {
-    renderTo(
-      gl,
-      renderTexture,
-      bufferInfo,
-      {
-        renderTarget: [0, 0, 1, 1],
-        resolution: [
-          frameBuffers.lightEmitters.width,
-          frameBuffers.lightEmitters.height,
-        ],
-        tPrev: frameBuffers.lightEmitters.attachments[0],
-      },
-      frameBuffers.lightEmittersWithCurrent
-    );
-  }
 
   renderTo(
     gl,
