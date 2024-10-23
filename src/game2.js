@@ -97,11 +97,13 @@ class MyGame {
   setupBalls() {
     const balls = [];
     for (var i = 0; i < 200; i++) {
+      const origin = new Vec(
+        getRandomInt({ max: 0.2, min: -0.2, steps: 40 }),
+        getRandomInt({ max: 0.9, min: -0.9, steps: 100 })
+      );
       balls.push({
-        position: new Vec(
-          getRandomInt({ max: 0.2, min: -0.2, steps: 40 }),
-          getRandomInt({ max: 0.9, min: -0.9, steps: 100 })
-        ),
+        origin: origin,
+        position: origin.clone(),
         color: new Vec(0, 0, 0),
         size: getRandomInt({ max: 0.02, min: 0.01, steps: 5 }),
       });
@@ -149,9 +151,13 @@ class MyGame {
         for (let i = 0; i < balls.length; i++) {
           const other = balls[i];
           other.color.sub(Vec.ONE3.clone().mul(2 * delta)).max(Vec.ZERO3);
-          const dist = other.position.clone().sub(ball.position).len();
-          if (dist < 0.2) {
+          const deltaV = other.position.clone().sub(ball.position);
+          if (deltaV.len() < 0.2) {
             other.color.copy(ball.color).mul(3);
+            other.position.add(deltaV.mul(-1).add(0.2).mul(delta));
+          } else {
+            const deltaOrigin = other.position.clone().sub(other.origin);
+            other.position.sub(deltaOrigin.mul(delta));
           }
 
           // check intersections

@@ -453,7 +453,7 @@ const saveImage = () => {
   toSave = false;
 };
 
-const width = 4 * 128;
+const width = 8 * 128;
 const height = width;
 const frameBuffers = {
   lightEmitters: twgl.createFramebufferInfo(
